@@ -21,6 +21,8 @@ import { TabMiRuta } from "./ui/TabMiRuta";
 import { ModalDriverAuth } from "./ui/ModalDriverAuth";
 import { ModalCarteraRepartidor } from "./ui/ModalCarteraRepartidor";
 import { DriverCopilotSheet } from "./ui/DriverCopilotSheet";
+import { SidebarGeneral } from "@/components/SidebarGeneral";
+import { ModalMercados } from "@/components/ModalMercados";
 import { Layers, Truck, ShieldAlert, Navigation, Target } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -32,6 +34,8 @@ interface RepartidorPiramidalProps {
 export function RepartidorPiramidal({ onSwitchToStore }: RepartidorPiramidalProps) {
   const [driverProfile, setDriverProfile] = useState<DriverProfile | null>(null);
   const [activeTab, setActiveTab] = useState<"pedidos" | "ruta" | "alerta">("pedidos");
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isMarketsOpen, setIsMarketsOpen] = useState(false);
   const [isCopilotOpen, setIsCopilotOpen] = useState(false);
   const [isWalletModalOpen, setIsWalletModalOpen] = useState(false);
   const [isNavigating, setIsNavigating] = useState(false);
@@ -111,19 +115,7 @@ export function RepartidorPiramidal({ onSwitchToStore }: RepartidorPiramidalProp
 
   return (
     <div className="relative h-screen w-full overflow-hidden bg-slate-950 text-slate-100 flex flex-col font-sans">
-      {/* ─── 1. Top Bar fija ─── */}
-      <DriverTopBar
-        driverProfile={driverProfile}
-        walletBalance={wallet.balance}
-        onSwitchToStore={onSwitchToStore}
-        onOpenCopilot={() => setIsCopilotOpen(true)}
-        onOpenWallet={() => setIsWalletModalOpen(true)}
-        onLogout={clearDriverProfile}
-        onOpenLoginModal={() => setShowLoginModal(true)}
-        hasGps={!!coords}
-      />
-
-      {/* ─── 2. Mapa Interactivo de Fondo ─── */}
+      {/* ─── 1. Mapa Interactivo de Fondo (Full Screen) ─── */}
       <div className="absolute inset-0 z-0">
         <InteractiveMap
           center={coords ? [coords.lat, coords.lng] : [-32.9372, -60.6542]}
@@ -135,6 +127,22 @@ export function RepartidorPiramidal({ onSwitchToStore }: RepartidorPiramidalProp
           currentUserId={driverProfile?.id}
         />
       </div>
+
+      {/* ─── 2. Botones Flotantes Superiores (Estándar Rappi / PedidosYa / DiDi) ─── */}
+      <DriverTopBar
+        driverProfile={driverProfile}
+        walletBalance={wallet.balance}
+        onOpenSidebar={() => setIsSidebarOpen(true)}
+        onOpenCopilot={() => setIsCopilotOpen(true)}
+        onOpenWallet={() => setIsWalletModalOpen(true)}
+        onLogout={() => {
+          clearDriverProfile();
+          setDriverProfile(null);
+          onSwitchToStore();
+        }}
+        onOpenLoginModal={() => setShowLoginModal(true)}
+        hasGps={!!coords}
+      />
 
       {/* ─── 3. Controles Flotantes del Mapa ─── */}
       <div className="absolute top-20 right-3 z-20 flex flex-col gap-2">
@@ -249,7 +257,7 @@ export function RepartidorPiramidal({ onSwitchToStore }: RepartidorPiramidalProp
             {activeTab === "pedidos" && (
               <TabPedidosDisponibles
                 orders={availableOrders}
-                onAcceptOrder={(order) => handleTakeOrder(order, driverProfile?.id)}
+                onAcceptOrder={handleTakeOrder}
               />
             )}
 
@@ -261,11 +269,11 @@ export function RepartidorPiramidal({ onSwitchToStore }: RepartidorPiramidalProp
             )}
 
             {activeTab === "alerta" && (
-              <div className="py-8 text-center space-y-2">
-                <ShieldAlert className="w-10 h-10 text-emerald-400 mx-auto" />
-                <h4 className="text-sm font-bold text-white">Tránsito y Alertas de Zona</h4>
-                <p className="text-xs text-slate-400">
-                  Sin demoras reportadas en las rutas de entrega hacia los clientes.
+              <div className="py-12 text-center space-y-2">
+                <ShieldAlert className="w-10 h-10 text-amber-400 mx-auto" />
+                <h4 className="text-sm font-bold text-white">Sin incidencias en la zona</h4>
+                <p className="text-xs text-slate-400 max-w-[240px] mx-auto">
+                  Tránsito fluido en el corredor central de Rosario (Tucumán y San Lorenzo).
                 </p>
               </div>
             )}
@@ -273,7 +281,7 @@ export function RepartidorPiramidal({ onSwitchToStore }: RepartidorPiramidalProp
         </div>
       </div>
 
-      {/* ─── 5. Modal de Identificación del Repartidor (Solo se activa al aceptar pedido o identificarse) ─── */}
+      {/* ─── 5. Modal de Identificación del Repartidor (Solo se activa al aceptar pedido) ─── */}
       <ModalDriverAuth
         isOpen={showLoginModal}
         onOpenChange={setShowLoginModal}
@@ -299,6 +307,36 @@ export function RepartidorPiramidal({ onSwitchToStore }: RepartidorPiramidalProp
         isOpen={isWalletModalOpen}
         onOpenChange={setIsWalletModalOpen}
         wallet={wallet}
+      />
+
+      {/* ─── 8. Sidebar Unificado DiDi / PedidosYa (Captura 1) ─── */}
+      <SidebarGeneral
+        isOpen={isSidebarOpen}
+        onOpenChange={setIsSidebarOpen}
+        currentMode="driver"
+        onSwitchMode={(mode) => {
+          if (mode === "store") onSwitchToStore();
+        }}
+        driverProfile={driverProfile}
+        walletBalance={wallet.balance}
+        onOpenWallet={() => setIsWalletModalOpen(true)}
+        onOpenMarkets={() => setIsMarketsOpen(true)}
+        onLogout={() => {
+          clearDriverProfile();
+          setDriverProfile(null);
+          onSwitchToStore();
+        }}
+      />
+
+      {/* ─── 9. Modal Mercados / Ecosistema Multitienda Cobro Fácil (Captura 4) ─── */}
+      <ModalMercados
+        isOpen={isMarketsOpen}
+        onOpenChange={setIsMarketsOpen}
+        selectedCompanyId="frigorifico-maciel"
+        onSelectCompany={() => {
+          setIsMarketsOpen(false);
+          onSwitchToStore();
+        }}
       />
     </div>
   );

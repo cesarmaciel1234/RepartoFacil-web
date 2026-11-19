@@ -2,6 +2,7 @@
 
 import React, { useState, useMemo } from "react";
 import { INITIAL_PRODUCTS, Product } from "@/data/mockProducts";
+import { MOCK_COMPANIES, CompanyStore } from "@/data/mockCompanies";
 import { useCart } from "./motor/useCart";
 import { createOrder } from "./motor/pedidoService";
 import { CheckoutFormData, OrderData } from "./motor/tipos";
@@ -10,6 +11,8 @@ import { FiltroCategorias } from "./ui/FiltroCategorias";
 import { TarjetaProducto } from "./ui/TarjetaProducto";
 import { DrawerCarrito } from "./ui/DrawerCarrito";
 import { ModalCheckout } from "./ui/ModalCheckout";
+import { SidebarGeneral } from "@/components/SidebarGeneral";
+import { ModalMercados } from "@/components/ModalMercados";
 import { useFirestore } from "@/firebase";
 import { ShoppingBag, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -31,8 +34,11 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
   } = useCart();
 
   const [products] = useState<Product[]>(INITIAL_PRODUCTS);
+  const [selectedCompany, setSelectedCompany] = useState<CompanyStore>(MOCK_COMPANIES[0]);
   const [selectedCategory, setSelectedCategory] = useState("todos");
   const [searchQuery, setSearchQuery] = useState("");
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isMarketsOpen, setIsMarketsOpen] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
@@ -71,13 +77,16 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
 
   return (
     <div className="min-h-screen w-full bg-slate-950 text-slate-100 flex flex-col font-sans pb-36 overflow-y-auto">
-      {/* ─── Encabezado Superior ─── */}
+      {/* ─── Encabezado Superior (con Sidebar DiDi reutilizado y selector de empresa) ─── */}
       <HeaderTienda
         cartItemsCount={cartItemsCount}
         cartTotal={cartTotal}
         deliveryType="delivery"
         deliveryAddress=""
+        selectedCompanyName={selectedCompany.name}
+        onOpenSidebar={() => setIsSidebarOpen(true)}
         onOpenCart={() => setIsCartOpen(true)}
+        onOpenMarkets={() => setIsMarketsOpen(true)}
         onSwitchToDriver={onSwitchToDriver}
       />
 
@@ -141,7 +150,7 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
         </div>
       )}
 
-      {/* ─── Drawer Carrito ─── */}
+      {/* ─── Drawer Lateral del Carrito ─── */}
       <DrawerCarrito
         isOpen={isCartOpen}
         onOpenChange={setIsCartOpen}
@@ -154,7 +163,7 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
         onProceedToPayment={handleProceedToPayment}
       />
 
-      {/* ─── Modal Checkout ─── */}
+      {/* ─── Modal de Checkout y Pago ─── */}
       <ModalCheckout
         isOpen={isCheckoutOpen}
         onOpenChange={setIsCheckoutOpen}
@@ -164,7 +173,27 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
         orderConfirmed={orderConfirmed}
         onCloseConfirmed={() => setOrderConfirmed(null)}
       />
+
+      {/* ─── Sidebar Unificado DiDi / PedidosYa (Captura 1) ─── */}
+      <SidebarGeneral
+        isOpen={isSidebarOpen}
+        onOpenChange={setIsSidebarOpen}
+        currentMode="store"
+        onSwitchMode={(mode) => {
+          if (mode === "driver") onSwitchToDriver();
+        }}
+        onOpenMarkets={() => setIsMarketsOpen(true)}
+        onOpenOrders={() => setIsCartOpen(true)}
+        onOpenWallet={() => onSwitchToDriver()}
+      />
+
+      {/* ─── Modal Mercados / Ecosistema Multitienda Cobro Fácil (Captura 4) ─── */}
+      <ModalMercados
+        isOpen={isMarketsOpen}
+        onOpenChange={setIsMarketsOpen}
+        selectedCompanyId={selectedCompany.id}
+        onSelectCompany={setSelectedCompany}
+      />
     </div>
   );
 }
-export default TiendaPiramidal;

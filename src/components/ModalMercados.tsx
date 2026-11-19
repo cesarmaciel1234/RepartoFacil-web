@@ -1,0 +1,210 @@
+"use client";
+
+import React, { useState } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Store,
+  Search,
+  Star,
+  Clock,
+  Bike,
+  Tag,
+  ExternalLink,
+  CheckCircle2,
+  Sparkles,
+} from "lucide-react";
+import { MOCK_COMPANIES, CompanyStore } from "@/data/mockCompanies";
+
+interface ModalMercadosProps {
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
+  selectedCompanyId: string;
+  onSelectCompany: (company: CompanyStore) => void;
+}
+
+export function ModalMercados({
+  isOpen,
+  onOpenChange,
+  selectedCompanyId,
+  onSelectCompany,
+}: ModalMercadosProps) {
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedCat, setSelectedCat] = useState<string>("todos");
+
+  const categories = [
+    { id: "todos", name: "Todos", emoji: "🛒" },
+    { id: "carnes", name: "Carnicerías", emoji: "🥩" },
+    { id: "kioscos", name: "Kioscos 24hs", emoji: "🍫" },
+    { id: "minimercados", name: "Almacén", emoji: "🧀" },
+  ];
+
+  const filtered = MOCK_COMPANIES.filter((comp) => {
+    const matchesSearch =
+      comp.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      comp.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      comp.address.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCat = selectedCat === "todos" || comp.categorySlug === selectedCat;
+    return matchesSearch && matchesCat;
+  });
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      <DialogContent className="bg-slate-950 border-slate-800 text-slate-100 w-[94vw] max-w-md p-5 rounded-3xl max-h-[85vh] overflow-y-auto">
+        <DialogHeader className="text-left pb-2 border-b border-slate-800">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-10 h-10 rounded-2xl bg-amber-500/20 text-amber-400 flex items-center justify-center">
+                <Store className="w-5 h-5" />
+              </div>
+              <div>
+                <DialogTitle className="text-lg font-black text-white">
+                  Mercados y Empresas
+                </DialogTitle>
+                <DialogDescription className="text-xs text-slate-400">
+                  Ecosistema multitienda conectado a Cobro Fácil en Render.
+                </DialogDescription>
+              </div>
+            </div>
+          </div>
+        </DialogHeader>
+
+        <div className="space-y-4 pt-2">
+          {/* Barra de Búsqueda (Estilo PedidosYa Mercados - Captura 4) */}
+          <div className="relative">
+            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <Input
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Buscar productos y locales..."
+              className="pl-9 h-11 bg-slate-900 border-slate-800 text-slate-100 placeholder:text-slate-500 rounded-2xl text-xs"
+            />
+          </div>
+
+          {/* Carrusel de Categorías Rápidas */}
+          <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+            {categories.map((cat) => (
+              <button
+                key={cat.id}
+                type="button"
+                onClick={() => setSelectedCat(cat.id)}
+                className={`h-8 px-3 rounded-xl text-xs font-bold shrink-0 flex items-center gap-1.5 transition-all ${
+                  selectedCat === cat.id
+                    ? "bg-emerald-500 text-white shadow-md shadow-emerald-500/20"
+                    : "bg-slate-900 text-slate-400 hover:text-white border border-slate-800"
+                }`}
+              >
+                <span>{cat.emoji}</span>
+                <span>{cat.name}</span>
+              </button>
+            ))}
+          </div>
+
+          {/* Lista de Empresas / Locales (Captura 4) */}
+          <div className="space-y-2.5">
+            {filtered.map((comp) => {
+              const isSelected = comp.id === selectedCompanyId;
+              return (
+                <div
+                  key={comp.id}
+                  onClick={() => {
+                    onSelectCompany(comp);
+                    onOpenChange(false);
+                  }}
+                  className={`p-3.5 rounded-2xl border transition-all cursor-pointer ${
+                    isSelected
+                      ? "bg-emerald-950/40 border-emerald-500/60 shadow-lg"
+                      : "bg-slate-900/90 border-slate-800 hover:border-slate-700"
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-start gap-2.5">
+                      <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-slate-800 to-slate-700 border border-slate-700 flex items-center justify-center font-black text-lg text-emerald-400 shrink-0">
+                        {comp.name.charAt(0)}
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-black text-sm text-white">
+                            {comp.name}
+                          </span>
+                          {isSelected && (
+                            <Badge className="bg-emerald-500 text-white text-[9px] px-1.5 py-0 font-bold">
+                              ACTIVO
+                            </Badge>
+                          )}
+                        </div>
+                        <span className="text-[11px] text-slate-400 block font-medium">
+                          {comp.category}
+                        </span>
+
+                        {/* Metricas: Rating, Tiempo, Envio */}
+                        <div className="flex items-center gap-2.5 mt-1 text-[10px] text-slate-400 font-semibold">
+                          <span className="flex items-center gap-0.5 text-amber-400 font-bold">
+                            <Star className="w-3 h-3 fill-current" />
+                            {comp.rating}
+                          </span>
+                          <span className="flex items-center gap-0.5">
+                            <Clock className="w-3 h-3 text-slate-500" />
+                            {comp.deliveryTimeMin}-{comp.deliveryTimeMax} min
+                          </span>
+                          <span className="flex items-center gap-0.5 text-emerald-400">
+                            <Bike className="w-3 h-3" />
+                            ${comp.deliveryFee.toLocaleString("es-AR")}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Badges de Promociones (Estilo PedidosYa) */}
+                  {comp.badges && comp.badges.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mt-2.5 pt-2 border-t border-slate-800/80">
+                      {comp.badges.map((b, idx) => (
+                        <span
+                          key={idx}
+                          className="text-[9px] font-black px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-300 border border-amber-500/30 flex items-center gap-1"
+                        >
+                          <Tag className="w-2.5 h-2.5" />
+                          {b}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Banner Cobro Fácil Cloud Sync */}
+          <div className="p-3 rounded-2xl bg-blue-950/40 border border-blue-500/30 flex items-center justify-between text-xs text-blue-200">
+            <div className="space-y-0.5">
+              <span className="font-bold flex items-center gap-1.5 text-white">
+                <Sparkles className="w-3.5 h-3.5 text-blue-400" />
+                Conectado con Cobro Fácil en Render
+              </span>
+              <span className="text-[10px] text-blue-300 block">
+                Sincronización automática de inventario y facturación multitienda.
+              </span>
+            </div>
+            <a
+              href="https://cobrofacil.onrender.com"
+              target="_blank"
+              rel="noreferrer"
+              className="p-1.5 rounded-xl bg-blue-500/20 text-blue-400 hover:bg-blue-500/30"
+            >
+              <ExternalLink className="w-4 h-4" />
+            </a>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
