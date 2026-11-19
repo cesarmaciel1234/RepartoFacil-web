@@ -74,7 +74,7 @@ export function TabPedidosDisponibles({ orders, onAcceptOrder }: TabPedidosDispo
                   <span className="truncate max-w-[200px]">
                     • {item.quantity} {item.unit} {item.name}
                   </span>
-                  {item.price && (
+                  {item.price != null && !isNaN(item.price) && (
                     <span className="text-slate-400">{formatMoney(item.price * item.quantity)}</span>
                   )}
                 </div>

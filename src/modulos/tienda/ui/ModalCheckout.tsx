@@ -68,16 +68,26 @@ export function ModalCheckout({
       {/* ─── Diálogo Formulario Checkout ─── */}
       <Dialog open={isOpen} onOpenChange={onOpenChange}>
         <DialogContent className="bg-slate-900 border-slate-800 text-slate-100 max-w-md p-5 rounded-3xl max-h-[92vh] overflow-y-auto">
-          <DialogHeader className="text-left pb-2 border-b border-slate-800">
-            <DialogTitle className="text-lg font-black text-white flex items-center gap-2">
-              <span className="w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-xs">
-                🥩
-              </span>
-              Finalizar Pedido
-            </DialogTitle>
-            <DialogDescription className="text-xs text-slate-400">
-              Completá tus datos de contacto para coordinar la entrega con la carnicería.
-            </DialogDescription>
+          <DialogHeader className="text-left pb-2 border-b border-slate-800 flex flex-row items-center justify-between">
+            <div>
+              <DialogTitle className="text-lg font-black text-white flex items-center gap-2">
+                <span className="w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-xs">
+                  🥩
+                </span>
+                Finalizar Pedido
+              </DialogTitle>
+              <DialogDescription className="text-xs text-slate-400 mt-0.5">
+                Completá tus datos de contacto para coordinar la entrega con la carnicería.
+              </DialogDescription>
+            </div>
+            <button
+              type="button"
+              onClick={() => onOpenChange(false)}
+              className="text-slate-400 hover:text-white p-1 rounded-lg text-sm font-bold shrink-0"
+              aria-label="Cerrar"
+            >
+              ✕
+            </button>
           </DialogHeader>
 
           <form onSubmit={handleSubmit} className="space-y-4 pt-2">
