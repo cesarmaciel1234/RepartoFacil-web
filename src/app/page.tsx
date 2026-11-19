@@ -2,8 +2,8 @@
 
 import React, { useState, useEffect, Suspense } from "react"
 import { useSearchParams } from "next/navigation"
-import { EcommerceStore } from "@/components/ecommerce/EcommerceStore"
-import { DriverDashboard } from "@/components/dashboard/DriverDashboard"
+import { TiendaPiramidal } from "@/modulos/tienda/TiendaPiramidal"
+import { RepartidorPiramidal } from "@/modulos/repartidor/RepartidorPiramidal"
 
 function AppContent() {
   const searchParams = useSearchParams()
@@ -18,10 +18,10 @@ function AppContent() {
   }, [searchParams])
 
   if (viewMode === "driver") {
-    return <DriverDashboard onSwitchToStore={() => setViewMode("store")} />
+    return <RepartidorPiramidal onSwitchToStore={() => setViewMode("store")} />
   }
 
-  return <EcommerceStore onSwitchToDriver={() => setViewMode("driver")} />
+  return <TiendaPiramidal onSwitchToDriver={() => setViewMode("driver")} />
 }
 
 export default function MainPage() {

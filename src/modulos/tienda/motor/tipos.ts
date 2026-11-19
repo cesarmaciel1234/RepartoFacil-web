@@ -1,0 +1,43 @@
+import { Product } from "@/data/mockProducts";
+
+export interface CartItem {
+  product: Product;
+  quantity: number;
+}
+
+export interface CheckoutFormData {
+  customerName: string;
+  customerPhone: string;
+  deliveryType: "delivery" | "pickup";
+  deliveryAddress: string;
+  selectedBranch: string;
+  paymentMethod: "efectivo" | "transferencia" | "tarjeta";
+  orderNotes: string;
+}
+
+export interface OrderItem {
+  id: string;
+  name: string;
+  price: number;
+  unit: string;
+  quantity: number;
+}
+
+export interface OrderData {
+  id: string;
+  customerName: string;
+  customerPhone: string;
+  deliveryType: "delivery" | "pickup";
+  deliveryAddress: string;
+  paymentMethod: "efectivo" | "transferencia" | "tarjeta";
+  notes?: string;
+  items: OrderItem[];
+  subtotal: number;
+  deliveryFee: number;
+  total: number;
+  status: "Pending" | "Assigned" | "Picked Up" | "In Transit" | "Delivered" | "Cancelled";
+  createdAt: string;
+  updatedAt: string;
+  source: string;
+  driverId?: string;
+}
