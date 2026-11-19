@@ -2,8 +2,7 @@
 
 import React from "react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Sparkles, Navigation, UserCheck, LogOut, Truck, Wallet } from "lucide-react";
+import { ArrowLeft, Sparkles, UserCheck, LogOut, Truck, Wallet } from "lucide-react";
 import { DriverProfile } from "../motor/tipos";
 
 interface DriverTopBarProps {
@@ -25,73 +24,73 @@ export function DriverTopBar({
   onOpenWallet,
   onLogout,
   onOpenLoginModal,
-  hasGps,
 }: DriverTopBarProps) {
   const formatMoney = (val: number) => "$" + (val || 0).toLocaleString("es-AR");
 
   return (
-    <header className="sticky top-0 z-50 bg-slate-950 border-b border-slate-800 px-3 sm:px-4 py-2 flex items-center justify-between gap-1.5 shadow-xl">
-      {/* Botón Volver a la Tienda */}
-      <Button
-        variant="ghost"
-        size="sm"
+    <header className="absolute top-0 left-0 right-0 z-40 p-3 sm:p-4 pointer-events-none flex items-center justify-between gap-2">
+      {/* Botón Volver a la Tienda (Píldora flotante izquierda estilo Rappi / PedidosYa) */}
+      <button
+        type="button"
         onClick={onSwitchToStore}
-        className="h-9 px-2 rounded-xl text-slate-300 hover:text-white hover:bg-slate-800 flex items-center gap-1 font-bold text-xs shrink-0"
+        className="pointer-events-auto h-11 px-3.5 rounded-full bg-slate-900/95 hover:bg-slate-800 border border-slate-700/80 shadow-2xl shadow-black/80 backdrop-blur-md flex items-center gap-1.5 font-bold text-xs text-slate-200 hover:text-white active:scale-95 transition-all"
+        title="Volver a la Tienda"
       >
         <ArrowLeft className="w-4 h-4 text-emerald-400" />
-        <span className="hidden xs:inline">Volver</span>
-      </Button>
+        <span className="hidden xs:inline">Tienda</span>
+      </button>
 
-      {/* Botón Cartera / Billetera en Vivo */}
+      {/* Píldora Central de Ganancias en Vivo (Estándar Uber Driver / PedidosYa) */}
       <button
         type="button"
         onClick={onOpenWallet}
-        className="h-9 px-2.5 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/40 text-emerald-300 flex items-center gap-1.5 transition-all active:scale-95 shrink-0 shadow-sm"
-        title="Abrir Cartera de Repartidor"
+        className="pointer-events-auto h-11 px-4 rounded-full bg-slate-900/95 hover:bg-slate-800 border border-emerald-500/50 shadow-2xl shadow-black/80 backdrop-blur-md flex items-center gap-2 transition-all active:scale-95 group"
+        title="Ver Mi Cartera y Ganancias"
       >
-        <Wallet className="w-4 h-4 text-emerald-400" />
-        <span className="font-black text-xs text-white tracking-tight">
+        <div className="w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
+          <Wallet className="w-3.5 h-3.5" />
+        </div>
+        <span className="font-black text-sm text-white tracking-tight group-hover:text-emerald-300 transition-colors">
           {formatMoney(walletBalance)}
         </span>
       </button>
 
-      {/* Acciones Derecha: Copiloto IA + Perfil Repartidor */}
-      <div className="flex items-center gap-1.5 shrink-0">
-        <Button
-          size="sm"
-          variant="outline"
+      {/* Acciones Derecha: Copiloto IA + Perfil Repartidor flotantes */}
+      <div className="pointer-events-auto flex items-center gap-1.5 shrink-0">
+        <button
+          type="button"
           onClick={onOpenCopilot}
-          className="h-8 px-2 rounded-xl border-emerald-500/40 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 font-bold text-[11px] flex items-center gap-1"
+          className="h-11 w-11 rounded-full bg-slate-900/95 hover:bg-slate-800 border border-emerald-500/40 text-emerald-400 shadow-2xl shadow-black/80 backdrop-blur-md flex items-center justify-center active:scale-95 transition-all"
+          title="Copiloto IA de Reparto"
         >
-          <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
-          <span className="hidden sm:inline">Copiloto</span>
-        </Button>
+          <Sparkles className="w-4 h-4" />
+        </button>
 
         {driverProfile ? (
-          <div className="flex items-center gap-1 bg-slate-800/90 border border-slate-700 rounded-xl px-2 py-1">
-            <div className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-[10px] font-black">
-              <Truck className="w-3 h-3" />
+          <div className="h-11 px-3 rounded-full bg-slate-900/95 border border-slate-700/80 shadow-2xl shadow-black/80 backdrop-blur-md flex items-center gap-2">
+            <div className="w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-[10px] font-black">
+              <Truck className="w-3.5 h-3.5" />
             </div>
-            <span className="text-xs font-bold text-white truncate max-w-[70px] sm:max-w-[120px]">
+            <span className="text-xs font-bold text-white truncate max-w-[80px] sm:max-w-[120px]">
               {driverProfile.firstName}
             </span>
             <button
               onClick={onLogout}
-              className="text-slate-400 hover:text-red-400 transition-colors p-0.5 ml-0.5"
+              className="text-slate-400 hover:text-red-400 transition-colors p-1"
               title="Cerrar sesión"
             >
-              <LogOut className="w-3 h-3" />
+              <LogOut className="w-3.5 h-3.5" />
             </button>
           </div>
         ) : (
-          <Button
-            size="sm"
+          <button
+            type="button"
             onClick={onOpenLoginModal}
-            className="h-8 px-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold flex items-center gap-1 border border-slate-700"
+            className="h-11 px-3.5 rounded-full bg-slate-900/95 hover:bg-slate-800 text-slate-200 text-xs font-bold flex items-center gap-1.5 border border-slate-700/80 shadow-2xl shadow-black/80 backdrop-blur-md active:scale-95 transition-all"
           >
             <UserCheck className="w-3.5 h-3.5 text-emerald-400" />
             <span>Ingresar</span>
-          </Button>
+          </button>
         )}
       </div>
     </header>
