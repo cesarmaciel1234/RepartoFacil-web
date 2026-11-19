@@ -54,21 +54,43 @@ export function ModalCarteraRepartidor({
             </span>
           </div>
 
-          {/* Card Efectivo en Mano */}
+          {/* Card Efectivo en Mano y Rendición */}
           {wallet.cashInHand > 0 && (
-            <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-3 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center">
-                  <Banknote className="w-4 h-4" />
+            <div className="space-y-2">
+              <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-3 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center">
+                    <Banknote className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold text-white">Efectivo Cobrado en Mano</div>
+                    <div className="text-[10px] text-slate-400">Total recibido de pedidos en efectivo</div>
+                  </div>
                 </div>
+                <span className="text-sm font-black text-amber-400">
+                  {formatMoney(wallet.cashInHand)}
+                </span>
+              </div>
+
+              {/* Conciliación con Central (Rendición neta) */}
+              <div className="bg-slate-800/80 border border-slate-700/80 rounded-2xl p-3 flex items-center justify-between text-xs">
                 <div>
-                  <div className="text-xs font-bold text-white">Efectivo Cobrado</div>
-                  <div className="text-[10px] text-slate-400">Cobrado al entregar a clientes</div>
+                  <div className="font-bold text-white flex items-center gap-1.5">
+                    <span>Liquidación a Rendir a Central</span>
+                  </div>
+                  <div className="text-[10px] text-slate-400">
+                    Efectivo cobrado menos tus ganancias acumuladas
+                  </div>
+                </div>
+                <div className="text-right">
+                  <span className="text-sm font-black text-emerald-300 block">
+                    {formatMoney(Math.max(0, wallet.cashInHand - wallet.balance))}
+                  </span>
+                  <span className="text-[9px] text-slate-400 uppercase tracking-wider font-semibold">
+                    A rendir en caja
+                  </span>
                 </div>
               </div>
-              <span className="text-sm font-black text-amber-400">
-                {formatMoney(wallet.cashInHand)}
-              </span>
             </div>
           )}
 

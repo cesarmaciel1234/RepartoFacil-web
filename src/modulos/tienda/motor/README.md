@@ -1,42 +1,45 @@
 # Subcarpeta: Motor Tienda
 
 **Ubicación:** `src/modulos/tienda/motor/`  
-**Rol:** Gestión del estado del carrito, cálculo de tarifas estilo Uber/PedidosYa (tarifa base, distancia por km y recargo dinámico en horario pico), generación y persistencia de órdenes de compra.
+**Rol:** Lógica de datos, carrito de compras, cálculo de tarifas de envío estándar Uber/PedidosYa y persistencia de órdenes.
 
 ---
 
 ## 1. Qué hace
-- Mantiene el carrito de compras del usuario en memoria y sincronizado en `localStorage`.
-- Calcula dinámicamente el costo de entrega según la distancia entre la carnicería (`Tucumán 2130, Rosario`) y el domicilio del cliente, contemplando horarios pico de almuerzo y cena.
-- Calcula la ganancia neta para el repartidor y el tiempo estimado de entrega.
-- Genera el pedido estructurado `#RF-XXXX`, lo persiste localmente y lo sincroniza con Firestore.
-- Formatea el mensaje para confirmación vía WhatsApp.
+- Gestiona el carrito en memoria y `localStorage` con `useCart.ts`.
+- Modela las tarifas dinámicas de delivery con `tarifaUberService.ts` (base fija, precio por km, horario pico y ganancias del repartidor).
+- Procesa el checkout y genera órdenes con `pedidoService.ts`.
+- Modela los tipos de datos en `tipos.ts`.
 
 ---
 
-## 2. Funciones Principales
-- `useCart()`: Hook que expone `cart`, `addToCart()`, `updateQuantity()`, `removeFromCart()`, `clearCart()`, `cartTotal` y `cartItemsCount`.
-- `calcularTarifaEnvio(address, forcePeak)`: Algoritmo de tarifas: tarifa base ($1.200) + $450/km con multiplicador de horario pico (1.35x), devolviendo desglose y ganancia neta del repartidor.
-- `createOrder(cart, formData, firestore)`: Genera el objeto `OrderData`, persiste en `rf_orders_history` y dispara el evento `rf-orders-updated`.
-- `buildWhatsAppLink(order, phoneNumber)`: Genera el link de WhatsApp con el ticket de compra.
+## 2. Componentes y Funciones Principales
+- `tarifaUberService.ts`:
+  - `MARKET_CENTRAL`: Coordenadas centrales (`lat: -32.9372, lng: -60.6542`, `Tucumán 2130, Rosario`).
+  - `haversineKm()`: Cálculo trigonométrico de distancia esférica.
+  - `isPeakHourNow()`: Determina si rige horario pico (12:00-14:30 o 20:00-23:30).
+  - `estimateAddressCoords()`: Resuelve coordenadas y distancia aproximada para direcciones de prueba.
+  - `calcularTarifaEnvio()`: Tarifa base ($1.200) + distancia ($450/km) * multiplicador (1.35x pico o 1.0x normal). Retorna flete y ganancia garantizada del repartidor ($1.600+).
+- `pedidoService.ts`:
+  - `createOrder()`: Genera pedido `#RF-XXXX` con métricas Uber (`driverEarnings`, distancias, coordenadas), persiste en `rf_orders_history` y emite `rf-orders-updated`.
+  - `buildWhatsAppLink()`: Arma mensaje formateado para enviar a la central de carnicería.
+- `useCart.ts`: Hook reactivo para agregar, remover y modificar cantidades con persistencia en `rf_cart`.
 
 ---
 
-## 3. Cómo funciona (Flujo interno)
-1. Al agregar un producto, `useCart` valida stock y actualiza cantidades.
-2. Al ingresar al Checkout y escribir la dirección (ej. "San Lorenzo 2040"), `calcularTarifaEnvio` calcula la distancia (~0.9km) y el costo de envío.
-3. Si el subtotal de productos supera los $35.000, el envío se bonifica a $0.
-4. Al confirmar, `createOrder` genera el pedido con coordenadas y ganancia del repartidor, y lo guarda en `rf_orders_history`.
-5. El evento `rf-orders-updated` despierta la pestaña "Disponibles" del repartidor sin necesidad de recargar la página.
+## 3. Cómo funciona (Flujo paso a paso)
+1. `useCart` gestiona el array de `CartItem` y calcula subtotales.
+2. Durante el checkout, `calcularTarifaEnvio` calcula el flete en función del domicilio y la hora. Si el subtotal >= $35.000, el envío es gratis para el cliente.
+3. Al confirmar, `createOrder` genera el pedido `#RF-XXXX`, lo guarda en `rf_orders_history`, emite `rf-orders-updated` y envía a Firestore si está conectado.
 
 ---
 
 ## 4. De dónde viene y A dónde va (Conexiones)
-- **Viene de:** `TiendaPiramidal.tsx`, `DrawerCarrito.tsx` y `ModalCheckout.tsx`.
-- **Va a:** `localStorage` (`rf_cart`, `rf_orders_history`), eventos del DOM (`rf-orders-updated`), API de WhatsApp y Firestore (`orders`).
+- **Viene de:** `TiendaPiramidal.tsx` y `ModalCheckout.tsx`.
+- **Va a:** `localStorage` (`rf_cart`, `rf_customer_data`, `rf_orders_history`), Firestore (`orders`), y el radar del repartidor.
 
 ---
 
 ## 5. Qué NO romper (Invariantes Sagrados)
-- **Transparencia en el precio:** Todos los subtotales, recargos y envíos deben coincidir con la moneda en pesos argentinos (`es-AR`).
-- **Resiliencia offline:** Si la red o Firestore fallan, la orden debe guardarse y emitirse localmente para no interrumpir la experiencia de compra.
+- **Subsidio de envío gratis:** Si la compra es >= $35.000, el flete es $0 para el cliente pero el repartidor siempre cobra su ganancia estipulada.
+- **Formato de moneda:** Precios en pesos argentinos (`es-AR`).

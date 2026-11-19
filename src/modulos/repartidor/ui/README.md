@@ -8,7 +8,7 @@
 ## 1. Qué hace
 - Renderiza la barra superior de conductor con estado del GPS, saldo de la cartera en tiempo real y accesos rápidos.
 - Muestra el listado de pedidos disponibles con métricas de conveniencia (ganancia neta, distancias, cobro en efectivo).
-- Presenta las órdenes en ruta con velocímetro, simulación en marcha y botón de entrega con candado de geocerca (desbloqueo a <100m).
+- Presenta las órdenes en ruta con velocímetro, simulación en marcha y botón de entrega con candado de geocerca (desbloqueo a <= 100m).
 - Despliega el diálogo modal de identificación (`ModalDriverAuth`) y el modal de la cartera (`ModalCarteraRepartidor`).
 
 ---
@@ -17,7 +17,7 @@
 - `DriverTopBar.tsx`: Encabezado con botón de volver, estado GPS, botón de cartera `💼 $X.XXX`, botón de copiloto IA y perfil del repartidor.
 - `TabPedidosDisponibles.tsx`: Listado de pedidos listos con ganancia estimada para el bolsillo (`+$X.XXX`), badge de tarifa dinámica pico (`⚡ 1.35x`), trayecto al market y trayecto al cliente.
 - `TabMiRuta.tsx`: Tarjetas de pedidos en curso con simulación GPS en marcha, velocímetro, barra de proximidad y botón bloqueado con candado hasta estar a menos de 100 metros del domicilio.
-- `ModalCarteraRepartidor.tsx`: Diálogo con el desglose de ganancias del repartidor, efectivo cobrado en mano y movimientos recientes.
+- `ModalCarteraRepartidor.tsx`: Diálogo con el desglose de ganancias del repartidor, efectivo cobrado en mano, liquidación neta a rendir a la central y movimientos recientes.
 - `ModalDriverAuth.tsx`: Diálogo para que el repartidor ingrese su nombre y elija vehículo (Moto, Bici, Auto) únicamente al tomar un pedido.
 - `DriverCopilotSheet.tsx`: Panel lateral con sugerencias de ruta y asistencia de despacho.
 
