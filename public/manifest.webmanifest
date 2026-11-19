@@ -1,13 +1,13 @@
 {
-  "name": "RutaRápida Pro",
-  "short_name": "RutaRápida",
-  "description": "Gestión logística y reparto en tiempo real",
+  "name": "Reparto Fácil - Frigorífico Maciel",
+  "short_name": "Reparto Fácil",
+  "description": "Tienda online de carnicería y delivery en tiempo real",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#0f172a",
-  "theme_color": "#0f172a",
+  "background_color": "#020617",
+  "theme_color": "#020617",
   "icons": [
     {
       "src": "/icon.svg",

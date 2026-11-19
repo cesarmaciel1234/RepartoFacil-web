@@ -67,7 +67,7 @@ export function ModalCheckout({
     <>
       {/* ─── Diálogo Formulario Checkout ─── */}
       <Dialog open={isOpen} onOpenChange={onOpenChange}>
-        <DialogContent className="bg-slate-900 border-slate-800 text-slate-100 max-w-md p-5 rounded-3xl max-h-[92vh] overflow-y-auto">
+        <DialogContent className="bg-slate-900 border-slate-800 text-slate-100 w-[94vw] max-w-sm p-4 rounded-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader className="text-left pb-2 border-b border-slate-800 flex flex-row items-center justify-between">
             <div>
               <DialogTitle className="text-lg font-black text-white flex items-center gap-2">

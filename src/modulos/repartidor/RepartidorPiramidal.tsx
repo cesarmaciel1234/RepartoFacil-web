@@ -274,6 +274,8 @@ export function RepartidorPiramidal({ onSwitchToStore }: RepartidorPiramidalProp
         onOpenChange={setShowLoginModal}
         pendingOrder={pendingAcceptOrder}
         onSuccess={(id) => {
+          const prof = loadDriverProfile();
+          setDriverProfile(prof);
           confirmOrderAfterLogin(id);
           setActiveTab("ruta");
           setIsExpanded(true);

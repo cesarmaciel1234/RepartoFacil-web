@@ -36,7 +36,7 @@ export function DrawerCarrito({
 
   return (
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
-      <SheetContent className="w-full sm:max-w-md bg-slate-900 border-l border-slate-800 text-slate-100 p-0 flex flex-col h-full">
+      <SheetContent className="w-full max-w-[100vw] sm:max-w-md bg-slate-900 border-l border-slate-800 text-slate-100 p-0 flex flex-col h-full overflow-x-hidden">
         {/* Header Drawer */}
         <SheetHeader className="p-4 border-b border-slate-800 flex flex-row items-center justify-between">
           <div className="flex items-center gap-2">

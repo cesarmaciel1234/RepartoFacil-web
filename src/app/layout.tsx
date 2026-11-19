@@ -5,13 +5,13 @@ import { FirebaseClientProvider } from "@/firebase"
 import { PwaRegister } from "@/components/PwaRegister"
 
 export const metadata: Metadata = {
-  title: "RutaRápida Pro",
-  description: "The ultimate delivery management PWA for professional fleets.",
+  title: "Reparto Fácil · Frigorífico Maciel",
+  description: "Tienda online de carnicería, combos para asado y envíos a domicilio en tiempo real.",
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "RutaRápida",
+    title: "Reparto Fácil",
   },
 }
 
@@ -21,7 +21,7 @@ export const viewport: Viewport = {
   maximumScale: 1,
   userScalable: false,
   viewportFit: "cover",
-  themeColor: "#0f172a",
+  themeColor: "#020617",
 }
 
 export default function RootLayout({
@@ -36,12 +36,12 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
       </head>
-      <body className="font-body antialiased bg-slate-50 selection:bg-blue-100 selection:text-blue-900 overflow-hidden">
+      <body className="font-body antialiased bg-slate-950 text-slate-100 min-h-screen selection:bg-emerald-500 selection:text-white">
         <PwaRegister />
         <FirebaseClientProvider>
-          <main className="max-w-md mx-auto min-h-screen h-screen bg-background relative shadow-2xl md:shadow-none overflow-hidden">
+          <div className="w-full min-h-screen relative">
             {children}
-          </main>
+          </div>
           <Toaster />
         </FirebaseClientProvider>
       </body>
