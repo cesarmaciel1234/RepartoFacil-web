@@ -1,13 +1,13 @@
 
 "use client"
 
-import { useState, useRef, useEffect, useMemo } from "react"
+import { useState, useRef, useEffect, useMemo, Suspense } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Search, Send, Phone, ChevronLeft, Package, MessageSquare, ShieldCheck, Building2, User, MoreVertical, Loader2, Check } from "lucide-react"
 import { useUser, useFirestore, useCollection, useMemoFirebase, addDocumentNonBlocking, useDoc } from "@/firebase"
-import { collection, query, where, orderBy, serverTimestamp, doc } from "firebase/firestore"
+import { collection, query, where, orderBy, serverTimestamp, doc } from "@/firebase/local-firestore"
 import { format } from "date-fns"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
@@ -67,7 +67,7 @@ function ChatListItem({ order, isAdmin, onClick, isSelected }: { order: any, isA
   )
 }
 
-export default function ChatPage() {
+function ChatContent() {
   const { user } = useUser()
   const firestore = useFirestore()
   const searchParams = useSearchParams()
@@ -296,5 +296,13 @@ export default function ChatPage() {
         RutaRápida v2.5.0
       </p>
     </div>
+  )
+}
+
+export default function ChatPage() {
+  return (
+    <Suspense fallback={<div className="p-6 text-center text-xs font-bold text-slate-400">Cargando chats...</div>}>
+      <ChatContent />
+    </Suspense>
   )
 }

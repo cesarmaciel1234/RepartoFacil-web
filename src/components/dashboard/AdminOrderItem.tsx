@@ -7,7 +7,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Truck, MapPin, MessageSquare, X, Zap } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { useFirestore, useDoc, useMemoFirebase, updateDocumentNonBlocking } from "@/firebase";
-import { doc } from "firebase/firestore";
+import { doc } from "@/firebase/local-firestore";
 import { useToast } from "@/hooks/use-toast";
 
 export const AdminOrderItem = React.memo(function AdminOrderItem({ order, onCenterMap, onOpenChat }: { order: any, onCenterMap: (lat: number, lng: number) => void, onOpenChat: (orderId: string) => void }) {

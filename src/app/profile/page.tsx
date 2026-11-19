@@ -9,9 +9,9 @@ import { User, ShieldCheck, LogOut, Home, Wallet, MessageCircle, ChevronRight, L
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { cn } from "@/lib/utils"
 import { useUser, useFirestore, useDoc, useMemoFirebase, useAuth, useCollection } from "@/firebase"
-import { doc, collection, query, where, orderBy, limit } from "firebase/firestore"
+import { doc, collection, query, where, orderBy, limit } from "@/firebase/local-firestore"
 import Link from "next/link"
-import { signOut } from "firebase/auth"
+import { signOut } from "@/firebase/local-auth"
 import { safeFormat } from "@/lib/date-utils"
 
 export default function ProfilePage() {

@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { AlertTriangle, DollarSign, Phone, MessageSquare, AlertCircle, X, Truck, Shield, Loader2, Camera, PenTool, ShieldCheck } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { useFirestore, useUser, updateDocumentNonBlocking, addDocumentNonBlocking } from "@/firebase";
-import { doc, collection } from "firebase/firestore";
+import { doc, collection } from "@/firebase/local-firestore";
 import { useToast } from "@/hooks/use-toast";
 
 const splitAddress = (address: string) => {

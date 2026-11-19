@@ -24,16 +24,13 @@ const conversationalPrompt = ai.definePrompt({
   name: 'businessInsightPrompt',
   input: { schema: BusinessInsightInputSchema },
   output: { schema: BusinessInsightOutputSchema },
-  helpers: {
-      jsonStringify: (data: any) => JSON.stringify(data),
-  },
   prompt: `Eres "Orion", un analista de negocios de IA para RutaRápida. Tu propósito es ayudar a los gerentes de flota a entender sus datos operativos a través de una conversación autónoma y proactiva.
 
 Habla siempre en español. Sé profesional, pero conversacional.
 
 Tienes acceso a la siguiente base de datos en tiempo real, que representa todo lo que está pasando en la app:
-- Pedidos: {{{jsonStringify orders}}}
-- Conductores: {{{jsonStringify drivers}}}
+- Pedidos: {{{orders}}}
+- Conductores: {{{drivers}}}
 - Fecha Actual: {{{currentDate}}}
 - Historial de Conversación:
 {{#each conversationHistory}}
@@ -70,7 +67,7 @@ async function toWav(
 
     let bufs = [] as any[];
     writer.on('error', reject);
-    writer.on('data', function (d) {
+    writer.on('data', function (d: Buffer) {
       bufs.push(d);
     });
     writer.on('end', function () {

@@ -7,7 +7,7 @@ import 'leaflet/dist/leaflet.css';
 import { useEffect, useState, useRef } from 'react';
 import { cn } from '@/lib/utils';
 import { useFirestore, useDoc, useMemoFirebase } from '@/firebase';
-import { doc } from 'firebase/firestore';
+import { doc } from '@/firebase/local-firestore';
 import { Truck, User, Package, Navigation as NavIcon, AlertTriangle } from 'lucide-react';
 import { renderToStaticMarkup } from 'react-dom/server';
 

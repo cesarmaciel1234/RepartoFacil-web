@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Heart, MessageCircle, Send, ShieldAlert, Clock, AlertTriangle } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { useFirestore, useCollection, useMemoFirebase, updateDocumentNonBlocking, addDocumentNonBlocking } from "@/firebase";
-import { doc, collection, query, orderBy, arrayUnion, arrayRemove } from "firebase/firestore";
+import { doc, collection, query, orderBy, arrayUnion, arrayRemove } from "@/firebase/local-firestore";
 import { safeFormat } from '@/lib/date-utils';
 
 export const CoroItem = React.memo(function CoroItem({ alert, userId }: { alert: any, userId: string }) {

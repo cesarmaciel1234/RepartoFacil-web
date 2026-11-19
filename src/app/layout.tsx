@@ -2,10 +2,12 @@ import type { Metadata, Viewport } from "next"
 import "./globals.css"
 import { Toaster } from "@/components/ui/toaster"
 import { FirebaseClientProvider } from "@/firebase"
+import { PwaRegister } from "@/components/PwaRegister"
 
 export const metadata: Metadata = {
   title: "RutaRápida Pro",
   description: "The ultimate delivery management PWA for professional fleets.",
+  manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
@@ -35,6 +37,7 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
       </head>
       <body className="font-body antialiased bg-slate-50 selection:bg-blue-100 selection:text-blue-900 overflow-hidden">
+        <PwaRegister />
         <FirebaseClientProvider>
           <main className="max-w-md mx-auto min-h-screen h-screen bg-background relative shadow-2xl md:shadow-none overflow-hidden">
             {children}

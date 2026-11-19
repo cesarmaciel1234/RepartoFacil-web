@@ -1,50 +1,49 @@
 'use client';
 
-import { firebaseConfig } from '@/firebase/config';
-import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore'
+const firebaseApp = { name: "repartofacil-local" };
+const firestore = { name: "repartofacil-sqlite" };
 
-// IMPORTANT: DO NOT MODIFY THIS FUNCTION
+export const localAuth = {
+  async anonymous(displayName: string) {
+    return request("/api/auth/anonymous", "POST", { display_name: displayName });
+  },
+  async email(email: string, password: string, displayName?: string) {
+    return request("/api/auth/login", "POST", { email, password, display_name: displayName });
+  },
+};
+
 export function initializeFirebase() {
-  if (!getApps().length) {
-    // Important! initializeApp() is called without any arguments because Firebase App Hosting
-    // integrates with the initializeApp() function to provide the environment variables needed to
-    // populate the FirebaseOptions in production. It is critical that we attempt to call initializeApp()
-    // without arguments.
-    let firebaseApp;
-    try {
-      // Attempt to initialize via Firebase App Hosting environment variables
-      firebaseApp = initializeApp();
-    } catch (e) {
-      // Only warn in production because it's normal to use the firebaseConfig to initialize
-      // during development
-      if (process.env.NODE_ENV === "production") {
-        console.warn('Automatic initialization failed. Falling back to firebase config object.', e);
-      }
-      firebaseApp = initializeApp(firebaseConfig);
-    }
-
-    return getSdks(firebaseApp);
-  }
-
-  // If already initialized, return the SDKs with the already initialized App
-  return getSdks(getApp());
+  return { firebaseApp, firestore, auth: localAuth };
 }
 
-export function getSdks(firebaseApp: FirebaseApp) {
+export function getSdks() {
+  return { firebaseApp, firestore, auth: localAuth };
+}
+
+async function request(url: string, method: string, body: unknown) {
+  const response = await fetch(url, {
+    method,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!response.ok) throw new Error(await response.text());
+  const result = await response.json();
+  localStorage.setItem("repartofacil_token", result.access_token);
+  localStorage.setItem("repartofacil_user", JSON.stringify(result.user));
+  window.dispatchEvent(new Event("repartofacil-auth"));
   return {
-    firebaseApp,
-    auth: getAuth(firebaseApp),
-    firestore: getFirestore(firebaseApp)
+    user: {
+      uid: result.user.uid,
+      displayName: result.user.displayName,
+      email: result.user.email,
+      isAnonymous: result.user.isAnonymous,
+    },
   };
 }
 
-export * from './provider';
-export * from './client-provider';
-export * from './firestore/use-collection';
-export * from './firestore/use-doc';
-export * from './non-blocking-updates';
-export * from './non-blocking-login';
-export * from './errors';
-export * from './error-emitter';
+export * from "./provider";
+export * from "./client-provider";
+export * from "./firestore/use-collection";
+export * from "./firestore/use-doc";
+export * from "./non-blocking-updates";
+export * from "./non-blocking-login";

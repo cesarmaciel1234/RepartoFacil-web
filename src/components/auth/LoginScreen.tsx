@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState } from "react"
-import { doc } from "firebase/firestore"
+import { doc } from "@/firebase/local-firestore"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { User, Truck, Loader2 } from "lucide-react"
@@ -21,6 +21,7 @@ export function LoginScreen() {
     if (!onboardingName.trim()) {
       toast({ title: "Tu nombre es obligatorio", variant: "destructive" }); return
     }
+    localStorage.setItem("repartofacil_pending_name", onboardingName.trim())
     setIsOnboardingProcess(true)
     initiateAnonymousSignIn(auth!)
       .then(userCredential => {
