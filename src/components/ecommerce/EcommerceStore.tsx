@@ -276,14 +276,6 @@ export function EcommerceStore({ onSwitchToDriver }: EcommerceStoreProps) {
             </Button>
           </div>
         </div>
-              {cartItemsCount > 0 && (
-                <span className="bg-white text-emerald-700 font-black text-[11px] w-5 h-5 rounded-full flex items-center justify-center shrink-0">
-                  {cartItemsCount}
-                </span>
-              )}
-            </Button>
-          </div>
-        </div>
 
         {/* Barra de búsqueda interactiva */}
         <div className="max-w-6xl mx-auto mt-2.5">
