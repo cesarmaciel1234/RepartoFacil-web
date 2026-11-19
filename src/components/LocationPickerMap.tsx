@@ -181,7 +181,7 @@ export default function LocationPickerMap({ onLocationSelect, initialCenter }: L
 
       <div className="h-[380px] w-full rounded-2xl overflow-hidden border border-slate-100 shadow-inner relative z-0">
         <MapContainer 
-          center={initialCenter || [-34.6037, -58.3816]} 
+          center={initialCenter || [-32.9372, -60.6542]} 
           zoom={13} 
           scrollWheelZoom={true} 
           style={{ height: '100%', width: '100%' }}

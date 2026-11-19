@@ -30,7 +30,7 @@ export function DriverTopBar({
   const formatMoney = (val: number) => "$" + (val || 0).toLocaleString("es-AR");
 
   return (
-    <header className="sticky top-0 z-30 bg-slate-900/95 backdrop-blur-xl border-b border-slate-800 px-3 sm:px-4 py-2 flex items-center justify-between gap-1.5 shadow-md">
+    <header className="sticky top-0 z-50 bg-slate-950 border-b border-slate-800 px-3 sm:px-4 py-2 flex items-center justify-between gap-1.5 shadow-xl">
       {/* Botón Volver a la Tienda */}
       <Button
         variant="ghost"

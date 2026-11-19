@@ -150,7 +150,7 @@ export function TabMiRuta({
         return (
           <div
             key={order.id}
-            className="bg-slate-900/95 border-2 border-emerald-500/40 rounded-3xl p-4 space-y-3.5 shadow-2xl shadow-emerald-500/10"
+            className="bg-slate-900 border-2 border-emerald-500/50 rounded-3xl p-4 space-y-3.5 shadow-2xl shadow-black/60"
           >
             {/* Header del Pedido Activo */}
             <div className="flex items-center justify-between gap-2 border-b border-slate-800 pb-2.5">
@@ -175,7 +175,7 @@ export function TabMiRuta({
             </div>
 
             {/* Dirección de Entrega */}
-            <div className="flex items-start gap-2 bg-slate-950/70 p-2.5 rounded-2xl border border-slate-800 text-xs">
+            <div className="flex items-start gap-2 bg-slate-950 p-2.5 rounded-2xl border border-slate-800 text-xs">
               <MapPin className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
               <div>
                 <span className="text-slate-400 text-[10px] font-semibold block">

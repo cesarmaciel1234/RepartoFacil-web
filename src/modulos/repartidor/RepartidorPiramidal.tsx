@@ -126,7 +126,7 @@ export function RepartidorPiramidal({ onSwitchToStore }: RepartidorPiramidalProp
       {/* ─── 2. Mapa Interactivo de Fondo ─── */}
       <div className="absolute inset-0 z-0">
         <InteractiveMap
-          center={coords ? [coords.lat, coords.lng] : [-34.6037, -58.3816]}
+          center={coords ? [coords.lat, coords.lng] : [-32.9372, -60.6542]}
           alerts={null}
           activeOrders={null}
           fleet={null}
@@ -167,7 +167,7 @@ export function RepartidorPiramidal({ onSwitchToStore }: RepartidorPiramidalProp
         )}
         style={{ transform: `translateY(${sheetY})` }}
       >
-        <div className="h-[80vh] w-full max-w-lg mx-auto bg-slate-900/95 backdrop-blur-2xl rounded-t-[36px] shadow-[0_-20px_50px_rgba(0,0,0,0.6)] flex flex-col relative border-t border-slate-800">
+        <div className="h-[80vh] w-full max-w-lg mx-auto bg-slate-950 rounded-t-[36px] shadow-[0_-20px_50px_rgba(0,0,0,0.95)] flex flex-col relative border-t-2 border-slate-700">
           {/* Handle de arrastre y Pestañas */}
           <div
             className="w-full flex flex-col items-center pt-3 pb-2 cursor-grab active:cursor-grabbing touch-none select-none"

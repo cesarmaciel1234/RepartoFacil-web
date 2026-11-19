@@ -56,10 +56,10 @@ export function TabPedidosDisponibles({ orders, onAcceptOrder }: TabPedidosDispo
         return (
           <div
             key={order.id}
-            className="bg-slate-900/90 border border-slate-800/80 hover:border-emerald-500/50 rounded-2xl p-4 space-y-3 transition-all duration-200 shadow-xl shadow-black/30"
+            className="bg-slate-900 border border-slate-700/80 hover:border-emerald-500/50 rounded-2xl p-4 space-y-3 transition-all duration-200 shadow-2xl shadow-black/60"
           >
             {/* Header: Ganancia del Repartidor (Estilo Uber) + ID */}
-            <div className="flex items-center justify-between gap-2 border-b border-slate-800/80 pb-2.5">
+            <div className="flex items-center justify-between gap-2 border-b border-slate-800 pb-2.5">
               <div>
                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
                   Tu Ganancia Estimada
@@ -88,7 +88,7 @@ export function TabPedidosDisponibles({ orders, onAcceptOrder }: TabPedidosDispo
             </div>
 
             {/* Trayecto dual: Al Market -> Al Cliente */}
-            <div className="grid grid-cols-2 gap-2 text-[11px] bg-slate-950/60 p-2.5 rounded-xl border border-slate-800/60">
+            <div className="grid grid-cols-2 gap-2 text-[11px] bg-slate-950 p-2.5 rounded-xl border border-slate-800">
               <div className="space-y-0.5">
                 <span className="text-slate-500 text-[10px] font-semibold flex items-center gap-1">
                   <Store className="w-3 h-3 text-emerald-400" />
