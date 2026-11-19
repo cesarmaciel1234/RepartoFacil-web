@@ -32,9 +32,16 @@
     @apply border-border;
     -webkit-tap-highlight-color: transparent;
   }
+  html {
+    scroll-behavior: smooth;
+    height: 100%;
+  }
   body {
-    @apply bg-background text-foreground overflow-hidden fixed inset-0;
-    touch-action: pan-x pan-y;
+    @apply bg-slate-950 text-slate-100;
+    min-height: 100vh;
+    overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
   }
 }
 

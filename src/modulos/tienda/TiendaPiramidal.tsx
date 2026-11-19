@@ -70,7 +70,7 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
   const formatMoney = (val: number) => "$" + val.toLocaleString("es-AR");
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans pb-28">
+    <div className="min-h-screen w-full bg-slate-950 text-slate-100 flex flex-col font-sans pb-36 overflow-y-auto">
       {/* ─── Encabezado Superior ─── */}
       <HeaderTienda
         cartItemsCount={cartItemsCount}
