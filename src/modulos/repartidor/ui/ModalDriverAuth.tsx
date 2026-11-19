@@ -76,28 +76,18 @@ export function ModalDriverAuth({
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="bg-slate-900 border-slate-800 text-slate-100 w-[94vw] max-w-sm p-5 rounded-3xl">
-        <DialogHeader className="text-left flex flex-row items-start justify-between">
-          <div>
-            <div className="w-10 h-10 rounded-2xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center mb-1.5">
-              <Truck className="w-5 h-5" />
-            </div>
-            <DialogTitle className="text-lg font-black text-white">
-              Identificación de Repartidor
-            </DialogTitle>
-            <DialogDescription className="text-xs text-slate-400 mt-0.5">
-              {pendingOrder
-                ? `Para tomar el pedido #${pendingOrder.id}, ingresá tu nombre y vehículo.`
-                : "Ingresá tus datos para registrar tus entregas y sincronizar con la central."}
-            </DialogDescription>
+        <DialogHeader className="text-left">
+          <div className="w-10 h-10 rounded-2xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center mb-1.5">
+            <Truck className="w-5 h-5" />
           </div>
-          <button
-            type="button"
-            onClick={() => onOpenChange(false)}
-            className="text-slate-400 hover:text-white p-1 rounded-lg text-sm font-bold shrink-0"
-            aria-label="Cerrar"
-          >
-            ✕
-          </button>
+          <DialogTitle className="text-lg font-black text-white">
+            Identificación de Repartidor
+          </DialogTitle>
+          <DialogDescription className="text-xs text-slate-400 mt-0.5">
+            {pendingOrder
+              ? `Para tomar el pedido #${pendingOrder.id}, ingresá tu nombre y vehículo.`
+              : "Ingresá tus datos para registrar tus entregas y sincronizar con la central."}
+          </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleStart} className="space-y-4 pt-2">

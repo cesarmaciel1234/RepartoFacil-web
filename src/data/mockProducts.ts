@@ -187,7 +187,7 @@ export const INITIAL_PRODUCTS: Product[] = [
     price: 13500,
     unit: "kg",
     description: "Calidad de exportación, crocantes por fuera y tiernas por dentro.",
-    image: "https://images.unsplash.com/photo-1603048588665-791ca8aea617?w=600&auto=format&fit=crop&q=80",
+    image: "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=600&auto=format&fit=crop&q=80",
     discountBadge: "Delicatesen",
     stockKg: 25,
   },
@@ -226,7 +226,7 @@ export const INITIAL_PRODUCTS: Product[] = [
     price: 3200,
     unit: "un",
     description: "Brasa duradera de alto poder calórico sin chispas molestas.",
-    image: "https://images.unsplash.com/photo-1509316975850-ff9c5deb0cd9?w=600&auto=format&fit=crop&q=80",
+    image: "https://images.unsplash.com/photo-1527661591475-527312dd65f5?w=600&auto=format&fit=crop&q=80",
     stockKg: 100,
   },
   {
@@ -236,7 +236,7 @@ export const INITIAL_PRODUCTS: Product[] = [
     price: 2400,
     unit: "un",
     description: "Receta tradicional con hierbas frescas maceradas en aceite y vinagre.",
-    image: "https://images.unsplash.com/photo-1514944298350-0199d799052b?w=600&auto=format&fit=crop&q=80",
+    image: "https://images.unsplash.com/photo-1540420773420-3366772f4999?w=600&auto=format&fit=crop&q=80",
     stockKg: 50,
   },
 ];

@@ -57,9 +57,9 @@ export function TarjetaProducto({
       </div>
 
       {/* Precio y Acción */}
-      <div className="mt-3 pt-2.5 border-t border-slate-800/60 flex items-center justify-between gap-2">
-        <div>
-          <span className="font-black text-base text-white tracking-tight">
+      <div className="mt-3 pt-2.5 border-t border-slate-800/60 flex flex-col xs:flex-row items-start xs:items-center justify-between gap-2">
+        <div className="shrink-0">
+          <span className="font-black text-sm xs:text-base text-white tracking-tight">
             {formatMoney(product.price)}
           </span>
           <span className="text-[10px] text-slate-400 font-semibold ml-1">
@@ -71,16 +71,16 @@ export function TarjetaProducto({
           <Button
             size="sm"
             onClick={() => onAddToCart(product)}
-            className="h-8 px-3 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs flex items-center gap-1 shadow-sm active:scale-95 transition-all"
+            className="h-8 w-full xs:w-auto px-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs flex items-center justify-center gap-1 shadow-sm active:scale-95 transition-all shrink-0"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>Agregar</span>
           </Button>
         ) : (
-          <div className="flex items-center gap-1.5 bg-slate-800 border border-slate-700/80 rounded-xl p-0.5">
+          <div className="flex items-center justify-center w-full xs:w-auto gap-1 bg-slate-800 border border-slate-700/80 rounded-xl p-0.5 shrink-0">
             <button
               onClick={() => onUpdateQuantity(product.id, -1)}
-              className="w-7 h-7 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-200 flex items-center justify-center transition-colors"
+              className="w-6 h-6 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-200 flex items-center justify-center transition-colors"
             >
               <Minus className="w-3 h-3" />
             </button>
@@ -89,7 +89,7 @@ export function TarjetaProducto({
             </span>
             <button
               onClick={() => onUpdateQuantity(product.id, 1)}
-              className="w-7 h-7 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white flex items-center justify-center transition-colors"
+              className="w-6 h-6 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white flex items-center justify-center transition-colors"
             >
               <Plus className="w-3 h-3" />
             </button>
