@@ -220,54 +220,62 @@ export function EcommerceStore({ onSwitchToDriver }: EcommerceStoreProps) {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans pb-28">
       {/* ─── Top Header (Rappi / Uber Eats Style) ─── */}
-      <header className="sticky top-0 z-40 bg-slate-900/90 backdrop-blur-xl border-b border-slate-800 px-4 py-3">
-        <div className="max-w-6xl mx-auto flex items-center justify-between gap-3">
+      <header className="sticky top-0 z-40 bg-slate-900/95 backdrop-blur-xl border-b border-slate-800 px-3 sm:px-4 py-2.5">
+        <div className="max-w-6xl mx-auto flex items-center justify-between gap-2">
           {/* Logo & Marca */}
-          <div className="flex items-center gap-2.5">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-emerald-500 to-teal-400 flex items-center justify-center font-black text-white text-lg shadow-lg shadow-emerald-500/20">
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-400 flex items-center justify-center font-black text-white text-base shadow-md shadow-emerald-500/20 shrink-0">
               RF
             </div>
-            <div>
-              <div className="flex items-center gap-1.5">
-                <span className="font-black text-lg tracking-tight text-white">Reparto Fácil</span>
-                <Badge className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[10px] font-black px-1.5 py-0">
+            <div className="min-w-0">
+              <div className="flex items-center gap-1">
+                <span className="font-black text-base tracking-tight text-white truncate">Reparto Fácil</span>
+                <Badge className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[9px] font-black px-1 py-0 shrink-0">
                   MARKET
                 </Badge>
               </div>
-              <p className="text-[10px] text-slate-400 font-semibold flex items-center gap-1">
-                <MapPin className="w-3 h-3 text-emerald-400 shrink-0" />
-                <span className="truncate max-w-[160px] sm:max-w-[220px]">
+              <p className="text-[10px] text-slate-400 font-semibold flex items-center gap-1 truncate">
+                <MapPin className="w-2.5 h-2.5 text-emerald-400 shrink-0" />
+                <span className="truncate max-w-[130px] sm:max-w-[220px]">
                   {deliveryType === "delivery" && deliveryAddress
                     ? deliveryAddress
-                    : "Entregas en zona · Sucursales Maciel / Centro"}
+                    : "Envíos y Retiros · Sucursales Maciel"}
                 </span>
               </p>
             </div>
           </div>
 
           {/* Acciones Header */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 shrink-0">
             {/* Botón Modo Repartidor */}
             <Button
               onClick={onSwitchToDriver}
               variant="outline"
               size="sm"
-              className="bg-slate-800/80 hover:bg-slate-700 border-slate-700 text-slate-200 font-bold text-xs rounded-xl h-10 px-3 flex items-center gap-1.5 active:scale-95 transition-all"
+              className="bg-slate-800/90 hover:bg-slate-700 border-slate-700 text-slate-200 font-bold text-xs rounded-xl h-9 px-2.5 sm:px-3 flex items-center gap-1 active:scale-95 transition-all"
             >
-              <Truck className="w-4 h-4 text-emerald-400" />
+              <Truck className="w-3.5 h-3.5 text-emerald-400" />
               <span className="hidden sm:inline">Modo Repartidor</span>
-              <span className="sm:hidden">Repartidor</span>
+              <span className="sm:hidden text-[11px]">Repartidor</span>
             </Button>
 
             {/* Botón Carrito */}
             <Button
               onClick={() => setIsCartOpen(true)}
-              className="bg-emerald-500 hover:bg-emerald-600 text-white font-black text-xs rounded-xl h-10 px-3.5 flex items-center gap-2 shadow-lg shadow-emerald-500/25 active:scale-95 transition-all relative"
+              className="bg-emerald-500 hover:bg-emerald-600 text-white font-black text-xs rounded-xl h-9 px-2.5 sm:px-3.5 flex items-center gap-1.5 shadow-md shadow-emerald-500/25 active:scale-95 transition-all relative shrink-0"
             >
-              <ShoppingBag className="w-4 h-4" />
+              <ShoppingBag className="w-3.5 h-3.5" />
               <span className="font-mono font-bold hidden sm:inline">
                 {cartTotal > 0 ? formatMoney(cartTotal) : "Carrito"}
               </span>
+              {cartItemsCount > 0 && (
+                <span className="bg-white text-emerald-700 font-black text-[10px] w-4.5 h-4.5 min-w-[18px] px-1 rounded-full flex items-center justify-center shrink-0">
+                  {cartItemsCount}
+                </span>
+              )}
+            </Button>
+          </div>
+        </div>
               {cartItemsCount > 0 && (
                 <span className="bg-white text-emerald-700 font-black text-[11px] w-5 h-5 rounded-full flex items-center justify-center shrink-0">
                   {cartItemsCount}

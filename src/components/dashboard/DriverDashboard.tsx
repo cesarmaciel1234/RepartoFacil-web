@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useRef, useEffect } from "react"
+import React, { useState, useRef, useEffect, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Target, Package, User, Truck, ShieldAlert, Layers, LogOut, Navigation, MapPin, MessageCircle, Send, X, ShieldCheck, Phone, Check, Loader2, Sparkles, Menu, Clock, AlertTriangle, Users, Store, ArrowLeft } from "lucide-react"

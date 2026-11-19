@@ -53,7 +53,7 @@ export const INITIAL_PRODUCTS: Product[] = [
     price: 12500,
     unit: "kg",
     description: "La estrella de la parrilla, textura mantecosa y cocción rápida vuelta y vuelta.",
-    image: "https://images.unsplash.com/photo-1603048588665-791ca8aea617?w=600&auto=format&fit=crop&q=80",
+    image: "https://images.unsplash.com/photo-1529692236671-f1f6cf9683ba?w=600&auto=format&fit=crop&q=80",
     isPopular: true,
     discountBadge: "Top Ventas",
     stockKg: 40,
