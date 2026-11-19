@@ -19,6 +19,7 @@ import { DriverTopBar } from "./ui/DriverTopBar";
 import { TabPedidosDisponibles } from "./ui/TabPedidosDisponibles";
 import { TabMiRuta } from "./ui/TabMiRuta";
 import { ModalDriverAuth } from "./ui/ModalDriverAuth";
+import { ModalCarteraRepartidor } from "./ui/ModalCarteraRepartidor";
 import { DriverCopilotSheet } from "./ui/DriverCopilotSheet";
 import { Layers, Truck, ShieldAlert, Navigation, Target } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -32,6 +33,7 @@ export function RepartidorPiramidal({ onSwitchToStore }: RepartidorPiramidalProp
   const [driverProfile, setDriverProfile] = useState<DriverProfile | null>(null);
   const [activeTab, setActiveTab] = useState<"pedidos" | "ruta" | "alerta">("pedidos");
   const [isCopilotOpen, setIsCopilotOpen] = useState(false);
+  const [isWalletModalOpen, setIsWalletModalOpen] = useState(false);
   const [isNavigating, setIsNavigating] = useState(false);
   const [mapCenterTrigger, setMapCenterTrigger] = useState(0);
 
@@ -64,6 +66,7 @@ export function RepartidorPiramidal({ onSwitchToStore }: RepartidorPiramidalProp
     showLoginModal,
     setShowLoginModal,
     confirmOrderAfterLogin,
+    wallet,
   } = useDriverOrders(driverProfile?.id);
 
   // Manejo de drag en móvil
@@ -111,8 +114,10 @@ export function RepartidorPiramidal({ onSwitchToStore }: RepartidorPiramidalProp
       {/* ─── 1. Top Bar fija ─── */}
       <DriverTopBar
         driverProfile={driverProfile}
+        walletBalance={wallet.balance}
         onSwitchToStore={onSwitchToStore}
         onOpenCopilot={() => setIsCopilotOpen(true)}
+        onOpenWallet={() => setIsWalletModalOpen(true)}
         onLogout={clearDriverProfile}
         onOpenLoginModal={() => setShowLoginModal(true)}
         hasGps={!!coords}
@@ -287,6 +292,13 @@ export function RepartidorPiramidal({ onSwitchToStore }: RepartidorPiramidalProp
         isOpen={isCopilotOpen}
         onOpenChange={setIsCopilotOpen}
         activeOrdersCount={myActiveOrders.length}
+      />
+
+      {/* ─── 7. Modal Cartera / Billetera Repartidor ─── */}
+      <ModalCarteraRepartidor
+        isOpen={isWalletModalOpen}
+        onOpenChange={setIsWalletModalOpen}
+        wallet={wallet}
       />
     </div>
   );

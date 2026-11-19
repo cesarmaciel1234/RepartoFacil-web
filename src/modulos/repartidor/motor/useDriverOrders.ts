@@ -1,13 +1,14 @@
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { DriverOrder, OrderStatus } from "./tipos";
+import { DriverOrder, OrderStatus, DriverWallet } from "./tipos";
 import {
   loadLocalOrders,
   assignOrderToDriver,
-  updateOrderStatus,
+  completeOrderDelivery,
   DEFAULT_AVAILABLE_ORDERS,
 } from "./driverService";
+import { loadDriverWallet } from "./walletService";
 import { useFirestore } from "@/firebase";
 import { collection, query, where, limit } from "@/firebase/local-firestore";
 import { useCollection } from "@/firebase/firestore/use-collection";
@@ -20,21 +21,27 @@ export function useDriverOrders(currentDriverId?: string | null) {
   const [localOrders, setLocalOrders] = useState<DriverOrder[]>(DEFAULT_AVAILABLE_ORDERS);
   const [pendingAcceptOrder, setPendingAcceptOrder] = useState<DriverOrder | null>(null);
   const [showLoginModal, setShowLoginModal] = useState(false);
+  const [wallet, setWallet] = useState<DriverWallet>(loadDriverWallet());
 
-  // Cargar órdenes locales iniciales
+  // Cargar órdenes y wallet locales iniciales
   useEffect(() => {
-    const orders = loadLocalOrders();
-    setLocalOrders(orders);
-  }, []);
+    setLocalOrders(loadLocalOrders());
+    setWallet(loadDriverWallet());
 
-  // Escuchar evento personalizado cuando se crea un pedido desde la tienda
-  useEffect(() => {
-    const handleNewOrder = () => {
-      const orders = loadLocalOrders();
-      setLocalOrders(orders);
+    const handleOrdersUpdated = () => {
+      setLocalOrders(loadLocalOrders());
     };
-    window.addEventListener("rf-orders-updated", handleNewOrder);
-    return () => window.removeEventListener("rf-orders-updated", handleNewOrder);
+    const handleWalletUpdated = (e: any) => {
+      if (e.detail) setWallet(e.detail);
+      else setWallet(loadDriverWallet());
+    };
+
+    window.addEventListener("rf-orders-updated", handleOrdersUpdated);
+    window.addEventListener("rf-wallet-updated", handleWalletUpdated);
+    return () => {
+      window.removeEventListener("rf-orders-updated", handleOrdersUpdated);
+      window.removeEventListener("rf-wallet-updated", handleWalletUpdated);
+    };
   }, []);
 
   // Consulta en Firestore de pedidos pendientes
@@ -125,15 +132,15 @@ export function useDriverOrders(currentDriverId?: string | null) {
     [pendingAcceptOrder, firestore, toast]
   );
 
-  // Completar entrega
+  // Completar entrega y acreditar ganancia a cartera
   const handleCompleteDelivery = useCallback(
-    (orderId: string) => {
-      updateOrderStatus(orderId, "Delivered", firestore).then((updated) => {
-        setLocalOrders(updated);
-        toast({
-          title: "¡Entrega Completada!",
-          description: `El pedido #${orderId} se registró como entregado.`,
-        });
+    async (orderId: string) => {
+      const res = await completeOrderDelivery(orderId, firestore);
+      setLocalOrders(res.updatedOrders);
+      setWallet(res.wallet);
+      toast({
+        title: "¡Entrega Completada! 🛵🎉",
+        description: `Ganancia acreditada a tu Cartera. Total acumulado: $${res.wallet.balance.toLocaleString("es-AR")}`,
       });
     },
     [firestore, toast]
@@ -148,5 +155,6 @@ export function useDriverOrders(currentDriverId?: string | null) {
     showLoginModal,
     setShowLoginModal,
     confirmOrderAfterLogin,
+    wallet,
   };
 }

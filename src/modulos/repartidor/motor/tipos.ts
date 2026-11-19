@@ -7,6 +7,11 @@ export interface OrderItemSummary {
   price?: number;
 }
 
+export interface GPSCoords {
+  lat: number;
+  lng: number;
+}
+
 export interface DriverOrder {
   id: string;
   clientName: string;
@@ -14,10 +19,24 @@ export interface DriverOrder {
   deliveryAddress: string;
   customerPhone?: string;
   items: OrderItemSummary[];
+  subtotal?: number;
+  deliveryFee?: number;
   total: number;
+  paymentMethod?: "cash" | "transfer" | "card";
   status: OrderStatus;
-  distanceKm?: number;
+  
+  // Métricas estándar Uber / PedidosYa
+  distanceToStoreKm?: number;    // Distancia del repartidor al market
+  distanceToDeliveryKm?: number; // Distancia del market al cliente
+  distanceKm?: number;           // Distancia total
   estimatedMinutes?: number;
+  driverEarnings?: number;       // Ganancia neta para el bolsillo del repartidor
+  isPeakHour?: boolean;          // Tarifa dinámica / horario pico
+  
+  // Coordenadas para geocerca y mapa
+  destinationCoords?: GPSCoords;
+  storeCoords?: GPSCoords;
+  
   branch?: string;
   driverId?: string;
   createdAt: string;
@@ -34,7 +53,18 @@ export interface DriverProfile {
   createdAt: string;
 }
 
-export interface GPSCoords {
-  lat: number;
-  lng: number;
+export interface WalletTransaction {
+  id: string;
+  orderId: string;
+  type: "earning" | "cash_collection";
+  amount: number;
+  description: string;
+  timestamp: string;
+}
+
+export interface DriverWallet {
+  balance: number;          // Ganancias netas acumuladas disponibles
+  cashInHand: number;       // Efectivo cobrado de clientes en mano
+  completedOrdersCount: number;
+  transactions: WalletTransaction[];
 }

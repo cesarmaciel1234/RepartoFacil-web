@@ -4,7 +4,18 @@ import React from "react";
 import { DriverOrder } from "../motor/tipos";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Check, MapPin, Clock, Navigation, Store, Package } from "lucide-react";
+import {
+  MapPin,
+  Clock,
+  Navigation,
+  Store,
+  DollarSign,
+  Zap,
+  Banknote,
+  Check,
+  Package,
+  ArrowRight,
+} from "lucide-react";
 
 interface TabPedidosDisponiblesProps {
   orders: DriverOrder[];
@@ -12,7 +23,7 @@ interface TabPedidosDisponiblesProps {
 }
 
 export function TabPedidosDisponibles({ orders, onAcceptOrder }: TabPedidosDisponiblesProps) {
-  const formatMoney = (val: number) => "$" + val.toLocaleString("es-AR");
+  const formatMoney = (val: number) => "$" + (val || 0).toLocaleString("es-AR");
 
   if (orders.length === 0) {
     return (
@@ -29,89 +40,128 @@ export function TabPedidosDisponibles({ orders, onAcceptOrder }: TabPedidosDispo
   }
 
   return (
-    <div className="space-y-3 pb-6">
+    <div className="space-y-3 pb-8">
       {orders.map((order) => {
         const client = order.clientName || order.customerName || "Cliente";
+        const earnings =
+          order.driverEarnings || Math.max(1600, Math.round((order.deliveryFee || 2000) * 0.85));
+        const distStore = order.distanceToStoreKm || 0.8;
+        const distDelivery = order.distanceToDeliveryKm || order.distanceKm || 1.4;
+        const totalDist = Math.round((distStore + distDelivery) * 10) / 10;
+        const isCash =
+          order.paymentMethod === "cash" ||
+          order.paymentMethod === ("efectivo" as any) ||
+          !order.paymentMethod;
+
         return (
           <div
             key={order.id}
-            className="bg-slate-900/90 border border-slate-800/80 hover:border-emerald-500/40 rounded-2xl p-3.5 space-y-3 transition-all duration-200 shadow-lg shadow-black/20"
+            className="bg-slate-900/90 border border-slate-800/80 hover:border-emerald-500/50 rounded-2xl p-4 space-y-3 transition-all duration-200 shadow-xl shadow-black/30"
           >
-            {/* Top orden: ID + Badge + Total */}
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-1.5">
-                <span className="font-black text-sm text-white tracking-tight">#{order.id}</span>
-                <Badge className="bg-amber-500/15 text-amber-400 border border-amber-500/30 text-[10px] font-bold px-1.5 py-0.2">
-                  Listo para retirar
-                </Badge>
-              </div>
-              <span className="text-base font-black text-emerald-400">
-                {formatMoney(order.total)}
-              </span>
-            </div>
-
-            {/* Dirección y Sucursal */}
-            <div className="space-y-1 text-xs">
-              <div className="flex items-start gap-1.5 text-slate-300">
-                <MapPin className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
-                <span className="font-semibold line-clamp-1">{order.deliveryAddress}</span>
-              </div>
-              {order.branch && (
-                <div className="flex items-center gap-1.5 text-[11px] text-slate-400">
-                  <Store className="w-3 h-3 text-slate-500 shrink-0" />
-                  <span>{order.branch}</span>
+            {/* Header: Ganancia del Repartidor (Estilo Uber) + ID */}
+            <div className="flex items-center justify-between gap-2 border-b border-slate-800/80 pb-2.5">
+              <div>
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                  Tu Ganancia Estimada
+                </span>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xl font-black text-emerald-400 tracking-tight">
+                    +{formatMoney(earnings)}
+                  </span>
+                  {order.isPeakHour && (
+                    <Badge className="bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[9px] font-black px-1.5 py-0.5 flex items-center gap-0.5">
+                      <Zap className="w-2.5 h-2.5 fill-current" />
+                      TARIFA PICO 1.35x
+                    </Badge>
+                  )}
                 </div>
-              )}
+              </div>
+
+              <div className="text-right">
+                <span className="font-mono text-xs font-black text-slate-300 block">
+                  #{order.id}
+                </span>
+                <span className="text-[10px] text-slate-400 font-medium">
+                  {order.estimatedMinutes || 20} min est.
+                </span>
+              </div>
             </div>
 
-            {/* Detalle de ítems resumidos */}
-            <div className="bg-slate-950/60 border border-slate-800/60 rounded-xl p-2.5 text-[11px] text-slate-300 space-y-1">
-              <div className="font-bold text-slate-400 text-[10px] uppercase tracking-wider">
-                Cortes a transportar:
+            {/* Trayecto dual: Al Market -> Al Cliente */}
+            <div className="grid grid-cols-2 gap-2 text-[11px] bg-slate-950/60 p-2.5 rounded-xl border border-slate-800/60">
+              <div className="space-y-0.5">
+                <span className="text-slate-500 text-[10px] font-semibold flex items-center gap-1">
+                  <Store className="w-3 h-3 text-emerald-400" />
+                  1. Retiro en Market
+                </span>
+                <div className="font-bold text-white truncate">
+                  {order.branch || "Tucumán 2130"}
+                </div>
+                <div className="text-slate-400 text-[10px]">{distStore} km a retirar</div>
               </div>
-              {order.items.slice(0, 3).map((item, idx) => (
-                <div key={idx} className="flex justify-between">
-                  <span className="truncate max-w-[200px]">
+
+              <div className="space-y-0.5 border-l border-slate-800 pl-2">
+                <span className="text-slate-500 text-[10px] font-semibold flex items-center gap-1">
+                  <MapPin className="w-3 h-3 text-red-400" />
+                  2. Entrega a Domicilio
+                </span>
+                <div className="font-bold text-white truncate">{order.deliveryAddress}</div>
+                <div className="text-slate-400 text-[10px]">{distDelivery} km de viaje</div>
+              </div>
+            </div>
+
+            {/* Alerta de Cobro en Efectivo si aplica */}
+            {isCash ? (
+              <div className="p-2 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-between text-xs">
+                <div className="flex items-center gap-1.5 text-amber-300 font-bold">
+                  <Banknote className="w-4 h-4 shrink-0" />
+                  <span>Cobrar en Efectivo al Cliente:</span>
+                </div>
+                <span className="text-sm font-black text-amber-400">
+                  {formatMoney(order.total)}
+                </span>
+              </div>
+            ) : (
+              <div className="p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-between text-xs">
+                <span className="text-emerald-300 font-semibold text-[11px]">
+                  💳 Pagado Online (No cobrar en puerta)
+                </span>
+                <span className="text-xs font-black text-white">{formatMoney(order.total)}</span>
+              </div>
+            )}
+
+            {/* Cortes resumidos */}
+            <div className="text-[11px] text-slate-300 space-y-0.5">
+              <span className="text-[10px] text-slate-500 uppercase font-bold block">
+                Cortes a transportar:
+              </span>
+              {order.items.slice(0, 2).map((item, idx) => (
+                <div key={idx} className="flex justify-between text-[11px]">
+                  <span className="truncate max-w-[210px] text-slate-300">
                     • {item.quantity} {item.unit} {item.name}
                   </span>
                   {item.price != null && !isNaN(item.price) && (
-                    <span className="text-slate-400">{formatMoney(item.price * item.quantity)}</span>
+                    <span className="text-slate-400 font-medium">
+                      {formatMoney(item.price * item.quantity)}
+                    </span>
                   )}
                 </div>
               ))}
-              {order.items.length > 3 && (
-                <div className="text-[10px] text-emerald-400 font-semibold italic">
-                  + {order.items.length - 3} cortes más...
-                </div>
+              {order.items.length > 2 && (
+                <span className="text-[10px] text-emerald-400 font-semibold block italic">
+                  + {order.items.length - 2} cortes más...
+                </span>
               )}
             </div>
 
-            {/* Estimaciones y Botón Aceptar Pedido */}
-            <div className="flex items-center justify-between gap-3 pt-1">
-              <div className="flex items-center gap-2 text-[11px] text-slate-400 font-medium">
-                {order.distanceKm && (
-                  <span className="flex items-center gap-1">
-                    <Navigation className="w-3 h-3 text-emerald-400" />
-                    {order.distanceKm} km
-                  </span>
-                )}
-                {order.estimatedMinutes && (
-                  <span className="flex items-center gap-1">
-                    <Clock className="w-3 h-3 text-emerald-400" />
-                    ~{order.estimatedMinutes} min
-                  </span>
-                )}
-              </div>
-
-              <Button
-                size="sm"
-                onClick={() => onAcceptOrder(order)}
-                className="h-10 px-4 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-black text-xs uppercase tracking-wider shadow-md shadow-emerald-500/20 active:scale-98 transition-all flex items-center gap-1.5"
-              >
-                <Check className="w-4 h-4" />
-                <span>Aceptar Pedido</span>
-              </Button>
-            </div>
+            {/* Botón Aceptar Pedido */}
+            <Button
+              onClick={() => onAcceptOrder(order)}
+              className="w-full h-11 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-extrabold text-xs flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 active:scale-98 transition-all"
+            >
+              <span>ACEPTAR PEDIDO ({totalDist} km total)</span>
+              <ArrowRight className="w-4 h-4" />
+            </Button>
           </div>
         );
       })}

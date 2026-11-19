@@ -1,4 +1,5 @@
 import { CartItem, CheckoutFormData, OrderData } from "./tipos";
+import { calcularTarifaEnvio, estimateAddressCoords, MARKET_CENTRAL } from "./tarifaUberService";
 import { addDocumentNonBlocking } from "@/firebase";
 import { collection } from "@/firebase/local-firestore";
 
@@ -39,18 +40,29 @@ export async function createOrder(
   firestoreInstance: any = null
 ): Promise<OrderData> {
   const subtotal = cart.reduce((acc, item) => acc + item.product.price * item.quantity, 0);
-  const deliveryFee = form.deliveryType === "delivery" && subtotal > 0 ? (subtotal > 30000 ? 0 : 1500) : 0;
+
+  // Cálculo de tarifa estándar Uber / PedidosYa
+  const tarifa = calcularTarifaEnvio(form.deliveryAddress || "");
+  const deliveryFee =
+    form.deliveryType === "delivery" && subtotal > 0
+      ? subtotal >= 35000
+        ? 0
+        : tarifa.totalDeliveryFee
+      : 0;
+
   const total = subtotal + deliveryFee;
-
   const orderId = `RF-${Math.floor(1000 + Math.random() * 9000)}`;
+  const { coords: destCoords } = estimateAddressCoords(form.deliveryAddress || "");
 
-  const newOrder: OrderData = {
+  const newOrder: any = {
     id: orderId,
+    clientName: form.customerName.trim(),
     customerName: form.customerName.trim(),
     customerPhone: form.customerPhone.trim(),
     deliveryType: form.deliveryType,
-    deliveryAddress: form.deliveryType === "delivery" ? form.deliveryAddress.trim() : form.selectedBranch,
-    paymentMethod: form.paymentMethod,
+    deliveryAddress:
+      form.deliveryType === "delivery" ? form.deliveryAddress.trim() : form.selectedBranch,
+    paymentMethod: form.paymentMethod === "efectivo" ? "cash" : form.paymentMethod,
     notes: form.orderNotes.trim() || undefined,
     items: cart.map((i) => ({
       id: i.product.id,
@@ -63,6 +75,18 @@ export async function createOrder(
     deliveryFee,
     total,
     status: "Pending",
+
+    // Métricas para el repartidor (Uber / PedidosYa)
+    distanceToStoreKm: 0.8,
+    distanceToDeliveryKm: tarifa.distanceKm,
+    distanceKm: tarifa.distanceKm,
+    driverEarnings: tarifa.driverEarnings,
+    isPeakHour: tarifa.isPeakHour,
+    estimatedMinutes: tarifa.estimatedMinutes,
+    branch: MARKET_CENTRAL.address,
+    storeCoords: MARKET_CENTRAL.coords,
+    destinationCoords: destCoords,
+
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     source: "RepartoFacil Web",
@@ -73,7 +97,7 @@ export async function createOrder(
 
   // 2. Persistencia en historial local (alimenta el radar del repartidor)
   try {
-    const existing: OrderData[] = JSON.parse(localStorage.getItem(ORDERS_STORAGE_KEY) || "[]");
+    const existing: any[] = JSON.parse(localStorage.getItem(ORDERS_STORAGE_KEY) || "[]");
     existing.unshift(newOrder);
     localStorage.setItem(ORDERS_STORAGE_KEY, JSON.stringify(existing));
     if (typeof window !== "undefined") {
@@ -95,22 +119,28 @@ export async function createOrder(
   return newOrder;
 }
 
-export function buildWhatsAppLink(order: OrderData, phoneNumber = "5491100000000"): string {
+export function buildWhatsAppLink(order: any, phoneNumber = "5491100000000"): string {
   const itemsText = order.items
-    .map((i) => `• ${i.quantity} ${i.unit} de *${i.name}* ($${(i.price * i.quantity).toLocaleString("es-AR")})`)
+    .map(
+      (i: any) =>
+        `• ${i.quantity} ${i.unit} de *${i.name}* ($${(i.price * i.quantity).toLocaleString("es-AR")})`
+    )
     .join("\n");
 
   const msg =
     `🥩 *NUEVO PEDIDO REPARTO FÁCIL* #${order.id}\n\n` +
     `👤 *Cliente:* ${order.customerName}\n` +
     `📱 *Teléfono:* ${order.customerPhone}\n` +
-    `📍 *Destino:* ${order.deliveryAddress} (${order.deliveryType === "delivery" ? "Envío a domicilio" : "Retiro en sucursal"})\n` +
+    `📍 *Destino:* ${order.deliveryAddress} (${
+      order.deliveryType === "delivery" ? "Envío a domicilio" : "Retiro en sucursal"
+    })\n` +
     `💳 *Pago:* ${order.paymentMethod.toUpperCase()}\n\n` +
     `🛒 *Detalle de compra:*\n${itemsText}\n\n` +
-    (order.deliveryFee > 0 ? `🛵 *Costo de envío:* $${order.deliveryFee.toLocaleString("es-AR")}\n` : `🛵 *Envío:* GRATIS\n`) +
-    `💰 *TOTAL FINAL:* $${order.total.toLocaleString("es-AR")}\n\n` +
-    (order.notes ? `📝 *Notas:* ${order.notes}\n\n` : "") +
-    `¡Muchas gracias por elegirnos!`;
+    (order.deliveryFee > 0
+      ? `🛵 *Costo de envío:* $${order.deliveryFee.toLocaleString("es-AR")}\n`
+      : `🛵 *Envío:* GRATIS\n`) +
+    `💰 *TOTAL A ABONAR:* $${order.total.toLocaleString("es-AR")}\n\n` +
+    `_Pedido procesado automáticamente por Reparto Fácil Market._`;
 
   return `https://wa.me/${phoneNumber}?text=${encodeURIComponent(msg)}`;
 }

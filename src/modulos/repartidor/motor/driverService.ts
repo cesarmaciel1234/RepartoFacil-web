@@ -1,5 +1,6 @@
 import { DriverOrder, DriverProfile, OrderStatus } from "./tipos";
-import { doc, updateDoc, setDoc } from "@/firebase/local-firestore";
+import { doc, updateDoc } from "@/firebase/local-firestore";
+import { creditDeliveryEarning, loadDriverWallet, DriverWallet } from "./walletService";
 
 export const ORDERS_STORAGE_KEY = "rf_orders_history";
 export const DRIVER_USER_KEY = "repartofacil_user";
@@ -8,34 +9,52 @@ export const DEFAULT_AVAILABLE_ORDERS: DriverOrder[] = [
   {
     id: "RF-7420",
     clientName: "Familia Gómez",
-    deliveryAddress: "Av. Belgrano 1450, Piso 3B",
+    deliveryAddress: "San Lorenzo 2040, Rosario",
     customerPhone: "+54 9 11 4589-2310",
     items: [
       { name: "Asado Especial Novillito", quantity: 2, unit: "kg", price: 9800 },
       { name: "Chorizo Criollo Puro Cerdo", quantity: 1, unit: "kg", price: 6500 },
       { name: "Carbón Vegetal 4kg", quantity: 1, unit: "bolsa", price: 2300 },
     ],
-    total: 28400,
+    subtotal: 28400,
+    deliveryFee: 2100,
+    total: 30500,
+    paymentMethod: "cash",
     status: "Pending",
-    distanceKm: 1.4,
+    distanceToStoreKm: 0.6,
+    distanceToDeliveryKm: 1.1,
+    distanceKm: 1.7,
+    driverEarnings: 2450,
+    isPeakHour: true,
     estimatedMinutes: 18,
-    branch: "Central - Frigorífico Maciel",
+    branch: "Central - Tucumán 2130",
+    storeCoords: { lat: -32.9372, lng: -60.6542 },
+    destinationCoords: { lat: -32.9395, lng: -60.6515 },
     createdAt: new Date().toISOString(),
   },
   {
     id: "RF-7421",
     clientName: "Martín Benítez",
-    deliveryAddress: "Calle San Martín 820",
+    deliveryAddress: "Santa Fe 1900, Rosario",
     customerPhone: "+54 9 11 3214-9988",
     items: [
       { name: "Vacío Fino de Ternera", quantity: 1.5, unit: "kg", price: 10400 },
       { name: "Morcilla Bombón Casera", quantity: 0.8, unit: "kg", price: 5250 },
     ],
-    total: 19800,
+    subtotal: 19800,
+    deliveryFee: 1850,
+    total: 21650,
+    paymentMethod: "cash",
     status: "Pending",
-    distanceKm: 2.1,
-    estimatedMinutes: 24,
-    branch: "Sucursal Norte",
+    distanceToStoreKm: 0.8,
+    distanceToDeliveryKm: 1.4,
+    distanceKm: 2.2,
+    driverEarnings: 2100,
+    isPeakHour: true,
+    estimatedMinutes: 22,
+    branch: "Central - Tucumán 2130",
+    storeCoords: { lat: -32.9372, lng: -60.6542 },
+    destinationCoords: { lat: -32.942, lng: -60.6502 },
     createdAt: new Date().toISOString(),
   },
   {
@@ -47,11 +66,20 @@ export const DEFAULT_AVAILABLE_ORDERS: DriverOrder[] = [
       { name: "Combo Gran Parrillada (4 pers)", quantity: 1, unit: "combo", price: 32000 },
       { name: "Matambre de Cerdo", quantity: 1.2, unit: "kg", price: 10416 },
     ],
-    total: 44500,
+    subtotal: 44500,
+    deliveryFee: 2600,
+    total: 47100,
+    paymentMethod: "transfer",
     status: "Pending",
+    distanceToStoreKm: 1.2,
+    distanceToDeliveryKm: 2.3,
     distanceKm: 3.5,
-    estimatedMinutes: 30,
-    branch: "Central - Frigorífico Maciel",
+    driverEarnings: 2850,
+    isPeakHour: false,
+    estimatedMinutes: 28,
+    branch: "Central - Tucumán 2130",
+    storeCoords: { lat: -32.9372, lng: -60.6542 },
+    destinationCoords: { lat: -32.9472, lng: -60.648 },
     createdAt: new Date().toISOString(),
   },
 ];
@@ -79,6 +107,7 @@ export function saveLocalOrders(orders: DriverOrder[]) {
   if (typeof window === "undefined") return;
   try {
     localStorage.setItem(ORDERS_STORAGE_KEY, JSON.stringify(orders));
+    window.dispatchEvent(new Event("rf-orders-updated"));
   } catch (e) {
     console.warn("Error guardando órdenes locales:", e);
   }
@@ -147,17 +176,23 @@ export async function assignOrderToDriver(
   return updated;
 }
 
-export async function updateOrderStatus(
+export async function completeOrderDelivery(
   orderId: string,
-  newStatus: OrderStatus,
   firestoreInstance: any = null
-): Promise<DriverOrder[]> {
+): Promise<{ updatedOrders: DriverOrder[]; wallet: DriverWallet }> {
   const current = loadLocalOrders();
+  let creditedEarning = 2200;
+  let cashCollected = 0;
+
   const updated = current.map((ord) => {
     if (ord.id === orderId) {
+      creditedEarning = ord.driverEarnings || Math.max(1800, Math.round((ord.deliveryFee || 2000) * 0.85));
+      if (ord.paymentMethod === "cash" || ord.paymentMethod === ("efectivo" as any)) {
+        cashCollected = ord.total;
+      }
       return {
         ...ord,
-        status: newStatus,
+        status: "Delivered" as OrderStatus,
         updatedAt: new Date().toISOString(),
       };
     }
@@ -165,11 +200,12 @@ export async function updateOrderStatus(
   });
 
   saveLocalOrders(updated);
+  const wallet = creditDeliveryEarning(orderId, creditedEarning, cashCollected);
 
   if (firestoreInstance) {
     try {
       updateDoc(doc(firestoreInstance, "orders", orderId), {
-        status: newStatus,
+        status: "Delivered",
         updatedAt: new Date().toISOString(),
       });
     } catch (e) {
@@ -177,5 +213,5 @@ export async function updateOrderStatus(
     }
   }
 
-  return updated;
+  return { updatedOrders: updated, wallet };
 }

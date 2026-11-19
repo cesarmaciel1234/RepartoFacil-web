@@ -1,45 +1,43 @@
-# Subcarpeta: Interfaz de Usuario Tienda
+# Subcarpeta: UI Tienda
 
 **Ubicación:** `src/modulos/tienda/ui/`  
-**Rol:** Componentes visuales y pantallas interactivas del perfil tienda (catálogo, filtros, carrito y checkout).
+**Rol:** Componentes de la interfaz visual de la carnicería online: encabezado, categorías, tarjetas de productos con control de cantidades, drawer del carrito y modal de checkout.
 
 ---
 
 ## 1. Qué hace
-Renderiza la experiencia de compra estilo ecommerce (Rappi / Uber Eats / Mercado Libre) para clientes:
-- Encabezado con estado de entrega y acceso al Modo Repartidor.
-- Buscador reactivo y barra de desplazamiento de categorías de carnicería (Vacuno, Cerdo, Pollo, Combos, etc.).
-- Tarjetas de productos con imágenes reales de cortes, badges y control de cantidades.
-- Carrito lateral/inferior tipo Drawer (Sheet) con cálculo de envío gratis.
-- Diálogo modal de Checkout con validación de datos de contacto y confirmación para WhatsApp.
+- Provee la navegación y presentación del catálogo de carnes y combos.
+- Muestra el estado del carrito de compras y permite modificar cantidades con controles táctiles.
+- Despliega el formulario de checkout con cálculo automático de envíos según la dirección ingresada y selector de medios de pago.
+- Presenta el diálogo de éxito tras la confirmación de la orden.
 
 ---
 
-## 2. Funciones y Componentes Principales
-- `HeaderTienda`: Barra superior fija con branding "RF Reparto Fácil MARKET", indicador de sucursal Maciel, botón de alternancia a "Modo Repartidor" y disparador de carrito con contador.
-- `FiltroCategorias`: Barra de búsqueda rápida de cortes de carne y píldoras horizontales deslizables de categorías.
-- `TarjetaProducto`: Card moderna de producto con badges de popularidad/oferta, precio formateado por kg/unidad y botones reactivos +/-.
-- `DrawerCarrito`: Sheet lateral con resumen de la compra, costo de envío dinámico y botón para proceder al pago.
-- `ModalCheckout`: Diálogo modal que solicita nombre, WhatsApp, dirección y medio de pago, y presenta el comprobante final con enlace a WhatsApp.
+## 2. Componentes Principales
+- `HeaderTienda.tsx`: Encabezado con logo, selector de sucursal, acceso directo a Modo Repartidor y badge del carrito.
+- `FiltroCategorias.tsx`: Barra de categorías deslizable horizontalmente.
+- `TarjetaProducto.tsx`: Tarjeta de producto con foto, badges (Destacado, Oferta), precio por unidad y botón responsivo que no desborda en pantallas de 390px.
+- `DrawerCarrito.tsx`: Sheet deslizable con el listado de ítems seleccionados, desglose de subtotal y botón para proceder al pago.
+- `ModalCheckout.tsx`: Diálogo modal para capturar datos de entrega, desglose de tarifa estilo Uber/PedidosYa (base + km + horario pico) y medio de pago (Efectivo al recibir por defecto).
 
 ---
 
-## 3. Cómo funciona (Flujo interno)
-1. `FiltroCategorias` capta las consultas del cliente y filtra los productos de `INITIAL_PRODUCTS`.
-2. Las `TarjetaProducto` llaman a `onAddToCart` o `onUpdateQuantity`, actualizando el estado de `useCart`.
-3. Al hacer clic en el botón del carrito en `HeaderTienda`, se abre `DrawerCarrito`.
-4. Al presionar "Continuar y Pagar", se cierra el carrito y se abre `ModalCheckout`.
-5. Al completar el formulario y confirmar, se invoca `createOrder()` y se muestra la ventana de pedido confirmado con el botón de WhatsApp.
+## 3. Cómo funciona (Flujo visual)
+1. El usuario navega la tienda y filtra por categorías.
+2. Al pulsar `+ Agregar`, la tarjeta cambia al stepper `- 1 +` y la barra flotante inferior muestra el total acumulado.
+3. Al pulsar `Ver pedido`, se abre `DrawerCarrito`.
+4. Al pulsar `Continuar y Pagar`, se abre `ModalCheckout`.
+5. Al ingresar la dirección, se muestra el recargo de envío calculado y el total final.
+6. Al pulsar `Confirmar y Enviar Pedido`, se muestra el modal de éxito con el ticket para enviar a WhatsApp.
 
 ---
 
 ## 4. De dónde viene y A dónde va (Conexiones)
-- **Viene de:** `TiendaPiramidal.tsx` (ensamblador maestro de la rama).
-- **Va a:** El motor de la tienda (`useCart`, `pedidoService`) y a los hooks de notificación (`useToast`).
+- **Viene de:** `TiendaPiramidal.tsx` y `useCart`.
+- **Va a:** Handlers de carrito, checkout y navegación entre modos.
 
 ---
 
 ## 5. Qué NO romper (Invariantes Sagrados)
-- **Cero bloqueos:** Navegación 100% libre; no forzar pantalla de login al ingresar a la tienda.
-- **Mobile First:** Todo componente debe funcionar con suavidad en pantallas pequeñas (360px a 390px) sin desbordes horizontales.
-- **Tipografía y Pesos:** Respetar la jerarquía visual oscura y los precios en moneda local (`es-AR`).
+- **Diseño Mobile-First:** Todos los modales y tarjetas deben caber perfectamente dentro del ancho de 390px sin desbordamiento horizontal.
+- **Libertad de navegación:** El carrito y el catálogo deben permanecer 100% abiertos sin forzar registros previos.

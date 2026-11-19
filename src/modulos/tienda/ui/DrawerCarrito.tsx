@@ -31,7 +31,7 @@ export function DrawerCarrito({
 }: DrawerCarritoProps) {
   const formatMoney = (val: number) => "$" + val.toLocaleString("es-AR");
 
-  const deliveryFee = deliveryType === "delivery" && cartTotal > 0 ? (cartTotal > 30000 ? 0 : 1500) : 0;
+  const deliveryFee = deliveryType === "delivery" && cartTotal > 0 ? (cartTotal >= 35000 ? 0 : 2100) : 0;
   const finalTotal = cartTotal + deliveryFee;
 
   return (

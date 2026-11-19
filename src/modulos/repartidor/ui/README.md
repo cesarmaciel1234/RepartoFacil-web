@@ -1,44 +1,44 @@
-# Subcarpeta: Interfaz de Usuario Repartidor
+# Subcarpeta: UI Repartidor
 
 **Ubicación:** `src/modulos/repartidor/ui/`  
-**Rol:** Componentes de interfaz móvil e interacción táctil del conductor/repartidor.
+**Rol:** Componentes visuales de la interfaz de repartidor/motomensajero: barra de navegación con cartera, listas de pedidos disponibles con indicadores de ganancia, gestión de ruta con velocímetro GPS y geocerca de 100m, diálogos de identificación y modal de cartera.
 
 ---
 
 ## 1. Qué hace
-- Provee la barra superior con estado GPS, botón de retorno a la tienda y panel de perfil.
-- Muestra el listado de pedidos disponibles para tomar con distancia en km, sucursal, cortes y botón verde "Aceptar Pedido".
-- Ofrece la vista de ruta activa ("Mi Ruta") con llamada directa al cliente, enlace a Google Maps / GPS y confirmación de entrega.
-- Proporciona el diálogo de autenticación rápida (`ModalDriverAuth`) que solo se invoca cuando el conductor decide aceptar un pedido.
-- Ofrece el asistente conversacional `DriverCopilotSheet` ("Copo") para optimización de recorrido y ayuda en calle.
+- Renderiza la barra superior de conductor con estado del GPS, saldo de la cartera en tiempo real y accesos rápidos.
+- Muestra el listado de pedidos disponibles con métricas de conveniencia (ganancia neta, distancias, cobro en efectivo).
+- Presenta las órdenes en ruta con velocímetro, simulación en marcha y botón de entrega con candado de geocerca (desbloqueo a <100m).
+- Despliega el diálogo modal de identificación (`ModalDriverAuth`) y el modal de la cartera (`ModalCarteraRepartidor`).
 
 ---
 
-## 2. Funciones y Componentes Principales
-- `DriverTopBar`: Barra superior con indicador de satélite GPS, switch de regreso a tienda y botón de perfil/cierre de sesión.
-- `TabPedidosDisponibles`: Listado de pedidos en espera con detalles de la orden y botón de aceptación.
-- `TabMiRuta`: Tarjetas de pedidos en reparto activo con acciones de navegación GPS y completado.
-- `ModalDriverAuth`: Diálogo de registro ágil que se levanta bajo demanda al presionar "Aceptar Pedido".
-- `DriverCopilotSheet`: Sheet lateral interactivo con sugerencias inteligentes para el conductor.
+## 2. Componentes Principales
+- `DriverTopBar.tsx`: Encabezado con botón de volver, estado GPS, botón de cartera `💼 $X.XXX`, botón de copiloto IA y perfil del repartidor.
+- `TabPedidosDisponibles.tsx`: Listado de pedidos listos con ganancia estimada para el bolsillo (`+$X.XXX`), badge de tarifa dinámica pico (`⚡ 1.35x`), trayecto al market y trayecto al cliente.
+- `TabMiRuta.tsx`: Tarjetas de pedidos en curso con simulación GPS en marcha, velocímetro, barra de proximidad y botón bloqueado con candado hasta estar a menos de 100 metros del domicilio.
+- `ModalCarteraRepartidor.tsx`: Diálogo con el desglose de ganancias del repartidor, efectivo cobrado en mano y movimientos recientes.
+- `ModalDriverAuth.tsx`: Diálogo para que el repartidor ingrese su nombre y elija vehículo (Moto, Bici, Auto) únicamente al tomar un pedido.
+- `DriverCopilotSheet.tsx`: Panel lateral con sugerencias de ruta y asistencia de despacho.
 
 ---
 
-## 3. Cómo funciona (Flujo interno)
-1. El repartidor visualiza el mapa interactivo y el panel deslizable con las pestañas "Disponibles", "Mi Ruta" y "Alertas".
-2. En `TabPedidosDisponibles`, examina las órdenes y pulsa "Aceptar Pedido".
-3. Si el usuario no tiene perfil cargado en `localStorage`, se despliega `ModalDriverAuth`.
-4. Al ingresar su nombre y vehículo, `ModalDriverAuth` emite `onSuccess(driverId)`, registrando la orden y pasándola a `TabMiRuta`.
-5. Durante el viaje, el repartidor puede abrir `TabMiRuta` para ver la dirección, llamar al comprador o abrir la navegación externa con un toque.
+## 3. Cómo funciona (Flujo visual)
+1. El usuario abre el modo repartidor y consulta las oportunidades en `TabPedidosDisponibles`.
+2. Al pulsar "ACEPTAR PEDIDO", si no está registrado, se abre `ModalDriverAuth`.
+3. Al confirmarse, se conmuta a la pestaña `TabMiRuta`.
+4. El repartidor pulsa "Simular en Marcha" o "Llegar (60m)". La distancia baja en tiempo real y el botón cambia de gris con candado a verde esmeralda con `animate-pulse`.
+5. Al pulsar "CONFIRMAR ENTREGA", se notifica el éxito y el saldo de la cartera en el botón superior aumenta inmediatamente.
+6. Al pulsar el botón de cartera en la barra superior, se abre `ModalCarteraRepartidor`.
 
 ---
 
 ## 4. De dónde viene y A dónde va (Conexiones)
-- **Viene de:** `RepartidorPiramidal.tsx` (coordinador general de la rama).
-- **Va a:** El motor del repartidor (`useDriverOrders`, `useDriverGps`, `driverService`).
+- **Viene de:** `RepartidorPiramidal.tsx` y hooks `useDriverOrders`, `useDriverGps`.
+- **Va a:** Llamadas a acciones de asignación, entrega y modal de cartera.
 
 ---
 
 ## 5. Qué NO romper (Invariantes Sagrados)
-- **Modo libre inicial:** El repartidor no debe toparse con un formulario de login obligatorio para ver los pedidos ni para usar el mapa.
-- **Botón "Aceptar Pedido":** Debe permanecer siempre accesible y responder con el modal si el usuario es anónimo.
-- **Acceso rápido a llamadas y GPS:** Los enlaces `tel:` y `google.com/maps` deben funcionar nativamente en cualquier teléfono.
+- **Geocerca de 100m:** El botón de entrega no puede habilitarse si la distancia supera los 100 metros.
+- **Responsividad:** Todos los componentes deben verse limpios y sin solapamientos en dispositivos de 390px.
