@@ -75,7 +75,7 @@ export const INITIAL_PRODUCTS: Product[] = [
     price: 11900,
     unit: "kg",
     description: "Corte grueso, jugoso y con veteado perfecto para plancha o parrilla.",
-    image: "https://images.unsplash.com/photo-1551024709-8f23befc6f87?w=600&auto=format&fit=crop&q=80",
+    image: "https://images.unsplash.com/photo-1544025162-d76694265947?w=600&auto=format&fit=crop&q=80",
     isPopular: true,
     stockKg: 55,
   },

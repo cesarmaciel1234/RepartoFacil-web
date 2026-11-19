@@ -35,6 +35,58 @@ interface DriverDashboardProps {
   onSwitchToStore: () => void;
 }
 
+const DEFAULT_AVAILABLE_ORDERS = [
+  {
+    id: "RF-7420",
+    clientName: "Familia Gómez",
+    deliveryAddress: "Av. Belgrano 1450, Piso 3B",
+    customerPhone: "+54 9 11 4589-2310",
+    items: [
+      { name: "Asado Especial Novillito", quantity: 2, unit: "kg" },
+      { name: "Chorizo Criollo Puro Cerdo", quantity: 1, unit: "kg" },
+      { name: "Carbón Vegetal 4kg", quantity: 1, unit: "bolsa" }
+    ],
+    total: 28400,
+    status: "Pending",
+    distanceKm: 1.4,
+    estimatedMinutes: 18,
+    branch: "Central - Frigorífico Maciel",
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: "RF-7421",
+    clientName: "Martín Benítez",
+    deliveryAddress: "Calle San Martín 820",
+    customerPhone: "+54 9 11 3214-9988",
+    items: [
+      { name: "Vacío Fino de Ternera", quantity: 1.5, unit: "kg" },
+      { name: "Morcilla Bombón Casera", quantity: 0.8, unit: "kg" }
+    ],
+    total: 19800,
+    status: "Pending",
+    distanceKm: 2.1,
+    estimatedMinutes: 24,
+    branch: "Sucursal Norte",
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: "RF-7422",
+    clientName: "Lorena Silva",
+    deliveryAddress: "Mitre 2304 (Parrilla El Quincho)",
+    customerPhone: "+54 9 11 6720-1144",
+    items: [
+      { name: "Combo Gran Parrillada (4 pers)", quantity: 1, unit: "combo" },
+      { name: "Matambre de Cerdo", quantity: 1.2, unit: "kg" }
+    ],
+    total: 44500,
+    status: "Pending",
+    distanceKm: 3.5,
+    estimatedMinutes: 30,
+    branch: "Central - Frigorífico Maciel",
+    createdAt: new Date().toISOString(),
+  }
+]
+
 export function DriverDashboard({ onSwitchToStore }: DriverDashboardProps) {
   const router = useRouter()
   const { user, isUserLoading } = useUser()
@@ -121,14 +173,20 @@ export function DriverDashboard({ onSwitchToStore }: DriverDashboardProps) {
   }, [firestore])
   const { data: firestorePendingOrders } = useCollection(pendingOrdersQuery)
 
-  // Also include localStorage orders
-  const [localPendingOrders, setLocalPendingOrders] = useState<any[]>([])
+  // Also include localStorage orders (seeded with realistic deliveries if empty)
+  const [localPendingOrders, setLocalPendingOrders] = useState<any[]>(DEFAULT_AVAILABLE_ORDERS)
   useEffect(() => {
     try {
-      const stored = JSON.parse(localStorage.getItem("rf_orders_history") || "[]")
+      let stored = JSON.parse(localStorage.getItem("rf_orders_history") || "[]")
+      if (!Array.isArray(stored) || stored.length === 0) {
+        stored = DEFAULT_AVAILABLE_ORDERS
+        localStorage.setItem("rf_orders_history", JSON.stringify(stored))
+      }
       const pending = stored.filter((o: any) => o.status === "Pending")
-      setLocalPendingOrders(pending)
-    } catch {}
+      setLocalPendingOrders(pending.length > 0 ? pending : DEFAULT_AVAILABLE_ORDERS)
+    } catch {
+      setLocalPendingOrders(DEFAULT_AVAILABLE_ORDERS)
+    }
   }, [])
 
   const combinedPendingOrders = useMemo(() => {
