@@ -26,6 +26,7 @@ import {
   ChevronRight,
   User,
   ExternalLink,
+  RefreshCw,
 } from "lucide-react";
 import { DriverProfile } from "@/modulos/repartidor/motor/tipos";
 import { loadClientProfile, ClientProfile, clearDriverProfile } from "@/modulos/repartidor/motor/driverService";
@@ -313,8 +314,31 @@ export function SidebarGeneral({
           </div>
         </div>
 
-          {/* 4. Footer con Cerrar Sesión (Nos vuelve a Tienda si estamos en Repartidor) */}
-          <div className="p-4 border-t border-slate-800 bg-slate-900/60">
+          {/* 4. Footer con Cerrar Sesión y Actualizar Caché PWA */}
+          <div className="p-4 border-t border-slate-800 bg-slate-900/60 space-y-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={async () => {
+                if (typeof window !== "undefined") {
+                  if ("caches" in window) {
+                    const keys = await caches.keys();
+                    await Promise.all(keys.map((k) => caches.delete(k)));
+                  }
+                  if ("serviceWorker" in navigator) {
+                    const regs = await navigator.serviceWorker.getRegistrations();
+                    await Promise.all(regs.map((r) => r.unregister()));
+                  }
+                  window.location.href = window.location.origin + "/?v=" + Date.now();
+                }
+              }}
+              className="w-full h-10 rounded-2xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 hover:text-emerald-200 border border-emerald-500/30 font-bold text-xs flex items-center justify-center gap-2 transition-all"
+              title="Borrar caché guardada offline y recargar última versión v5.0"
+            >
+              <RefreshCw className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Actualizar a v5.0 (Limpiar PWA)</span>
+            </Button>
+
             <Button
               type="button"
               variant="ghost"

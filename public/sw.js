@@ -1,7 +1,6 @@
-const CACHE_NAME = "repartofacil-v3";
+const CACHE_NAME = "repartofacil-v5.0";
 
 const STATIC_PRECACHE = [
-  "/",
   "/manifest.webmanifest",
   "/icon.svg",
   "/icon-192.png",
@@ -26,30 +25,65 @@ self.addEventListener("activate", (event) => {
       Promise.all(
         keys
           .filter((key) => key !== CACHE_NAME)
-          .map((key) => caches.delete(key))
+          .map((key) => {
+            console.log("[SW] Purgando caché obsoleta:", key);
+            return caches.delete(key);
+          })
       )
-    )
+    ).then(() => self.clients.claim())
   );
-  self.clients.claim();
+});
+
+self.addEventListener("message", (event) => {
+  if (event.data && event.data.type === "SKIP_WAITING") {
+    self.skipWaiting();
+  }
+  if (event.data && event.data.type === "PURGE_CACHE") {
+    caches.keys().then((keys) => Promise.all(keys.map((k) => caches.delete(k))));
+  }
 });
 
 self.addEventListener("fetch", (event) => {
-  // Solo interceptar peticiones GET http/https
   if (event.request.method !== "GET") return;
   if (!event.request.url.startsWith("http")) return;
 
   const url = new URL(event.request.url);
 
-  // No almacenar peticiones a APIs internas ni sockets de Firestore
+  // Bypass para APIs dinámicas y servicios en la nube
   if (
     url.pathname.startsWith("/api/") ||
     url.hostname.includes("firestore.googleapis.com") ||
-    url.hostname.includes("identitytoolkit.googleapis.com")
+    url.hostname.includes("identitytoolkit.googleapis.com") ||
+    url.hostname.includes("cobrofacil.onrender.com") ||
+    url.hostname.includes("repartofacil-backend.onrender.com")
   ) {
     return;
   }
 
-  // Estrategia Network-First con Fallback a Caché (ideal para apps en tiempo real)
+  // Network-First para navegación HTML: Siempre pedir la versión más reciente al servidor
+  if (event.request.mode === "navigate") {
+    event.respondWith(
+      fetch(event.request)
+        .then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
+            const copy = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+          }
+          return networkResponse;
+        })
+        .catch(async () => {
+          const cached = await caches.match(event.request);
+          if (cached) return cached;
+          return new Response("Modo Offline - Reparto Fácil", {
+            status: 503,
+            headers: { "Content-Type": "text/html; charset=utf-8" },
+          });
+        })
+    );
+    return;
+  }
+
+  // Para otros assets (imágenes, CSS, JS): Network-First con fallback a caché
   event.respondWith(
     fetch(event.request)
       .then((networkResponse) => {
@@ -63,21 +97,8 @@ self.addEventListener("fetch", (event) => {
       })
       .catch(async () => {
         const cachedResponse = await caches.match(event.request);
-        if (cachedResponse) {
-          return cachedResponse;
-        }
-
-        // Si es navegación de página y no hay conexión, servir la raíz en caché
-        if (event.request.mode === "navigate") {
-          const fallback = await caches.match("/");
-          if (fallback) return fallback;
-        }
-
-        return new Response("Sin conexión a Internet", {
-          status: 503,
-          statusText: "Service Unavailable",
-          headers: new Headers({ "Content-Type": "text/plain; charset=utf-8" })
-        });
+        if (cachedResponse) return cachedResponse;
+        return new Response("Recurso offline no disponible", { status: 503 });
       })
   );
 });
