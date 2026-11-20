@@ -99,21 +99,20 @@ export function useDriverOrders(currentDriverId?: string | null) {
     );
   }, [localOrders]);
 
-  // Mis pedidos activos en ruta: SOLO aquellos con estado 'Assigned', 'Picked Up', 'In Transit' o 'Ready'
-  // IMPORTANTE: Pedidos 'Delivered' (entregados) o 'Cancelled' se borran de la ruta y del chat del repartidor.
+  // Mis pedidos activos en ruta: SOLO aquellos asignados EXCLUSIVAMENTE a este repartidor
+  // IMPORTANTE: Pedidos 'Delivered' (entregados) o 'Cancelled' se archivan de la ruta y del chat del repartidor.
   const myActiveOrders = useMemo(() => {
     return localOrders.filter(
       (o) =>
         (o.status === "Assigned" ||
           o.status === "Picked Up" ||
-          o.status === "In Transit" ||
-          o.status === "Ready" ||
-          (o.status as any) === "ready") &&
+          o.status === "In Transit") &&
         o.status !== "Delivered" &&
         (o.status as any) !== "delivered" &&
         o.status !== "Cancelled" &&
         o.status !== "Rejected" &&
-        (!currentDriverId || !o.driverId || o.driverId === currentDriverId)
+        o.driverId &&
+        (!currentDriverId || o.driverId === currentDriverId)
     );
   }, [localOrders, currentDriverId]);
 

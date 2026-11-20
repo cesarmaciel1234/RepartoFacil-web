@@ -58,20 +58,27 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
   const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
   const [orderConfirmed, setOrderConfirmed] = useState<OrderData | null>(null);
 
-  // Sincronizar lista completa de órdenes del comprador (locales + PostgreSQL de Cobro Fácil)
+  // Sincronizar lista de órdenes del comprador (locales + PostgreSQL con aislamiento por clientId)
   useEffect(() => {
     const syncOrders = async () => {
+      const client = loadClientProfile();
       let combined: any[] = [];
       try {
         const raw = localStorage.getItem("rf_orders_history");
         if (raw) {
           const parsed = JSON.parse(raw);
-          if (Array.isArray(parsed)) combined = [...parsed];
+          if (Array.isArray(parsed)) {
+            // Filtrar en local para que el comprador sólo vea sus pedidos
+            combined = client?.id
+              ? parsed.filter((o) => !o.clientId || o.clientId === client.id || o.clientName === client.displayName)
+              : [...parsed];
+          }
         }
       } catch {}
 
       try {
-        const res = await fetch("/api/orders", { cache: "no-store" });
+        const url = client?.id ? `/api/orders?cliente_id=${encodeURIComponent(client.id)}` : "/api/orders";
+        const res = await fetch(url, { cache: "no-store" });
         if (res.ok) {
           const cloudOrders = await res.json();
           if (Array.isArray(cloudOrders) && cloudOrders.length > 0) {
@@ -208,6 +215,11 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
   const handleConfirmOrder = async (formData: CheckoutFormData) => {
     setIsSubmittingOrder(true);
     try {
+      if (selectedCompany) {
+        formData.companyId = selectedCompany.id;
+        formData.companySlug = selectedCompany.slug;
+        formData.empresaId = selectedCompany.empresa_id || (selectedCompany.slug === "prueba" ? 2 : 1);
+      }
       const newOrder = await createOrder(cart, formData, firestore);
       setIsCheckoutOpen(false);
       setOrderConfirmed(newOrder);

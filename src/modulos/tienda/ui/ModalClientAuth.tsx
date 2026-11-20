@@ -14,7 +14,7 @@ import { User, Lock, ArrowRight, KeyRound, ShoppingBag, AlertCircle, Phone, MapP
 import { useToast } from "@/hooks/use-toast";
 import { useFirestore } from "@/firebase";
 import { doc, setDoc } from "@/firebase/local-firestore";
-import { saveClientProfile } from "@/modulos/repartidor/motor/driverService";
+import { saveClientProfile, generateUniqueEntityId } from "@/modulos/repartidor/motor/driverService";
 
 interface ModalClientAuthProps {
   isOpen: boolean;
@@ -87,13 +87,16 @@ export function ModalClientAuth({
         };
       }
 
-      const clientId = user.id || user.uid || "cliente-01";
+      const userAccountId = user.userId || user.uid || generateUniqueEntityId("usr_cli");
+      const clientProfileId = (user.id && user.id !== "cliente-01") ? user.id : generateUniqueEntityId("cli");
+
       const clientProfile = {
-        id: clientId,
-        uid: clientId,
+        id: clientProfileId,
+        uid: userAccountId,
+        userId: userAccountId,
         displayName: user.displayName || user.firstName || "Cliente Frecuente",
         email: user.email,
-        role: "Client",
+        role: "Client" as const,
         phone: user.phone || phone,
         address: user.address || address,
         createdAt: new Date().toISOString(),
@@ -186,14 +189,16 @@ export function ModalClientAuth({
           address,
         };
       }
-      const clientId = user.id || `client-${Date.now().toString(36)}`;
+      const userAccountId = generateUniqueEntityId("usr_cli");
+      const clientProfileId = generateUniqueEntityId("cli");
 
       const clientProfile = {
-        id: clientId,
-        uid: clientId,
+        id: clientProfileId,
+        uid: userAccountId,
+        userId: userAccountId,
         displayName: name.trim(),
         email,
-        role: "Client",
+        role: "Client" as const,
         phone,
         address,
         createdAt: new Date().toISOString(),

@@ -65,8 +65,23 @@ export async function createOrder(
   const orderId = `RF-${Math.floor(1000 + Math.random() * 9000)}`;
   const { coords: destCoords } = estimateAddressCoords(form.deliveryAddress || "");
 
+  // Asignar IDs únicos de usuario, perfil cliente y empresa destinataria (aislamiento estricto)
+  const client = loadClientProfile();
+  const clientId = client?.id || `cli_${Math.random().toString(36).substring(2, 9)}`;
+  const clientUserId = client?.userId || `usr_${clientId}`;
+  
+  const targetCompanyId = form.companyId || cart[0]?.product?.companyId || "frigorifico-maciel";
+  const isPrueba = targetCompanyId === "empresa-prueba" || form.companySlug === "prueba";
+  const empresaId = isPrueba ? 2 : 1;
+  const empresaSlug = isPrueba ? "prueba" : "maciel";
+
   const newOrder: any = {
     id: orderId,
+    clientId,
+    clientUserId,
+    empresaId,
+    empresaSlug,
+    companyId: targetCompanyId,
     clientName: form.customerName.trim(),
     customerName: form.customerName.trim(),
     customerPhone: form.customerPhone.trim(),

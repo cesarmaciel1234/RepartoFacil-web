@@ -115,6 +115,12 @@ export function saveLocalOrders(orders: DriverOrder[]) {
   }
 }
 
+export function generateUniqueEntityId(prefix: "usr_cli" | "usr_rep" | "cli" | "rep"): string {
+  const rand = Math.random().toString(36).substring(2, 9);
+  const time = Date.now().toString(36).substring(4);
+  return `${prefix}_${rand}${time}`;
+}
+
 export function loadDriverProfile(): DriverProfile | null {
   if (typeof window === "undefined") return null;
   try {
@@ -124,23 +130,39 @@ export function loadDriverProfile(): DriverProfile | null {
     if (parsed.role && parsed.role.toLowerCase() !== "driver") {
       return null;
     }
-    return {
-      id: parsed.id || parsed.uid || "repartidor-01",
-      uid: parsed.uid || parsed.id || "repartidor-01",
-      firstName: parsed.firstName || parsed.displayName || "Lucas Motomensajero",
+
+    const driverName = (parsed.firstName || parsed.displayName || "Lucas Motomensajero").trim();
+    // ID único de cuenta de usuario y ID único de perfil
+    const userId = (parsed.userId && parsed.userId !== "repartidor-01") ? parsed.userId : (parsed.uid && parsed.uid !== "repartidor-01" ? parsed.uid : generateUniqueEntityId("usr_rep"));
+    const profileId = (parsed.id && parsed.id !== "repartidor-01") ? parsed.id : generateUniqueEntityId("rep");
+
+    const profile: DriverProfile = {
+      id: profileId,
+      uid: userId,
+      userId: userId,
+      firstName: driverName,
       role: "Driver",
       vehicleType: parsed.vehicleType || "Motorcycle",
       availabilityStatus: parsed.availabilityStatus || "Available",
       createdAt: parsed.createdAt || new Date().toISOString(),
     };
+
+    if (!parsed.userId || parsed.id === "repartidor-01") {
+      try {
+        localStorage.setItem(DRIVER_USER_KEY, JSON.stringify(profile));
+      } catch {}
+    }
+
+    return profile;
   } catch {
     return null;
   }
 }
 
 export interface ClientProfile {
-  id: string;
+  id: string; // ID único de perfil del cliente (cli_xxxx)
   uid: string;
+  userId: string; // ID único de cuenta de usuario (usr_cli_xxxx)
   displayName: string;
   email: string;
   role: "Client";
@@ -157,15 +179,29 @@ export function loadClientProfile(): ClientProfile | null {
     if (parsed.role && parsed.role.toLowerCase() !== "client") {
       return null;
     }
-    return {
-      id: parsed.id || parsed.uid || "cliente-01",
-      uid: parsed.uid || parsed.id || "cliente-01",
+
+    // ID único de cuenta de usuario y ID único de perfil para blindar aislamiento
+    const userId = (parsed.userId && parsed.userId !== "cliente-01") ? parsed.userId : (parsed.uid && parsed.uid !== "cliente-01" ? parsed.uid : generateUniqueEntityId("usr_cli"));
+    const profileId = (parsed.id && parsed.id !== "cliente-01") ? parsed.id : generateUniqueEntityId("cli");
+
+    const profile: ClientProfile = {
+      id: profileId,
+      uid: userId,
+      userId: userId,
       displayName: parsed.displayName || parsed.firstName || "Cliente Frecuente",
       email: parsed.email || "cliente@repartofacil.com",
       role: "Client",
       phone: parsed.phone || "+54 9 341 555-1234",
       address: parsed.address || "Tucumán 2130, Rosario",
     };
+
+    if (!parsed.userId || parsed.id === "cliente-01") {
+      try {
+        localStorage.setItem(CLIENT_USER_KEY, JSON.stringify(profile));
+      } catch {}
+    }
+
+    return profile;
   } catch {
     return null;
   }
@@ -231,6 +267,10 @@ export async function assignOrderToDriver(
   firestoreInstance: any = null
 ): Promise<DriverOrder[]> {
   const current = loadLocalOrders();
+  const driverProfile = loadDriverProfile();
+  const driverUserId = driverProfile?.userId || `usr_${driverId}`;
+  const driverName = driverProfile?.firstName || "Lucas Motomensajero";
+
   const updated = current.map((ord) => {
     if (ord.id === orderId) {
       return {
@@ -245,7 +285,7 @@ export async function assignOrderToDriver(
 
   saveLocalOrders(updated);
 
-  // Sincronizar en base de datos PostgreSQL de Cobro Fácil
+  // Sincronizar en base de datos PostgreSQL de Cobro Fácil con ID de chofer y usuario
   try {
     await fetch("/api/orders", {
       method: "PATCH",
@@ -254,7 +294,8 @@ export async function assignOrderToDriver(
         id: orderId,
         status: "Assigned",
         driverId,
-        driverName: "Lucas Motomensajero",
+        driverUserId,
+        driverName,
       }),
     });
   } catch (err) {

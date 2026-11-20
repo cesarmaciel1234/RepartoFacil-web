@@ -44,8 +44,9 @@ export interface DriverOrder {
 }
 
 export interface DriverProfile {
-  id: string;
+  id: string; // ID único del perfil repartidor (rep_xxxx)
   uid: string;
+  userId?: string; // ID único de la cuenta de usuario (usr_rep_xxxx)
   firstName: string;
   role: "Driver";
   vehicleType?: "Motorcycle" | "Bicycle" | "Car";

@@ -15,6 +15,10 @@ function mapDbRowToOrder(row: any) {
   return {
     id: row.id,
     ticketId: row.ticket_id || null,
+    clientId: row.cliente_id || null,
+    clientUserId: row.cliente_usuario_id || null,
+    empresaId: row.empresa_id || 1,
+    empresaSlug: row.empresa_slug || "maciel",
     clientName: row.cliente_nombre || "Cliente",
     customerName: row.cliente_nombre || "Cliente",
     customerPhone: row.cliente_telefono || "+54 9 341 555-1234",
@@ -24,6 +28,7 @@ function mapDbRowToOrder(row: any) {
     status: row.estado || "Pending",
     driverId: row.repartidor_id || null,
     driverName: row.repartidor_nombre || null,
+    driverUserId: row.repartidor_usuario_id || null,
     items,
     subtotal: Number(row.subtotal) || 0,
     deliveryFee: Number(row.costo_envio) || 0,
@@ -42,19 +47,66 @@ function mapDbRowToOrder(row: any) {
   };
 }
 
-// GET /api/orders: Obtener todos los pedidos reales de PostgreSQL crm-libro-local
+// GET /api/orders: Obtener pedidos con filtrado estricto por cliente, empresa o chofer
 export async function GET(request: NextRequest) {
   try {
     // Custodio Intermediario del Sistema: audita desconexiones e inmovilidad de choferes asignados
     await ejecutarAuditoriaCustodio().catch(() => {});
 
-    const statusParam = request.nextUrl.searchParams.get("status");
-    let query = "SELECT * FROM repartofacil_pedidos";
+    const searchParams = request.nextUrl.searchParams;
+    const statusParam = searchParams.get("status");
+    const clienteId = searchParams.get("cliente_id") || searchParams.get("clientId");
+    const empresaIdParam = searchParams.get("empresa_id") || searchParams.get("companyId");
+    const driverIdParam = searchParams.get("repartidor_id") || searchParams.get("driverId");
+    const viewParam = searchParams.get("view"); // 'driver_active' | 'driver_available' | 'driver_history'
+
+    let query = "SELECT * FROM repartofacil_pedidos WHERE 1=1";
     const values: any[] = [];
-    if (statusParam) {
-      query += " WHERE estado = $1";
-      values.push(statusParam);
+    let idx = 1;
+
+    // 1. Aislamiento por Cliente: cada comprador ve ÚNICAMENTE sus pedidos
+    if (clienteId) {
+      query += ` AND (cliente_id = $${idx} OR cliente_usuario_id = $${idx})`;
+      values.push(clienteId);
+      idx++;
     }
+
+    // 2. Aislamiento por Empresa: cada comercio ve ÚNICAMENTE sus ventas
+    if (empresaIdParam) {
+      if (empresaIdParam === "2" || empresaIdParam === "empresa-prueba" || empresaIdParam === "prueba") {
+        query += ` AND (empresa_id = 2 OR empresa_slug = 'prueba')`;
+      } else if (empresaIdParam === "1" || empresaIdParam === "frigorifico-maciel" || empresaIdParam === "maciel") {
+        query += ` AND (empresa_id = 1 OR empresa_slug = 'maciel' OR empresa_id IS NULL)`;
+      } else {
+        query += ` AND (empresa_id = $${idx} OR empresa_slug = $${idx})`;
+        values.push(isNaN(Number(empresaIdParam)) ? empresaIdParam : Number(empresaIdParam));
+        idx++;
+      }
+    }
+
+    // 3. Aislamiento por Repartidor
+    if (viewParam === "driver_active" && driverIdParam) {
+      query += ` AND repartidor_id = $${idx} AND estado IN ('Assigned', 'Picked Up', 'In Transit', 'accepted')`;
+      values.push(driverIdParam);
+      idx++;
+    } else if (viewParam === "driver_history" && driverIdParam) {
+      query += ` AND repartidor_id = $${idx} AND estado = 'Delivered'`;
+      values.push(driverIdParam);
+      idx++;
+    } else if (viewParam === "driver_available") {
+      query += ` AND (repartidor_id IS NULL OR repartidor_id = '') AND estado IN ('ready', 'confirmed', 'Pending', 'pending')`;
+    } else if (driverIdParam && !viewParam) {
+      query += ` AND repartidor_id = $${idx}`;
+      values.push(driverIdParam);
+      idx++;
+    }
+
+    if (statusParam) {
+      query += ` AND estado = $${idx}`;
+      values.push(statusParam);
+      idx++;
+    }
+
     query += " ORDER BY created_at DESC LIMIT 50";
 
     const rows = await queryDb(query, values);
@@ -69,21 +121,32 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST /api/orders: Crear nuevo pedido real desde la tienda
+// POST /api/orders: Crear nuevo pedido real desde la tienda con asignación de IDs únicos de cliente y empresa
 export async function POST(request: NextRequest) {
   try {
     const data = await request.json();
     const orderId = data.id || `RF-${Math.floor(1000 + Math.random() * 9000)}`;
 
+    const clienteId = data.clientId || data.cliente_id || `cli_${Math.random().toString(36).substring(2, 9)}`;
+    const clienteUsuarioId = data.clientUserId || data.cliente_usuario_id || `usr_${clienteId}`;
+
+    const isPrueba = data.companyId === "empresa-prueba" || data.empresaSlug === "prueba" || data.empresaId === 2;
+    const empresaId = isPrueba ? 2 : (data.empresaId || 1);
+    const empresaSlug = isPrueba ? "prueba" : (data.empresaSlug || "maciel");
+
     const insertQuery = `
       INSERT INTO repartofacil_pedidos (
-        id, cliente_nombre, cliente_telefono, direccion_entrega, tipo_entrega,
-        metodo_pago, estado, repartidor_id, repartidor_nombre, items,
+        id, cliente_id, cliente_usuario_id, cliente_nombre, cliente_telefono, direccion_entrega, tipo_entrega,
+        metodo_pago, estado, empresa_id, empresa_slug, repartidor_id, repartidor_nombre, items,
         subtotal, costo_envio, total, ganancia_repartidor, distancia_km,
         minutos_estimados, sucursal_origen, notas, ticket_id, created_at, updated_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, NOW(), NOW())
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, NOW(), NOW())
       ON CONFLICT (id) DO UPDATE SET
         estado = EXCLUDED.estado,
+        cliente_id = COALESCE(EXCLUDED.cliente_id, repartofacil_pedidos.cliente_id),
+        cliente_usuario_id = COALESCE(EXCLUDED.cliente_usuario_id, repartofacil_pedidos.cliente_usuario_id),
+        empresa_id = COALESCE(EXCLUDED.empresa_id, repartofacil_pedidos.empresa_id),
+        empresa_slug = COALESCE(EXCLUDED.empresa_slug, repartofacil_pedidos.empresa_slug),
         repartidor_id = EXCLUDED.repartidor_id,
         repartidor_nombre = EXCLUDED.repartidor_nombre,
         ticket_id = COALESCE(EXCLUDED.ticket_id, repartofacil_pedidos.ticket_id),
@@ -93,12 +156,16 @@ export async function POST(request: NextRequest) {
 
     const values = [
       orderId,
+      clienteId,
+      clienteUsuarioId,
       data.customerName || data.clientName || "Cliente Web",
       data.customerPhone || "+54 9 341 555-1234",
       data.deliveryAddress || "Tucumán 2130, Rosario",
       data.deliveryType || "delivery",
       "Web",
       data.status || "pending_store",
+      empresaId,
+      empresaSlug,
       data.driverId || null,
       data.driverName || null,
       JSON.stringify(data.items || []),
@@ -108,7 +175,7 @@ export async function POST(request: NextRequest) {
       data.driverEarnings || 2450,
       data.distanceKm || 1.8,
       data.estimatedMinutes || 20,
-      data.branch || "Frigorífico Maciel - Central (Tucumán 2130)",
+      data.branch || (isPrueba ? "Cobro Fácil - Empresa Prueba" : "Frigorífico Maciel - Central"),
       data.notes || "",
       data.ticketId || data.ticket_id || null,
     ];
@@ -129,7 +196,7 @@ export async function POST(request: NextRequest) {
 export async function PATCH(request: NextRequest) {
   try {
     const data = await request.json();
-    const { id, status, driverId, driverName, ticketId, ticket_id } = data;
+    const { id, status, driverId, driverUserId, driverName, ticketId, ticket_id } = data;
 
     if (!id) {
       return NextResponse.json({ error: "id de pedido requerido" }, { status: 400 });
@@ -149,6 +216,10 @@ export async function PATCH(request: NextRequest) {
     if (driverId !== undefined) {
       updateQuery += `, repartidor_id = $${idx++}`;
       values.push(driverId);
+    }
+    if (driverUserId !== undefined) {
+      updateQuery += `, repartidor_usuario_id = $${idx++}`;
+      values.push(driverUserId);
     }
     if (driverName !== undefined) {
       updateQuery += `, repartidor_nombre = $${idx++}`;
@@ -172,10 +243,10 @@ export async function PATCH(request: NextRequest) {
     if (status === "Assigned") {
       const msgId = `msg-driver-${Date.now()}`;
       const horaStr = new Date().toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" });
-      const txt = `Repartidor ${driverName || "Lucas Motomensajero"}: ¡Hola! He tomado tu pedido #${id} y voy hacia Frigorífico Maciel a retirarlo 🛵💨`;
+      const txt = `Repartidor ${driverName || "Lucas Motomensajero"}: ¡Hola! He tomado tu pedido #${id} y voy hacia la sucursal a retirarlo 🛵💨`;
       await queryDb(
-        "INSERT INTO repartofacil_chat_mensajes (id, order_id, author_role, author_name, content, timestamp_str, created_at) VALUES ($1, $2, $3, $4, $5, $6, NOW())",
-        [msgId, id, "driver", driverName || "Lucas Motomensajero", txt, horaStr]
+        "INSERT INTO repartofacil_chat_mensajes (id, order_id, author_role, author_name, content, timestamp_str, created_at, author_id) VALUES ($1, $2, $3, $4, $5, $6, NOW(), $7)",
+        [msgId, id, "driver", driverName || "Lucas Motomensajero", txt, horaStr, driverId || null]
       ).catch(() => {});
     } else if (status === "Delivered") {
       const msgId = `msg-driver-${Date.now()}`;

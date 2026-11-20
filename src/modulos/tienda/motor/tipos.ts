@@ -13,6 +13,9 @@ export interface CheckoutFormData {
   selectedBranch: string;
   paymentMethod: "efectivo" | "transferencia" | "tarjeta";
   orderNotes: string;
+  companyId?: string;
+  companySlug?: string;
+  empresaId?: number;
 }
 
 export interface OrderItem {
@@ -40,4 +43,9 @@ export interface OrderData {
   updatedAt: string;
   source: string;
   driverId?: string;
+  driverUserId?: string;
+  clientId?: string;
+  clientUserId?: string;
+  empresaId?: number;
+  empresaSlug?: string;
 }
