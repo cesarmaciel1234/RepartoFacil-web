@@ -35,7 +35,12 @@ export function DriverTopBar({
     : "R";
 
   return (
-    <header className="absolute top-0 left-0 right-0 z-40 p-3 sm:p-4 pt-[max(0.75rem,env(safe-area-inset-top))] pointer-events-none flex items-center justify-between gap-2">
+    <header
+      style={{
+        paddingTop: "max(0.75rem, calc(env(safe-area-inset-top, 0px) + 0.5rem))",
+      }}
+      className="absolute top-0 left-0 right-0 z-40 p-3 sm:p-4 pointer-events-none flex items-center justify-between gap-2"
+    >
       {/* Botón Avatar / Menú Lateral Flotante (Acceso al Perfil y Cartera en el menú) */}
       <button
         type="button"
