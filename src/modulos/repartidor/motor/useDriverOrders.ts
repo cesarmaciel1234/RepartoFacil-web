@@ -84,17 +84,35 @@ export function useDriverOrders(currentDriverId?: string | null) {
     };
   }, []);
 
-  // Pedidos Disponibles en el radar: SOLO aquellos con estado 'Pending'
+  // Pedidos Disponibles en el radar del repartidor:
+  // SOLO aquellos que fueron ACEPTADOS por el comercio en Cobro Fácil (Confirmed / Ready / Accepted)
+  // Los pedidos 'pending_store' (esperando al comercio) o 'rejected'/'cancelled' NO salen al chofer.
   const availableOrders = useMemo(() => {
-    return localOrders.filter((o) => o.status === "Pending");
+    return localOrders.filter(
+      (o) =>
+        (o.status === "Confirmed" ||
+          (o.status as any) === "confirmed" ||
+          o.status === "Ready" ||
+          (o.status as any) === "ready" ||
+          (o.status as any) === "accepted") &&
+        !o.driverId
+    );
   }, [localOrders]);
 
-  // Mis pedidos activos en ruta: SOLO aquellos con estado 'Assigned', 'Picked Up' o 'In Transit'
-  // IMPORTANTE: Pedidos 'Delivered' o 'Cancelled' NO aparecen aquí.
+  // Mis pedidos activos en ruta: SOLO aquellos con estado 'Assigned', 'Picked Up', 'In Transit' o 'Ready'
+  // IMPORTANTE: Pedidos 'Delivered' (entregados) o 'Cancelled' se borran de la ruta y del chat del repartidor.
   const myActiveOrders = useMemo(() => {
     return localOrders.filter(
       (o) =>
-        (o.status === "Assigned" || o.status === "Picked Up" || o.status === "In Transit") &&
+        (o.status === "Assigned" ||
+          o.status === "Picked Up" ||
+          o.status === "In Transit" ||
+          o.status === "Ready" ||
+          (o.status as any) === "ready") &&
+        o.status !== "Delivered" &&
+        (o.status as any) !== "delivered" &&
+        o.status !== "Cancelled" &&
+        o.status !== "Rejected" &&
         (!currentDriverId || !o.driverId || o.driverId === currentDriverId)
     );
   }, [localOrders, currentDriverId]);

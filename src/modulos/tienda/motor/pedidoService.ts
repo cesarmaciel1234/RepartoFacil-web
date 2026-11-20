@@ -85,7 +85,7 @@ export async function createOrder(
     subtotal,
     deliveryFee,
     total,
-    status: "Pending",
+    status: "pending_store",
 
     // Métricas para el repartidor (Uber / PedidosYa)
     distanceToStoreKm: 0.8,

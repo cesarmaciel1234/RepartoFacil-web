@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { DriverOrder } from "../motor/tipos";
 import { loadClientProfile, loadDriverProfile } from "../motor/driverService";
+import { ModalTicketDigital } from "@/components/ModalTicketDigital";
 
 export type ChatAuthorRole = "driver" | "client" | "company";
 
@@ -95,6 +96,7 @@ export function OrderChatSheet({
   const [messages, setMessages] = useState<OrderChatMessage[]>(DEFAULT_MESSAGES);
   const [inputText, setInputText] = useState("");
   const [isSending, setIsSending] = useState(false);
+  const [isTicketModalOpen, setIsTicketModalOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll al final del chat
@@ -257,9 +259,21 @@ export function OrderChatSheet({
                 </SheetTitle>
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
               </div>
-              <p className="text-[10px] text-slate-400 font-medium">
-                Pedido #{orderId} · Canal directo auditado
-              </p>
+              <div className="flex items-center gap-2 mt-0.5">
+                <span className="text-[10px] text-slate-400 font-medium">
+                  Pedido #{orderId}
+                </span>
+                {(activeOrder?.ticketId || (activeOrder as any)?.ticket_id) && (
+                  <button
+                    type="button"
+                    onClick={() => setIsTicketModalOpen(true)}
+                    className="text-[9.5px] font-bold text-blue-400 hover:text-blue-300 bg-blue-500/10 border border-blue-500/30 px-1.5 py-0.2 rounded-md flex items-center gap-1 transition-all"
+                    title="Ver Ticket Digital Cobro Fácil"
+                  >
+                    🧾 Ticket #{activeOrder.ticketId || (activeOrder as any).ticket_id} ↗
+                  </button>
+                )}
+              </div>
             </div>
           </div>
           <Badge className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[9px] font-black py-0.5">
@@ -391,6 +405,13 @@ export function OrderChatSheet({
             <Send className="w-4 h-4" />
           </Button>
         </form>
+
+        {/* Modal Ticket Digital Cobro Fácil */}
+        <ModalTicketDigital
+          isOpen={isTicketModalOpen}
+          onOpenChange={setIsTicketModalOpen}
+          order={activeOrder}
+        />
       </SheetContent>
     </Sheet>
   );

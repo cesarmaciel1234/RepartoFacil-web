@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import {
   Sheet,
   SheetContent,
@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ModalTicketDigital } from "@/components/ModalTicketDigital";
 import {
   Truck,
   Store,
@@ -36,6 +37,9 @@ export function CentroPedidosClienteSheet({
   orders = [],
   onSelectOrderChat,
 }: CentroPedidosClienteSheetProps) {
+  const [selectedTicketOrder, setSelectedTicketOrder] = useState<any | null>(null);
+  const [isTicketModalOpen, setIsTicketModalOpen] = useState(false);
+
   const formatMoney = (val: number) => "$" + (val || 0).toLocaleString("es-AR");
 
   // Separar pedidos activos (en curso) de los ya entregados
@@ -116,9 +120,24 @@ export function CentroPedidosClienteSheet({
                           <Store className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
                           <span className="truncate">{storeName}</span>
                         </div>
-                        <span className="text-[11px] font-mono font-bold text-emerald-400 block mt-0.5">
-                          #{order.id}
-                        </span>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span className="text-[11px] font-mono font-bold text-emerald-400">
+                            #{order.id}
+                          </span>
+                          {(order.ticketId || order.ticket_id) && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelectedTicketOrder(order);
+                                setIsTicketModalOpen(true);
+                              }}
+                              className="text-[10px] font-bold text-blue-400 hover:text-blue-300 bg-blue-500/10 border border-blue-500/30 px-1.5 py-0.5 rounded-lg flex items-center gap-1 transition-all"
+                              title="Ver Ticket Digital Cobro Fácil"
+                            >
+                              🧾 Ticket #{order.ticketId || order.ticket_id} ↗
+                            </button>
+                          )}
+                        </div>
                       </div>
 
                       <Badge
@@ -199,6 +218,18 @@ export function CentroPedidosClienteSheet({
                           · {o.branch || "Sucursal Central"}
                         </span>
                       </div>
+                      {(o.ticketId || o.ticket_id) && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedTicketOrder(o);
+                            setIsTicketModalOpen(true);
+                          }}
+                          className="mt-1 text-[9.5px] font-bold text-blue-400 hover:text-blue-300 bg-blue-500/10 border border-blue-500/20 px-1.5 py-0.2 rounded-md flex items-center gap-1 transition-all"
+                        >
+                          🧾 Ticket #{o.ticketId || o.ticket_id} ↗
+                        </button>
+                      )}
                     </div>
 
                     <button
@@ -215,6 +246,13 @@ export function CentroPedidosClienteSheet({
             </div>
           )}
         </div>
+
+        {/* Modal Ticket Digital Idéntico a Cobro Fácil */}
+        <ModalTicketDigital
+          isOpen={isTicketModalOpen}
+          onOpenChange={setIsTicketModalOpen}
+          order={selectedTicketOrder}
+        />
       </SheetContent>
     </Sheet>
   );

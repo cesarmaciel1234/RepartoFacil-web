@@ -13,6 +13,7 @@ function mapDbRowToOrder(row: any) {
 
   return {
     id: row.id,
+    ticketId: row.ticket_id || null,
     clientName: row.cliente_nombre || "Cliente",
     customerName: row.cliente_nombre || "Cliente",
     customerPhone: row.cliente_telefono || "+54 9 341 555-1234",
@@ -75,12 +76,13 @@ export async function POST(request: NextRequest) {
         id, cliente_nombre, cliente_telefono, direccion_entrega, tipo_entrega,
         metodo_pago, estado, repartidor_id, repartidor_nombre, items,
         subtotal, costo_envio, total, ganancia_repartidor, distancia_km,
-        minutos_estimados, sucursal_origen, notas, created_at, updated_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, NOW(), NOW())
+        minutos_estimados, sucursal_origen, notas, ticket_id, created_at, updated_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, NOW(), NOW())
       ON CONFLICT (id) DO UPDATE SET
         estado = EXCLUDED.estado,
         repartidor_id = EXCLUDED.repartidor_id,
         repartidor_nombre = EXCLUDED.repartidor_nombre,
+        ticket_id = COALESCE(EXCLUDED.ticket_id, repartofacil_pedidos.ticket_id),
         updated_at = NOW()
       RETURNING *;
     `;
@@ -92,7 +94,7 @@ export async function POST(request: NextRequest) {
       data.deliveryAddress || "Tucumán 2130, Rosario",
       data.deliveryType || "delivery",
       data.paymentMethod || "cash",
-      data.status || "Pending",
+      data.status || "pending_store",
       data.driverId || null,
       data.driverName || null,
       JSON.stringify(data.items || []),
@@ -104,6 +106,7 @@ export async function POST(request: NextRequest) {
       data.estimatedMinutes || 20,
       data.branch || "Frigorífico Maciel - Central (Tucumán 2130)",
       data.notes || "",
+      data.ticketId || data.ticket_id || null,
     ];
 
     const result = await queryDb(insertQuery, values);
@@ -122,7 +125,7 @@ export async function POST(request: NextRequest) {
 export async function PATCH(request: NextRequest) {
   try {
     const data = await request.json();
-    const { id, status, driverId, driverName } = data;
+    const { id, status, driverId, driverName, ticketId, ticket_id } = data;
 
     if (!id) {
       return NextResponse.json({ error: "id de pedido requerido" }, { status: 400 });
@@ -144,6 +147,11 @@ export async function PATCH(request: NextRequest) {
       updateQuery += `, repartidor_nombre = $${idx++}`;
       values.push(driverName);
     }
+    const finalTicket = ticketId || ticket_id;
+    if (finalTicket !== undefined) {
+      updateQuery += `, ticket_id = $${idx++}`;
+      values.push(finalTicket);
+    }
 
     updateQuery += ` WHERE id = $${idx} RETURNING *;`;
     values.push(id);
@@ -151,6 +159,25 @@ export async function PATCH(request: NextRequest) {
     const rows = await queryDb(updateQuery, values);
     if (rows.length === 0) {
       return NextResponse.json({ error: "Pedido no encontrado" }, { status: 404 });
+    }
+
+    // Si el chofer acepta la orden o la entrega, registrar el evento en el chat tripartito
+    if (status === "Assigned") {
+      const msgId = `msg-driver-${Date.now()}`;
+      const horaStr = new Date().toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" });
+      const txt = `Repartidor ${driverName || "Lucas Motomensajero"}: ¡Hola! He tomado tu pedido #${id} y voy hacia Frigorífico Maciel a retirarlo 🛵💨`;
+      await queryDb(
+        "INSERT INTO repartofacil_chat_mensajes (id, order_id, author_role, author_name, content, timestamp_str, created_at) VALUES ($1, $2, $3, $4, $5, $6, NOW())",
+        [msgId, id, "driver", driverName || "Lucas Motomensajero", txt, horaStr]
+      ).catch(() => {});
+    } else if (status === "Delivered") {
+      const msgId = `msg-driver-${Date.now()}`;
+      const horaStr = new Date().toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" });
+      const txt = `Repartidor ${driverName || "Lucas Motomensajero"}: Pedido #${id} entregado con éxito en destino. ¡Muchas gracias por tu compra! 📦✅`;
+      await queryDb(
+        "INSERT INTO repartofacil_chat_mensajes (id, order_id, author_role, author_name, content, timestamp_str, created_at) VALUES ($1, $2, $3, $4, $5, $6, NOW())",
+        [msgId, id, "driver", driverName || "Lucas Motomensajero", txt, horaStr]
+      ).catch(() => {});
     }
 
     const updated = mapDbRowToOrder(rows[0]);
