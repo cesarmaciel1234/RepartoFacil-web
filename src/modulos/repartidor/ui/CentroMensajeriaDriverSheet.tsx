@@ -75,7 +75,7 @@ export function CentroMensajeriaDriverSheet({
                   ? "Tú"
                   : latest.authorRole === "client"
                   ? "Cliente"
-                  : "Comercio";
+                  : latest.authorName || "Frigorífico Maciel";
               lastTime = latest.timestamp || lastTime;
               if (latest.id && latest.id.startsWith("msg-")) {
                 const parsedId = Number(latest.id.replace("msg-", ""));
@@ -100,8 +100,35 @@ export function CentroMensajeriaDriverSheet({
       setChatSummaries(summaries);
     };
 
+    const syncDbChats = async () => {
+      let changed = false;
+      await Promise.all(
+        orders.map(async (order) => {
+          try {
+            const resp = await fetch(`/api/chat/${order.id}`);
+            const data = await resp.json();
+            if (data && data.success && Array.isArray(data.messages) && data.messages.length > 0) {
+              const currentRaw = localStorage.getItem(`rf_chat_${order.id}`);
+              const newRaw = JSON.stringify(data.messages);
+              if (currentRaw !== newRaw) {
+                localStorage.setItem(`rf_chat_${order.id}`, newRaw);
+                changed = true;
+              }
+            }
+          } catch {}
+        })
+      );
+      if (changed) {
+        loadSummaries();
+      }
+    };
+
     loadSummaries();
-    const interval = setInterval(loadSummaries, 3000);
+    syncDbChats();
+    const interval = setInterval(() => {
+      loadSummaries();
+      syncDbChats();
+    }, 3000);
     window.addEventListener("storage", loadSummaries);
     return () => {
       clearInterval(interval);

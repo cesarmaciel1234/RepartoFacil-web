@@ -79,9 +79,15 @@ export function TabMiRuta({
               <div>
                 <div className="flex items-center gap-2">
                   <span className="font-black text-sm text-white">#{order.id}</span>
-                  <Badge className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[10px] font-black px-2 py-0.5">
-                    EN CURSO
-                  </Badge>
+                  {order.status === "Ready" || (order.status as any) === "ready" || (order.status as any) === "Embalado" ? (
+                    <Badge className="bg-emerald-500 text-slate-950 font-black text-[10px] px-2 py-0.5 animate-pulse shadow-lg shadow-emerald-500/40">
+                      📦 EMBALADO / LISTO
+                    </Badge>
+                  ) : (
+                    <Badge className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[10px] font-black px-2 py-0.5">
+                      EN CURSO
+                    </Badge>
+                  )}
                 </div>
                 <span className="text-xs font-bold text-slate-300 block mt-0.5">{client}</span>
               </div>
