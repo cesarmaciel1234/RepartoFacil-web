@@ -63,13 +63,24 @@ export function useDriverOrders(currentDriverId?: string | null) {
       if (e.detail) setWallet(e.detail);
       else setWallet(loadDriverWallet());
     };
+    const handleStorageEvent = (e: StorageEvent) => {
+      if (e.key === "rf_orders_history" || !e.key) {
+        setLocalOrders(loadLocalOrders());
+        fetchCloudOrders();
+      }
+      if (e.key === "rf_driver_wallet" || !e.key) {
+        setWallet(loadDriverWallet());
+      }
+    };
 
     window.addEventListener("rf-orders-updated", handleOrdersUpdated);
     window.addEventListener("rf-wallet-updated", handleWalletUpdated);
+    window.addEventListener("storage", handleStorageEvent);
     return () => {
       clearInterval(pollInterval);
       window.removeEventListener("rf-orders-updated", handleOrdersUpdated);
       window.removeEventListener("rf-wallet-updated", handleWalletUpdated);
+      window.removeEventListener("storage", handleStorageEvent);
     };
   }, []);
 

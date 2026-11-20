@@ -120,11 +120,14 @@ export async function createOrder(
 
   // 3. Persistencia en base de datos PostgreSQL de Cobro Fácil (crm-libro-local)
   try {
-    fetch("/api/orders", {
+    const res = await fetch("/api/orders", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(newOrder),
-    }).catch((err) => console.warn("Sync cloud order non-blocking error:", err));
+    });
+    if (!res.ok) {
+      console.warn("Aviso guardando orden en PostgreSQL:", res.status);
+    }
   } catch (err) {
     console.warn("Error enviando pedido a /api/orders:", err);
   }
