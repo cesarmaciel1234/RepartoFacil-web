@@ -5,8 +5,8 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   return NextResponse.json({
     app: "Reparto Fácil",
-    version: "5.0",
-    release: "v5.0-safe-area-multitienda",
+    version: "5.4",
+    release: "v5.4-compact-isolation",
     status: "online",
     timestamp: new Date().toISOString(),
     features: [
