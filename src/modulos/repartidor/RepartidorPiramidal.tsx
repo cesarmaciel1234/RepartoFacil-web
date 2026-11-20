@@ -22,6 +22,7 @@ import { ModalDriverAuth } from "./ui/ModalDriverAuth";
 import { ModalCarteraRepartidor } from "./ui/ModalCarteraRepartidor";
 import { DriverCopilotSheet } from "./ui/DriverCopilotSheet";
 import { OrderChatSheet } from "./ui/OrderChatSheet";
+import { CentroMensajeriaDriverSheet } from "./ui/CentroMensajeriaDriverSheet";
 import { SidebarGeneral } from "@/components/SidebarGeneral";
 import { ModalMercados } from "@/components/ModalMercados";
 import { Layers, Truck, ShieldAlert, Navigation, Target } from "lucide-react";
@@ -39,6 +40,8 @@ export function RepartidorPiramidal({ onSwitchToStore }: RepartidorPiramidalProp
   const [isMarketsOpen, setIsMarketsOpen] = useState(false);
   const [isCopilotOpen, setIsCopilotOpen] = useState(false);
   const [isOrderChatOpen, setIsOrderChatOpen] = useState(false);
+  const [isChatInboxOpen, setIsChatInboxOpen] = useState(false);
+  const [selectedDriverChatOrder, setSelectedDriverChatOrder] = useState<DriverOrder | null>(null);
   const [isWalletModalOpen, setIsWalletModalOpen] = useState(false);
   const [isNavigating, setIsNavigating] = useState(false);
   const [mapCenterTrigger, setMapCenterTrigger] = useState(0);
@@ -148,7 +151,16 @@ export function RepartidorPiramidal({ onSwitchToStore }: RepartidorPiramidalProp
         activeOrder={myActiveOrders[0] || null}
         onOpenSidebar={() => setIsSidebarOpen(true)}
         onOpenCopilot={() => setIsCopilotOpen(true)}
-        onOpenOrderChat={() => setIsOrderChatOpen(true)}
+        onOpenOrderChat={() => {
+          if (myActiveOrders.length > 1) {
+            setIsChatInboxOpen(true);
+          } else if (myActiveOrders.length === 1) {
+            setSelectedDriverChatOrder(myActiveOrders[0]);
+            setIsOrderChatOpen(true);
+          } else {
+            setIsChatInboxOpen(true);
+          }
+        }}
         onFocusActiveRoute={handleFocusActiveRoute}
         onOpenWallet={() => setIsWalletModalOpen(true)}
         onLogout={() => {
@@ -281,6 +293,10 @@ export function RepartidorPiramidal({ onSwitchToStore }: RepartidorPiramidalProp
               <TabMiRuta
                 activeOrders={myActiveOrders}
                 onCompleteDelivery={handleCompleteDelivery}
+                onOpenOrderChat={(order) => {
+                  setSelectedDriverChatOrder(order);
+                  setIsOrderChatOpen(true);
+                }}
               />
             )}
 
@@ -325,15 +341,36 @@ export function RepartidorPiramidal({ onSwitchToStore }: RepartidorPiramidalProp
         activeOrdersCount={myActiveOrders.length}
       />
 
+      {/* ─── 6a. Centro de Mensajería WhatsApp-Style (Inbox de Pedidos) ─── */}
+      <CentroMensajeriaDriverSheet
+        isOpen={isChatInboxOpen}
+        onOpenChange={setIsChatInboxOpen}
+        orders={myActiveOrders}
+        onSelectOrderChat={(order) => {
+          setSelectedDriverChatOrder(order);
+          setIsChatInboxOpen(false);
+          setIsOrderChatOpen(true);
+        }}
+      />
+
       {/* ─── 6b. Chat Tripartito de Entrega (Repartidor · Cliente · Empresa CobroFácil) ─── */}
       <OrderChatSheet
         isOpen={isOrderChatOpen}
         onOpenChange={setIsOrderChatOpen}
-        activeOrder={myActiveOrders[0] || null}
+        activeOrder={selectedDriverChatOrder || myActiveOrders[0] || null}
         viewerRole="driver"
         driverName={driverProfile?.firstName || "Lucas Motomensajero"}
-        clientName={myActiveOrders[0]?.clientName || myActiveOrders[0]?.customerName}
-        deliveryAddress={myActiveOrders[0]?.deliveryAddress}
+        clientName={
+          (selectedDriverChatOrder || myActiveOrders[0])?.clientName ||
+          (selectedDriverChatOrder || myActiveOrders[0])?.customerName
+        }
+        deliveryAddress={(selectedDriverChatOrder || myActiveOrders[0])?.deliveryAddress}
+        onBackToOrdersHub={() => {
+          setIsOrderChatOpen(false);
+          if (myActiveOrders.length > 1) {
+            setIsChatInboxOpen(true);
+          }
+        }}
       />
 
       {/* ─── 7. Modal Cartera / Billetera Repartidor ─── */}

@@ -129,26 +129,38 @@ export function TabMiRuta({
               </div>
             </div>
 
-            {/* Acciones de Navegación y Contacto Directo con el Cliente */}
-            <div className="grid grid-cols-2 gap-2">
+            {/* Acciones de Navegación, Llamada y Chat de Pedido */}
+            <div className="grid grid-cols-3 gap-1.5">
               <a
                 href={mapsUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="h-10 rounded-xl bg-slate-800 hover:bg-slate-750 text-white font-bold text-xs flex items-center justify-center gap-1.5 border border-slate-700 transition-all shadow-md group"
+                className="h-10 rounded-xl bg-slate-800 hover:bg-slate-750 text-white font-bold text-[11px] flex items-center justify-center gap-1 border border-slate-700 transition-all shadow-md group px-1"
+                title="Abrir mapa en Google Maps"
               >
-                <Compass className="w-4 h-4 text-blue-400 group-hover:rotate-45 transition-transform" />
-                <span>Navegar GPS</span>
-                <ExternalLink className="w-3 h-3 text-slate-400" />
+                <Compass className="w-3.5 h-3.5 text-blue-400 group-hover:rotate-45 transition-transform" />
+                <span>GPS</span>
+                <ExternalLink className="w-2.5 h-2.5 text-slate-400" />
               </a>
 
               <a
                 href={`tel:${phone}`}
-                className="h-10 rounded-xl bg-slate-800 hover:bg-slate-750 text-slate-200 hover:text-white font-bold text-xs flex items-center justify-center gap-1.5 border border-slate-700 transition-all shadow-md"
+                className="h-10 rounded-xl bg-slate-800 hover:bg-slate-750 text-slate-200 hover:text-white font-bold text-[11px] flex items-center justify-center gap-1 border border-slate-700 transition-all shadow-md px-1"
+                title="Llamar al cliente"
               >
                 <Phone className="w-3.5 h-3.5 text-emerald-400" />
-                <span>Llamar Cliente</span>
+                <span>Llamar</span>
               </a>
+
+              <button
+                type="button"
+                onClick={() => onOpenOrderChat?.(order)}
+                className="h-10 rounded-xl bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 font-bold text-[11px] flex items-center justify-center gap-1 border border-emerald-600/50 transition-all shadow-md active:scale-95 px-1"
+                title="Abrir chat privado de esta entrega"
+              >
+                <MessageSquare className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Chat</span>
+              </button>
             </div>
 
             {/* Distancia y Tiempo Real */}
