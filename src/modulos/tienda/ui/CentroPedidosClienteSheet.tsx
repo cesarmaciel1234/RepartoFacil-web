@@ -77,6 +77,7 @@ export function CentroPedidosClienteSheet({
       o.status !== "delivered" &&
       o.status !== "Cancelled" &&
       o.status !== "cancelled" &&
+      o.status !== "cancelled_by_client" &&
       o.status !== "cancelled_timeout" &&
       o.status !== "Rejected" &&
       o.status !== "rejected"
@@ -89,11 +90,40 @@ export function CentroPedidosClienteSheet({
   const cancelledOrders = orders.filter(
     (o) =>
       o.status === "cancelled_timeout" ||
+      o.status === "cancelled_by_client" ||
       o.status === "Cancelled" ||
       o.status === "cancelled" ||
       o.status === "Rejected" ||
       o.status === "rejected"
   );
+
+  const handleCancelByClient = async (orderId: string) => {
+    setRetryingId(orderId);
+    try {
+      await fetch("/api/orders", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: orderId, status: "cancelled_by_client" }),
+      });
+      try {
+        const raw = localStorage.getItem("rf_orders_history");
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed)) {
+            const updated = parsed.map((o) =>
+              o.id === orderId ? { ...o, status: "cancelled_by_client" } : o
+            );
+            localStorage.setItem("rf_orders_history", JSON.stringify(updated));
+          }
+        }
+      } catch {}
+      window.dispatchEvent(new CustomEvent("rf-orders-updated"));
+    } catch (e) {
+      console.error("Error al cancelar pedido:", e);
+    } finally {
+      setRetryingId(null);
+    }
+  };
 
   const handleRetry = async (orderId: string) => {
     setRetryingId(orderId);
@@ -328,18 +358,32 @@ export function CentroPedidosClienteSheet({
                             </div>
                           </div>
 
-                          <Button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onSelectOrderChat(order);
-                            }}
-                            className="w-full h-9 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md shadow-blue-600/20"
-                          >
-                            <MessageSquare className="w-3.5 h-3.5 text-white" />
-                            <span>Abrir Chat Privado (#{order.id})</span>
-                            <ChevronRight className="w-3.5 h-3.5 text-blue-200" />
-                          </Button>
+                          <div className="flex gap-2">
+                            <Button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onSelectOrderChat(order);
+                              }}
+                              className="flex-1 h-9 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md shadow-blue-600/20"
+                            >
+                              <MessageSquare className="w-3.5 h-3.5 text-white" />
+                              <span>Abrir Chat (#{order.id})</span>
+                              <ChevronRight className="w-3.5 h-3.5 text-blue-200" />
+                            </Button>
+
+                            <Button
+                              type="button"
+                              disabled={retryingId === order.id}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleCancelByClient(order.id);
+                              }}
+                              className="h-9 px-3 rounded-xl bg-red-600/20 hover:bg-red-600/30 text-red-300 border border-red-500/40 font-bold text-[11px]"
+                            >
+                              ✕ Cancelar
+                            </Button>
+                          </div>
                         </div>
                       )}
                     </div>
@@ -349,41 +393,51 @@ export function CentroPedidosClienteSheet({
             </div>
           )}
 
-          {/* Pedidos Cancelados o Expirados por Timeout (Decisión del Cliente) */}
+          {/* Pedidos Rechazados o Cancelados (EN ROJO) */}
           {cancelledOrders.length > 0 && (
             <div className="space-y-2 pt-2 border-t border-slate-800/80">
-              <span className="text-[10px] font-bold text-amber-400 uppercase tracking-wider block flex items-center gap-1.5">
-                <AlertTriangle className="w-3 h-3 text-amber-400" />
-                Pedidos Sin Aceptar o Cancelados ({cancelledOrders.length})
+              <span className="text-[10px] font-bold text-red-400 uppercase tracking-wider block flex items-center gap-1.5">
+                <AlertTriangle className="w-3 h-3 text-red-400" />
+                Cancelados o Rechazados ({cancelledOrders.length})
               </span>
-              <div className="space-y-2.5">
+              <div className="space-y-2">
                 {cancelledOrders.map((o) => {
                   const isTimeout = o.status === "cancelled_timeout";
+                  const isRejected = o.status === "Rejected" || o.status === "rejected";
                   const storeName = o.branch || o.sucursal_origen || "Comercio Cobro Fácil";
                   return (
                     <div
                       key={o.id}
-                      className="p-3 rounded-2xl bg-slate-900/90 border border-amber-500/30 space-y-2 text-xs"
+                      className="p-3 rounded-2xl bg-red-950/35 border border-red-500/50 space-y-2 text-xs"
                     >
-                      <div className="flex items-start justify-between gap-2 border-b border-slate-800/80 pb-1.5">
+                      <div className="flex items-start justify-between gap-2 border-b border-red-500/25 pb-1.5">
                         <div className="min-w-0">
-                          <div className="font-bold text-white flex items-center gap-1.5 truncate">
-                            <Store className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                          <div className="font-bold text-red-100 flex items-center gap-1.5 truncate">
+                            <Store className="w-3.5 h-3.5 text-red-400 shrink-0" />
                             <span className="truncate">{storeName}</span>
+                            <span className="px-2 py-0.5 rounded-full bg-red-500/20 text-red-300 border border-red-500/40 text-[10px] font-mono font-bold">
+                              #{o.id}
+                            </span>
                           </div>
-                          <span className="text-[11px] font-mono text-slate-400">
-                            #{o.id} · {formatMoney(o.total)}
+                          <span className="text-[11px] font-mono text-red-300/80 line-through">
+                            {formatMoney(o.total)}
                           </span>
                         </div>
-                        <Badge className="bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[9px] font-bold py-0.5">
-                          {isTimeout ? "⏰ 1h Sin Respuesta" : "❌ Cancelado"}
+                        <Badge className="bg-red-600 text-white border border-red-500 text-[9px] font-bold py-0.5 shrink-0">
+                          {isRejected
+                            ? "✕ RECHAZADO"
+                            : isTimeout
+                            ? "⏰ CANCELADO (1H)"
+                            : "✕ CANCELADO POR CLIENTE"}
                         </Badge>
                       </div>
 
-                      <p className="text-[11px] text-slate-400 leading-snug">
-                        {isTimeout
-                          ? "El comercio no confirmó en el lapso de 1 hora. El pedido fue cancelado automáticamente para tu seguridad. Puedes retomarlo o solicitarlo a otra empresa."
-                          : "El pedido fue cancelado. Puedes reactivarlo con la empresa o pedir a otro comercio cercano."}
+                      <p className="text-[11px] text-red-200/80 leading-snug">
+                        {isRejected
+                          ? "El comercio rechazó el pedido. Podés pedir a otra empresa o consultar por chat."
+                          : isTimeout
+                          ? "El comercio no confirmó en 1 hora. Podés retomar el pedido o pedir a otra empresa."
+                          : "Cancelaste este pedido. Podés retomarlo cuando quieras o pedir a otra empresa."}
                       </p>
 
                       {/* Botones de Decisión del Cliente */}
@@ -414,7 +468,7 @@ export function CentroPedidosClienteSheet({
                       <button
                         type="button"
                         onClick={() => onSelectOrderChat(o)}
-                        className="w-full text-center text-[10px] text-blue-400 hover:text-blue-300 font-bold pt-1 block"
+                        className="w-full text-center text-[10px] text-red-300 hover:text-red-200 font-bold pt-1 block"
                       >
                         💬 Ver conversación y tickets anteriores
                       </button>
@@ -425,23 +479,28 @@ export function CentroPedidosClienteSheet({
             </div>
           )}
 
-          {/* Historial de Entregados Recientes */}
+          {/* Historial de Entregados Recientes (EN AZUL DISTINTIVO) */}
           {deliveredOrders.length > 0 && (
             <div className="space-y-2 pt-2 border-t border-slate-800/80">
-              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
-                Entregas Anteriores ({deliveredOrders.length})
+              <span className="text-[10px] font-bold text-blue-400 uppercase tracking-wider block">
+                Entregas Completadas ({deliveredOrders.length})
               </span>
               <div className="space-y-1.5">
-                {deliveredOrders.slice(0, 3).map((o) => (
+                {deliveredOrders.slice(0, 5).map((o) => (
                   <div
                     key={o.id}
-                    className="p-2.5 rounded-xl bg-slate-900/60 border border-slate-800 flex items-center justify-between text-xs"
+                    className="p-2.5 rounded-xl bg-blue-950/35 border border-blue-500/40 flex items-center justify-between text-xs"
                   >
                     <div className="min-w-0">
-                      <div className="flex items-center gap-1.5 text-slate-300 font-bold">
-                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                        <span className="font-mono text-white text-[11px]">#{o.id}</span>
-                        <span className="text-slate-400 truncate text-[11px]">
+                      <div className="flex items-center gap-1.5 text-blue-100 font-bold flex-wrap">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                        <span className="px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/40 font-mono text-[10px]">
+                          #{o.id}
+                        </span>
+                        <Badge className="bg-blue-600 text-white text-[9px] font-bold px-1.5 py-0">
+                          ✓ ENTREGADO
+                        </Badge>
+                        <span className="text-blue-200/80 truncate text-[11px]">
                           · {o.branch || "Sucursal Central"}
                         </span>
                       </div>

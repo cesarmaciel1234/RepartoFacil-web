@@ -256,6 +256,14 @@ export async function PATCH(request: NextRequest) {
         "INSERT INTO repartofacil_chat_mensajes (id, order_id, author_role, author_name, content, timestamp_str, created_at) VALUES ($1, $2, $3, $4, $5, $6, NOW())",
         [msgId, id, "driver", driverName || "Lucas Motomensajero", txt, horaStr]
       ).catch(() => {});
+    } else if (status === "cancelled_by_client" || status === "cancelled" || status === "Cancelled") {
+      const msgId = `msg-client-cancel-${Date.now()}`;
+      const horaStr = new Date().toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" });
+      const txt = `✕ El cliente canceló el pedido #${id}.`;
+      await queryDb(
+        "INSERT INTO repartofacil_chat_mensajes (id, order_id, author_role, author_name, content, timestamp_str, created_at) VALUES ($1, $2, $3, $4, $5, $6, NOW())",
+        [msgId, id, "client", rows[0]?.cliente_nombre || "Cliente", txt, horaStr]
+      ).catch(() => {});
     }
 
     const updated = mapDbRowToOrder(rows[0]);
