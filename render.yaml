@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: repartofacil-web
+    name: repartofacil
     env: node
     plan: free
     buildCommand: npm install && npm run build
