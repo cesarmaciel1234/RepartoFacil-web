@@ -18,7 +18,7 @@ import { CentroPedidosClienteSheet } from "./ui/CentroPedidosClienteSheet";
 import { OrderChatSheet } from "../repartidor/ui/OrderChatSheet";
 import { SidebarGeneral } from "@/components/SidebarGeneral";
 import { ModalMercados } from "@/components/ModalMercados";
-import { loadClientProfile } from "../repartidor/motor/driverService";
+import { loadClientProfile, getOrCreateActiveClientIdentity } from "../repartidor/motor/driverService";
 import { useFirestore } from "@/firebase";
 import { ShoppingBag, ArrowRight, ArrowLeft, Store, Star, Clock, Bike } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -58,26 +58,23 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
   const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
   const [orderConfirmed, setOrderConfirmed] = useState<OrderData | null>(null);
 
-  // Sincronizar lista de órdenes del comprador (locales + PostgreSQL con aislamiento por clientId)
+  // Sincronizar lista de órdenes del comprador (locales + PostgreSQL con aislamiento estricto por clientId)
   useEffect(() => {
     const syncOrders = async () => {
-      const client = loadClientProfile();
+      const { clientId: activeClientId } = getOrCreateActiveClientIdentity();
       let combined: any[] = [];
       try {
         const raw = localStorage.getItem("rf_orders_history");
         if (raw) {
           const parsed = JSON.parse(raw);
           if (Array.isArray(parsed)) {
-            // Filtrar en local para que el comprador sólo vea sus pedidos
-            combined = client?.id
-              ? parsed.filter((o) => !o.clientId || o.clientId === client.id || o.clientName === client.displayName)
-              : [...parsed];
+            combined = parsed.filter((o) => o.clientId === activeClientId);
           }
         }
       } catch {}
 
       try {
-        const url = client?.id ? `/api/orders?cliente_id=${encodeURIComponent(client.id)}` : "/api/orders";
+        const url = `/api/orders?cliente_id=${encodeURIComponent(activeClientId)}`;
         const res = await fetch(url, { cache: "no-store" });
         if (res.ok) {
           const cloudOrders = await res.json();

@@ -2,7 +2,7 @@ import { CartItem, CheckoutFormData, OrderData } from "./tipos";
 import { calcularTarifaEnvio, estimateAddressCoords, MARKET_CENTRAL } from "./tarifaUberService";
 import { addDocumentNonBlocking } from "@/firebase";
 import { collection } from "@/firebase/local-firestore";
-import { loadClientProfile } from "@/modulos/repartidor/motor/driverService";
+import { loadClientProfile, getOrCreateActiveClientIdentity } from "@/modulos/repartidor/motor/driverService";
 
 const ORDERS_STORAGE_KEY = "rf_orders_history";
 const CUSTOMER_STORAGE_KEY = "rf_customer_data";
@@ -66,9 +66,9 @@ export async function createOrder(
   const { coords: destCoords } = estimateAddressCoords(form.deliveryAddress || "");
 
   // Asignar IDs únicos de usuario, perfil cliente y empresa destinataria (aislamiento estricto)
-  const client = loadClientProfile();
-  const clientId = client?.id || `cli_${Math.random().toString(36).substring(2, 9)}`;
-  const clientUserId = client?.userId || `usr_${clientId}`;
+  const identity = getOrCreateActiveClientIdentity();
+  const clientId = identity.clientId;
+  const clientUserId = identity.userId;
   
   const targetCompanyId = form.companyId || cart[0]?.product?.companyId || "frigorifico-maciel";
   const isPrueba = targetCompanyId === "empresa-prueba" || form.companySlug === "prueba";

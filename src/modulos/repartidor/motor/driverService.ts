@@ -207,6 +207,34 @@ export function loadClientProfile(): ClientProfile | null {
   }
 }
 
+export function getOrCreateActiveClientIdentity(): { clientId: string; userId: string } {
+  const logged = loadClientProfile();
+  if (logged?.id) {
+    return { clientId: logged.id, userId: logged.userId || logged.uid || logged.id };
+  }
+  if (typeof window === "undefined") {
+    return { clientId: "cli_ssr", userId: "usr_cli_ssr" };
+  }
+  try {
+    const raw = localStorage.getItem("repartofacil_guest_identity");
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed?.clientId && parsed?.userId) return parsed;
+    }
+    const created = {
+      clientId: generateUniqueEntityId("cli"),
+      userId: generateUniqueEntityId("usr_cli"),
+    };
+    localStorage.setItem("repartofacil_guest_identity", JSON.stringify(created));
+    return created;
+  } catch {
+    return {
+      clientId: generateUniqueEntityId("cli"),
+      userId: generateUniqueEntityId("usr_cli"),
+    };
+  }
+}
+
 export function saveDriverProfile(profile: DriverProfile, token?: string) {
   if (typeof window === "undefined") return;
   try {
