@@ -79,12 +79,7 @@ export function ModalTicketDigital({
         .slice(0, 19)
     : "2026-11-20 09:54:56";
 
-  const pagoDisplay =
-    displayOrder?.paymentMethod === "card" || displayOrder?.paymentMethod === "tarjeta"
-      ? "Tarjeta"
-      : displayOrder?.paymentMethod === "cobrofacil"
-      ? "Cobro Fácil Cloud"
-      : "Efectivo";
+  const pagoDisplay = "Web";
 
   const items = Array.isArray(displayOrder?.items) ? displayOrder.items : [];
   const total = displayOrder?.total || 19980;
