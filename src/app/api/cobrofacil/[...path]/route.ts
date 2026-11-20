@@ -86,13 +86,48 @@ export async function GET(
           };
         });
 
+        const testProducts = [
+          {
+            id: "prueba-1",
+            name: "Corte de Prueba Vacuno",
+            category: "vacuno",
+            categoryName: "Cortes Vacunos",
+            price: 4500,
+            unit: "kg",
+            description: "Corte para pruebas de flujo y circuito en vivo de Cobro Fácil (Empresa Prueba).",
+            image: "https://images.unsplash.com/photo-1544025162-d76694265947?w=600&auto=format&fit=crop&q=80",
+            stockKg: 100,
+            badge: "Empresa Prueba",
+            isPopular: true,
+            companyId: "empresa-prueba",
+            companyName: "Cobro Fácil - Empresa Prueba",
+            source: "sandbox",
+          },
+          {
+            id: "prueba-2",
+            name: "Combo Parrillada Prueba",
+            category: "combos",
+            categoryName: "Combos & Ofertas",
+            price: 12000,
+            unit: "un",
+            description: "Combo completo de prueba para testeo de checkout y despacho.",
+            image: "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=600&auto=format&fit=crop&q=80",
+            stockKg: 50,
+            badge: "Empresa Prueba",
+            isPopular: true,
+            companyId: "empresa-prueba",
+            companyName: "Cobro Fácil - Empresa Prueba",
+            source: "sandbox",
+          },
+        ];
+
         return NextResponse.json({
           success: true,
           source: "crm-libro-local (PostgreSQL Render)",
           terminal: "MACIEL - DESKTOP-7Q2Q4VD",
           sucursal: prodRows[0].sucursal_nombre,
-          total: products.length,
-          products,
+          total: products.length + testProducts.length,
+          products: [...products, ...testProducts],
         });
       }
     } catch (dbErr: any) {

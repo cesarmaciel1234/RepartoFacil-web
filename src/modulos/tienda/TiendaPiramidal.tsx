@@ -114,7 +114,13 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         if (data && Array.isArray(data.products) && data.products.length > 0) {
-          setProducts(data.products);
+          const otherProducts = INITIAL_PRODUCTS.filter((p) => p.companyId !== "frigorifico-maciel");
+          const map = new Map<string, any>();
+          data.products.forEach((p: any) => map.set(p.id, p));
+          otherProducts.forEach((p: any) => {
+            if (!map.has(p.id)) map.set(p.id, p);
+          });
+          setProducts(Array.from(map.values()));
         }
       })
       .catch((err) => console.warn("Error cargando productos de Cobro Fácil:", err));
