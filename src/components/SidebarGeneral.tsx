@@ -116,7 +116,7 @@ export function SidebarGeneral({
                   {currentMode === "driver"
                     ? "Repartidor Activo · En Turno"
                     : clientProfile
-                    ? clientProfile.email
+                    ? `Comprador · ${clientProfile.displayName || "Cliente Registrado"}`
                     : "Comprador · Ecosistema Reparto Fácil"}
                 </span>
                 <div className="mt-1 flex items-center gap-1.5 flex-wrap">

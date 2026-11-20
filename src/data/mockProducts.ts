@@ -38,7 +38,8 @@ export const INITIAL_PRODUCTS: Product[] = [
     image: "https://images.unsplash.com/photo-1544025162-d76694265947?w=600&auto=format&fit=crop&q=80",
     isPopular: true,
     discountBadge: "15% OFF",
-    stockKg: 150,
+    badge: "TPV Cobro Fácil",
+    stockKg: 999804,
   },
   {
     id: "prod-2",
@@ -96,7 +97,8 @@ export const INITIAL_PRODUCTS: Product[] = [
     unit: "kg",
     description: "Desgrasado y listo para hacer a la pizza o arrollado al horno.",
     image: "https://images.unsplash.com/photo-1588168333986-5078d3ae3976?w=600&auto=format&fit=crop&q=80",
-    stockKg: 60,
+    badge: "TPV Cobro Fácil",
+    stockKg: 999850,
   },
   {
     id: "prod-5",
@@ -131,7 +133,8 @@ export const INITIAL_PRODUCTS: Product[] = [
     image: "https://images.unsplash.com/photo-1604503468506-a8da13d82791?w=600&auto=format&fit=crop&q=80",
     isPopular: true,
     discountBadge: "Oferta",
-    stockKg: 80,
+    badge: "TPV Cobro Fácil",
+    stockKg: 999584,
   },
   {
     id: "prod-8",
