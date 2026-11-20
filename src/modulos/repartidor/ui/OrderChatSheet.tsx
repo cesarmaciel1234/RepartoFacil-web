@@ -21,6 +21,7 @@ import {
   CheckCheck,
   ShieldCheck,
   Bike,
+  ArrowLeft,
 } from "lucide-react";
 import { DriverOrder } from "../motor/tipos";
 import { loadClientProfile, loadDriverProfile } from "../motor/driverService";
@@ -72,6 +73,7 @@ interface OrderChatSheetProps {
   viewerRole?: "client" | "driver";
   defaultRole?: "client" | "driver"; // compatibilidad
   deliveryAddress?: string;
+  onBackToOrdersHub?: () => void;
 }
 
 export function OrderChatSheet({
@@ -83,6 +85,7 @@ export function OrderChatSheet({
   viewerRole,
   defaultRole = "client",
   deliveryAddress,
+  onBackToOrdersHub,
 }: OrderChatSheetProps) {
   // El rol real del usuario que visualiza el chat
   const effectiveRole: "client" | "driver" = viewerRole || defaultRole;
@@ -229,7 +232,17 @@ export function OrderChatSheet({
       <SheetContent className="w-full sm:max-w-md bg-slate-900 border-l border-slate-800 text-slate-100 p-0 flex flex-col h-full">
         {/* Header Scoped: Diferenciado según el perfil del usuario */}
         <SheetHeader className="p-4 border-b border-slate-800 flex flex-row items-center justify-between gap-2">
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2">
+            {onBackToOrdersHub && (
+              <button
+                type="button"
+                onClick={onBackToOrdersHub}
+                className="w-8 h-8 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white flex items-center justify-center shrink-0 border border-slate-700 transition-all"
+                title="Volver a la lista de pedidos"
+              >
+                <ArrowLeft className="w-4 h-4 text-emerald-400" />
+              </button>
+            )}
             <div className={`w-9 h-9 rounded-2xl flex items-center justify-center shrink-0 shadow-md ${
               isClientViewer ? "bg-blue-500/20 text-blue-400" : "bg-emerald-500/20 text-emerald-400"
             }`}>

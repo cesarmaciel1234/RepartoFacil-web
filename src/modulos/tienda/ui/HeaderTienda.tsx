@@ -18,6 +18,7 @@ interface HeaderTiendaProps {
   onOpenMarkets: () => void;
   onSwitchToDriver: () => void;
   onOpenOrderChat?: () => void;
+  activeOrdersCount?: number;
 }
 
 export function HeaderTienda({
@@ -33,6 +34,7 @@ export function HeaderTienda({
   onOpenMarkets,
   onSwitchToDriver,
   onOpenOrderChat,
+  activeOrdersCount = 0,
 }: HeaderTiendaProps) {
   const formatMoney = (val: number) => "$" + val.toLocaleString("es-AR");
 
@@ -116,16 +118,21 @@ export function HeaderTienda({
 
         {/* Lado Derecho: Carrito + Botón Seguimiento Reparto y Chat */}
         <div className="flex items-center gap-1.5 shrink-0">
-          {/* Botón Seguimiento en Vivo y Chat con Repartidor / Central */}
+          {/* Botón Centro de Pedidos y Envíos en Curso */}
           <Button
             onClick={onOpenOrderChat || onSwitchToDriver}
             size="sm"
             variant="outline"
             className="border-slate-800 bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white rounded-xl text-xs font-bold px-2.5 h-9 flex items-center gap-1.5 shadow-sm relative active:scale-95 transition-all"
-            title="Ver seguimiento en vivo y chat con el repartidor"
+            title="Centro de envíos activos y chats de pedidos"
           >
             <Truck className="w-3.5 h-3.5 text-emerald-400" />
-            <span className="hidden sm:inline">Reparto en Curso</span>
+            <span className="hidden sm:inline">Envíos</span>
+            {activeOrdersCount > 0 && (
+              <span className="bg-emerald-500 text-slate-950 text-[10px] font-black px-1.5 py-0.2 rounded-full min-w-4 text-center">
+                {activeOrdersCount}
+              </span>
+            )}
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
           </Button>
 

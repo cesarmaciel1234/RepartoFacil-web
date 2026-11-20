@@ -14,6 +14,7 @@ import { DrawerCarrito } from "./ui/DrawerCarrito";
 import { ModalCheckout } from "./ui/ModalCheckout";
 import { ModalCambiarDireccion } from "./ui/ModalCambiarDireccion";
 import { ModalClientAuth } from "./ui/ModalClientAuth";
+import { CentroPedidosClienteSheet } from "./ui/CentroPedidosClienteSheet";
 import { OrderChatSheet } from "../repartidor/ui/OrderChatSheet";
 import { SidebarGeneral } from "@/components/SidebarGeneral";
 import { ModalMercados } from "@/components/ModalMercados";
@@ -49,34 +50,63 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [isClientAuthOpen, setIsClientAuthOpen] = useState(false);
   const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
+  const [isOrdersHubOpen, setIsOrdersHubOpen] = useState(false);
   const [isOrderChatOpen, setIsOrderChatOpen] = useState(false);
+  const [selectedChatOrder, setSelectedChatOrder] = useState<any>(null);
+  const [clientOrdersList, setClientOrdersList] = useState<any[]>([]);
   const [deliveryAddress, setDeliveryAddress] = useState("Tucumán 2130, Rosario");
   const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
   const [orderConfirmed, setOrderConfirmed] = useState<OrderData | null>(null);
-  const [activeClientOrder, setActiveClientOrder] = useState<any>(null);
 
-  // Sincronizar última orden del comprador para el chat de seguimiento
+  // Sincronizar lista completa de órdenes del comprador (locales + PostgreSQL de Cobro Fácil)
   useEffect(() => {
-    if (orderConfirmed) {
-      setActiveClientOrder(orderConfirmed);
-      return;
-    }
-    const syncLatest = () => {
+    const syncOrders = async () => {
+      let combined: any[] = [];
       try {
-        const hist = JSON.parse(localStorage.getItem("rf_orders_history") || "[]");
-        if (Array.isArray(hist) && hist.length > 0) {
-          setActiveClientOrder(hist[0]);
+        const raw = localStorage.getItem("rf_orders_history");
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed)) combined = [...parsed];
         }
       } catch {}
+
+      try {
+        const res = await fetch("/api/orders", { cache: "no-store" });
+        if (res.ok) {
+          const cloudOrders = await res.json();
+          if (Array.isArray(cloudOrders) && cloudOrders.length > 0) {
+            const map = new Map<string, any>();
+            cloudOrders.forEach((o) => map.set(o.id, o));
+            combined.forEach((o) => {
+              if (!map.has(o.id)) map.set(o.id, o);
+            });
+            combined = Array.from(map.values());
+          }
+        }
+      } catch {}
+
+      setClientOrdersList(combined);
+      if (!selectedChatOrder && combined.length > 0) {
+        setSelectedChatOrder(combined[0]);
+      }
     };
-    syncLatest();
-    window.addEventListener("rf-orders-updated", syncLatest);
-    window.addEventListener("storage", syncLatest);
+
+    syncOrders();
+    const interval = setInterval(syncOrders, 4000);
+    window.addEventListener("rf-orders-updated", syncOrders);
+    window.addEventListener("storage", syncOrders);
     return () => {
-      window.removeEventListener("rf-orders-updated", syncLatest);
-      window.removeEventListener("storage", syncLatest);
+      clearInterval(interval);
+      window.removeEventListener("rf-orders-updated", syncOrders);
+      window.removeEventListener("storage", syncOrders);
     };
-  }, [orderConfirmed]);
+  }, [selectedChatOrder, orderConfirmed]);
+
+  const activeOrdersCount = useMemo(() => {
+    return clientOrdersList.filter(
+      (o) => o.status !== "Delivered" && o.status !== "Cancelled"
+    ).length;
+  }, [clientOrdersList]);
 
   // Sincronizar catálogo real directamente desde la base de datos de Cobro Fácil
   useEffect(() => {
@@ -177,7 +207,8 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
         onOpenCart={() => setIsCartOpen(true)}
         onOpenMarkets={() => setIsMarketsOpen(true)}
         onSwitchToDriver={onSwitchToDriver}
-        onOpenOrderChat={() => setIsOrderChatOpen(true)}
+        onOpenOrderChat={() => setIsOrdersHubOpen(true)}
+        activeOrdersCount={activeOrdersCount}
       />
 
       {/* ─── Contenido Principal ─── */}
@@ -361,13 +392,29 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
         }}
       />
 
-      {/* ─── Chat Tripartito y Seguimiento del Repartidor en Vivo (Captura 2) ─── */}
+      {/* ─── Centro de Pedidos en Curso (Hub Multitienda con el camioncito) ─── */}
+      <CentroPedidosClienteSheet
+        isOpen={isOrdersHubOpen}
+        onOpenChange={setIsOrdersHubOpen}
+        orders={clientOrdersList}
+        onSelectOrderChat={(order) => {
+          setSelectedChatOrder(order);
+          setIsOrdersHubOpen(false);
+          setIsOrderChatOpen(true);
+        }}
+      />
+
+      {/* ─── Chat Tripartito Privado del Pedido Seleccionado ─── */}
       <OrderChatSheet
         isOpen={isOrderChatOpen}
         onOpenChange={setIsOrderChatOpen}
-        activeOrder={activeClientOrder}
+        activeOrder={selectedChatOrder || clientOrdersList[0] || null}
         viewerRole="client"
         deliveryAddress={deliveryAddress}
+        onBackToOrdersHub={() => {
+          setIsOrderChatOpen(false);
+          setIsOrdersHubOpen(true);
+        }}
       />
 
       {/* ─── Sidebar Unificado DiDi / PedidosYa (Captura 1) ─── */}
