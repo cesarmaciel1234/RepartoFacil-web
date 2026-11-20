@@ -1,18 +1,18 @@
 "use client";
 
 import React from "react";
-import { Sparkles, User, Truck, Wallet, Bell } from "lucide-react";
+import { Sparkles, User, Truck, Bell } from "lucide-react";
 import { DriverProfile, DriverOrder } from "../motor/tipos";
 
 interface DriverTopBarProps {
   driverProfile: DriverProfile | null;
-  walletBalance: number;
+  walletBalance?: number;
   activeOrder?: DriverOrder | null;
   onOpenSidebar: () => void;
   onOpenCopilot: () => void;
   onOpenOrderChat: () => void;
   onFocusActiveRoute?: () => void;
-  onOpenWallet: () => void;
+  onOpenWallet?: () => void;
   onLogout: () => void;
   onOpenLoginModal: () => void;
   hasGps: boolean;
@@ -20,7 +20,7 @@ interface DriverTopBarProps {
 
 export function DriverTopBar({
   driverProfile,
-  walletBalance,
+  walletBalance = 0,
   activeOrder,
   onOpenSidebar,
   onOpenCopilot,
@@ -30,14 +30,13 @@ export function DriverTopBar({
   onLogout,
   onOpenLoginModal,
 }: DriverTopBarProps) {
-  const formatMoney = (val: number) => "$" + (val || 0).toLocaleString("es-AR");
   const driverInitial = driverProfile?.firstName
     ? driverProfile.firstName.charAt(0).toUpperCase()
     : "R";
 
   return (
     <header className="absolute top-0 left-0 right-0 z-40 p-3 sm:p-4 pt-[max(0.75rem,env(safe-area-inset-top))] pointer-events-none flex items-center justify-between gap-2">
-      {/* Botón Avatar / Menú Lateral Flotante (Estilo DiDi / PedidosYa - Captura 1) */}
+      {/* Botón Avatar / Menú Lateral Flotante (Acceso al Perfil y Cartera en el menú) */}
       <button
         type="button"
         onClick={onOpenSidebar}
@@ -46,21 +45,6 @@ export function DriverTopBar({
       >
         <span className="group-hover:scale-110 transition-transform">{driverInitial}</span>
         <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-500 border-2 border-slate-950 rounded-full" />
-      </button>
-
-      {/* Píldora Central de Ganancias en Vivo (Estándar Uber Driver / PedidosYa) */}
-      <button
-        type="button"
-        onClick={onOpenWallet}
-        className="pointer-events-auto h-11 px-4 rounded-full bg-slate-900/95 hover:bg-slate-800 border border-emerald-500/50 shadow-2xl shadow-black/80 backdrop-blur-md flex items-center gap-2 transition-all active:scale-95 group"
-        title="Ver Mi Cartera y Ganancias"
-      >
-        <div className="w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
-          <Wallet className="w-3.5 h-3.5" />
-        </div>
-        <span className="font-black text-sm text-white tracking-tight group-hover:text-emerald-300 transition-colors">
-          {formatMoney(walletBalance)}
-        </span>
       </button>
 
       {/* Acciones Derecha: Copiloto IA + Campana Chat Tripartito + Estado Pedido/Perfil */}
