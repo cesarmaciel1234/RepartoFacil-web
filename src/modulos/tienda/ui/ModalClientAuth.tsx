@@ -14,6 +14,7 @@ import { User, Lock, ArrowRight, KeyRound, ShoppingBag, AlertCircle, Phone, MapP
 import { useToast } from "@/hooks/use-toast";
 import { useFirestore } from "@/firebase";
 import { doc, setDoc } from "@/firebase/local-firestore";
+import { saveClientProfile } from "@/modulos/repartidor/motor/driverService";
 
 interface ModalClientAuthProps {
   isOpen: boolean;
@@ -98,10 +99,8 @@ export function ModalClientAuth({
         createdAt: new Date().toISOString(),
       };
 
-      // Guardar sesión persistente
-      localStorage.setItem("repartofacil_token", token);
-      localStorage.setItem("repartofacil_user", JSON.stringify(clientProfile));
-      window.dispatchEvent(new Event("repartofacil-auth"));
+      // Guardar sesión persistente de comprador (separada de repartidores)
+      saveClientProfile(clientProfile, token);
 
       // Sincronizar en la colección clients de la base de datos
       if (firestore) {
@@ -200,9 +199,8 @@ export function ModalClientAuth({
         createdAt: new Date().toISOString(),
       };
 
-      localStorage.setItem("repartofacil_token", data.access_token);
-      localStorage.setItem("repartofacil_user", JSON.stringify(clientProfile));
-      window.dispatchEvent(new Event("repartofacil-auth"));
+      // Guardar sesión persistente de comprador (separada de repartidores)
+      saveClientProfile(clientProfile, token);
 
       if (firestore) {
         try {

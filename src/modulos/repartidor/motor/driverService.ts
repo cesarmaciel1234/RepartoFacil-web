@@ -2,8 +2,10 @@ import { DriverOrder, DriverProfile, OrderStatus, DriverWallet } from "./tipos";
 import { doc, updateDoc } from "@/firebase/local-firestore";
 import { creditDeliveryEarning, loadDriverWallet } from "./walletService";
 
-export const ORDERS_STORAGE_KEY = "rf_orders_history";
-export const DRIVER_USER_KEY = "repartofacil_user";
+export const DRIVER_USER_KEY = "repartofacil_driver_user";
+export const DRIVER_TOKEN_KEY = "repartofacil_driver_token";
+export const CLIENT_USER_KEY = "repartofacil_client_user";
+export const CLIENT_TOKEN_KEY = "repartofacil_client_token";
 
 export const DEFAULT_AVAILABLE_ORDERS: DriverOrder[] = [
   {
@@ -116,17 +118,16 @@ export function saveLocalOrders(orders: DriverOrder[]) {
 export function loadDriverProfile(): DriverProfile | null {
   if (typeof window === "undefined") return null;
   try {
-    const raw = localStorage.getItem(DRIVER_USER_KEY);
+    const raw = localStorage.getItem(DRIVER_USER_KEY) || localStorage.getItem("repartofacil_user");
     if (!raw) return null;
     const parsed = JSON.parse(raw);
-    // Si la sesión activa corresponde a un cliente, no es repartidor
     if (parsed.role && parsed.role.toLowerCase() !== "driver") {
       return null;
     }
     return {
       id: parsed.id || parsed.uid || "repartidor-01",
       uid: parsed.uid || parsed.id || "repartidor-01",
-      firstName: parsed.firstName || parsed.displayName || "Repartidor",
+      firstName: parsed.firstName || parsed.displayName || "Lucas Motomensajero",
       role: "Driver",
       vehicleType: parsed.vehicleType || "Motorcycle",
       availabilityStatus: parsed.availabilityStatus || "Available",
@@ -150,31 +151,33 @@ export interface ClientProfile {
 export function loadClientProfile(): ClientProfile | null {
   if (typeof window === "undefined") return null;
   try {
-    const raw = localStorage.getItem(DRIVER_USER_KEY);
+    const raw = localStorage.getItem(CLIENT_USER_KEY) || localStorage.getItem("repartofacil_user");
     if (!raw) return null;
     const parsed = JSON.parse(raw);
     if (parsed.role && parsed.role.toLowerCase() !== "client") {
       return null;
     }
     return {
-      id: parsed.id || parsed.uid,
-      uid: parsed.uid || parsed.id,
+      id: parsed.id || parsed.uid || "cliente-01",
+      uid: parsed.uid || parsed.id || "cliente-01",
       displayName: parsed.displayName || parsed.firstName || "Cliente Frecuente",
       email: parsed.email || "cliente@repartofacil.com",
       role: "Client",
-      phone: parsed.phone,
-      address: parsed.address,
+      phone: parsed.phone || "+54 9 341 555-1234",
+      address: parsed.address || "Tucumán 2130, Rosario",
     };
   } catch {
     return null;
   }
 }
 
-export function saveDriverProfile(profile: DriverProfile) {
+export function saveDriverProfile(profile: DriverProfile, token?: string) {
   if (typeof window === "undefined") return;
   try {
     localStorage.setItem(DRIVER_USER_KEY, JSON.stringify(profile));
+    if (token) localStorage.setItem(DRIVER_TOKEN_KEY, token);
     window.dispatchEvent(new Event("repartofacil-auth"));
+    window.dispatchEvent(new Event("repartofacil-driver-auth"));
   } catch (e) {
     console.warn("Error guardando perfil repartidor:", e);
   }
@@ -184,8 +187,41 @@ export function clearDriverProfile() {
   if (typeof window === "undefined") return;
   try {
     localStorage.removeItem(DRIVER_USER_KEY);
-    localStorage.removeItem("repartofacil_token");
+    localStorage.removeItem(DRIVER_TOKEN_KEY);
+    const legacy = localStorage.getItem("repartofacil_user");
+    if (legacy && legacy.toLowerCase().includes('"role":"driver"')) {
+      localStorage.removeItem("repartofacil_user");
+      localStorage.removeItem("repartofacil_token");
+    }
     window.dispatchEvent(new Event("repartofacil-auth"));
+    window.dispatchEvent(new Event("repartofacil-driver-auth"));
+  } catch {}
+}
+
+export function saveClientProfile(profile: ClientProfile, token?: string) {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(CLIENT_USER_KEY, JSON.stringify(profile));
+    if (token) localStorage.setItem(CLIENT_TOKEN_KEY, token);
+    window.dispatchEvent(new Event("repartofacil-auth"));
+    window.dispatchEvent(new Event("repartofacil-client-auth"));
+  } catch (e) {
+    console.warn("Error guardando perfil cliente:", e);
+  }
+}
+
+export function clearClientProfile() {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.removeItem(CLIENT_USER_KEY);
+    localStorage.removeItem(CLIENT_TOKEN_KEY);
+    const legacy = localStorage.getItem("repartofacil_user");
+    if (legacy && legacy.toLowerCase().includes('"role":"client"')) {
+      localStorage.removeItem("repartofacil_user");
+      localStorage.removeItem("repartofacil_token");
+    }
+    window.dispatchEvent(new Event("repartofacil-auth"));
+    window.dispatchEvent(new Event("repartofacil-client-auth"));
   } catch {}
 }
 

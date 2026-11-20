@@ -341,7 +341,7 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
       <OrderChatSheet
         isOpen={isOrderChatOpen}
         onOpenChange={setIsOrderChatOpen}
-        defaultRole="client"
+        viewerRole="client"
         deliveryAddress={deliveryAddress}
       />
 

@@ -29,7 +29,13 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { DriverProfile } from "@/modulos/repartidor/motor/tipos";
-import { loadClientProfile, ClientProfile, clearDriverProfile } from "@/modulos/repartidor/motor/driverService";
+import {
+  loadClientProfile,
+  ClientProfile,
+  loadDriverProfile,
+  clearDriverProfile,
+  clearClientProfile,
+} from "@/modulos/repartidor/motor/driverService";
 import { ModalClientAuth } from "@/modulos/tienda/ui/ModalClientAuth";
 import { useState, useEffect } from "react";
 
@@ -61,18 +67,31 @@ export function SidebarGeneral({
   const formatMoney = (val: number) => "$" + val.toLocaleString("es-AR");
 
   const [clientProfile, setClientProfile] = useState<ClientProfile | null>(null);
+  const [driverProfileLocal, setDriverProfileLocal] = useState<DriverProfile | null>(driverProfile || null);
   const [isClientAuthOpen, setIsClientAuthOpen] = useState(false);
 
   useEffect(() => {
     setClientProfile(loadClientProfile());
-    const sync = () => setClientProfile(loadClientProfile());
+    setDriverProfileLocal(loadDriverProfile());
+
+    const sync = () => {
+      setClientProfile(loadClientProfile());
+      setDriverProfileLocal(loadDriverProfile());
+    };
+
     window.addEventListener("repartofacil-auth", sync);
-    return () => window.removeEventListener("repartofacil-auth", sync);
+    window.addEventListener("repartofacil-client-auth", sync);
+    window.addEventListener("repartofacil-driver-auth", sync);
+    return () => {
+      window.removeEventListener("repartofacil-auth", sync);
+      window.removeEventListener("repartofacil-client-auth", sync);
+      window.removeEventListener("repartofacil-driver-auth", sync);
+    };
   }, []);
 
   const userName =
-    currentMode === "driver" && driverProfile
-      ? driverProfile.firstName
+    currentMode === "driver" && (driverProfile || driverProfileLocal)
+      ? (driverProfile || driverProfileLocal)!.firstName
       : clientProfile
       ? clientProfile.displayName
       : "Cliente Reparto Fácil";
@@ -81,11 +100,15 @@ export function SidebarGeneral({
 
   const handleCloseSession = () => {
     onOpenChange(false);
-    clearDriverProfile();
-    setClientProfile(null);
-    if (onLogout) onLogout();
     if (currentMode === "driver") {
+      clearDriverProfile();
+      setDriverProfileLocal(null);
+      if (onLogout) onLogout();
       onSwitchMode("store");
+    } else {
+      clearClientProfile();
+      setClientProfile(null);
+      if (onLogout) onLogout();
     }
   };
 

@@ -330,7 +330,10 @@ export function RepartidorPiramidal({ onSwitchToStore }: RepartidorPiramidalProp
         isOpen={isOrderChatOpen}
         onOpenChange={setIsOrderChatOpen}
         activeOrder={myActiveOrders[0] || null}
+        viewerRole="driver"
         driverName={driverProfile?.firstName || "Lucas Motomensajero"}
+        clientName={myActiveOrders[0]?.clientName || myActiveOrders[0]?.customerName}
+        deliveryAddress={myActiveOrders[0]?.deliveryAddress}
       />
 
       {/* ─── 7. Modal Cartera / Billetera Repartidor ─── */}

@@ -100,9 +100,8 @@ export function ModalDriverAuth({
         createdAt: new Date().toISOString(),
       };
 
-      // Guardar token y usuario persistente
-      localStorage.setItem("repartofacil_token", token);
-      saveDriverProfile(profile);
+      // Guardar token y usuario repartidor aislado (sin pisar cuenta de comprador)
+      saveDriverProfile(profile, token);
 
       // Sincronizar documento en la colección driverProfiles de la BD
       if (firestore) {
@@ -186,8 +185,7 @@ export function ModalDriverAuth({
         createdAt: new Date().toISOString(),
       };
 
-      localStorage.setItem("repartofacil_token", data.access_token);
-      saveDriverProfile(profile);
+      saveDriverProfile(profile, data.access_token);
 
       // Guardar en la colección driverProfiles de la base de datos
       if (firestore) {
