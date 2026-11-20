@@ -402,6 +402,10 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
           setIsOrdersHubOpen(false);
           setIsOrderChatOpen(true);
         }}
+        onOrderFromAnother={() => {
+          setSelectedCompany(null);
+          setIsMarketsOpen(true);
+        }}
       />
 
       {/* ─── Chat Tripartito Privado del Pedido Seleccionado ─── */}

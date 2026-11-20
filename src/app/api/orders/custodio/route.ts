@@ -89,7 +89,41 @@ export async function ejecutarAuditoriaCustodio() {
       }
     }
 
-    return { total: pedidos.length, advertencias, liberados };
+    // 2. Buscar pedidos sin aceptar por la empresa tras el tiempo límite estándar (60 minutos)
+    const sqlTimeout = `
+      SELECT id, estado, cliente_nombre, created_at
+      FROM repartofacil_pedidos
+      WHERE estado IN ('pending_store', 'pending', 'Pending')
+        AND created_at < NOW() - INTERVAL '60 minutes'
+    `;
+    const pedidosExpirados = await queryDb(sqlTimeout);
+
+    let canceladosTimeout = 0;
+    for (const exp of pedidosExpirados) {
+      await queryDb(
+        `UPDATE repartofacil_pedidos
+         SET estado = 'cancelled_timeout',
+             custodio_estado = 'timeout_sin_respuesta',
+             updated_at = NOW()
+         WHERE id = $1`,
+        [exp.id]
+      );
+
+      const msgId = `msg-timeout-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+      const horaStr = new Date().toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" });
+      const content = `⏰ [Custodio del Sistema]: El pedido #${exp.id} no fue aceptado por el comercio en el tiempo límite estándar (1 hora). El pedido ha sido cancelado automáticamente. El cliente puede retomarlo en esta empresa o solicitarlo a otra tienda desde el catálogo multitienda.`;
+
+      await queryDb(
+        `INSERT INTO repartofacil_chat_mensajes 
+         (id, order_id, author_role, author_name, content, timestamp_str, created_at)
+         VALUES ($1, $2, 'system', 'Sistema Reparto Fácil (Custodio)', $3, $4, NOW())`,
+        [msgId, exp.id, content, horaStr]
+      ).catch(() => {});
+
+      canceladosTimeout++;
+    }
+
+    return { total: pedidos.length, advertencias, liberados, canceladosTimeout };
   } catch (err: any) {
     console.error("[Custodio Error]:", err.message);
     return { error: err.message };
@@ -197,6 +231,35 @@ export async function POST(request: NextRequest) {
       ).catch(() => {});
 
       return NextResponse.json({ success: true, action: "force_released", orderId });
+    }
+
+    // 4. Retomar pedido cancelado/expirado por timeout
+    if (action === "retry_order" && orderId) {
+      await queryDb(
+        `UPDATE repartofacil_pedidos 
+         SET estado = 'pending_store',
+             custodio_estado = 'reintentado',
+             custodio_advertencia_at = NULL,
+             repartidor_id = NULL,
+             repartidor_nombre = NULL,
+             created_at = NOW(),
+             updated_at = NOW()
+         WHERE id = $1`,
+        [orderId]
+      );
+
+      const msgId = `msg-retry-${Date.now()}`;
+      const horaStr = new Date().toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" });
+      const content = `🔄 [Cliente]: El cliente ha retomado el pedido #${orderId}. Esperando confirmación y preparación por parte de la empresa...`;
+
+      await queryDb(
+        `INSERT INTO repartofacil_chat_mensajes 
+         (id, order_id, author_role, author_name, content, timestamp_str, created_at)
+         VALUES ($1, $2, 'client', 'Cliente Web', $3, $4, NOW())`,
+        [msgId, orderId, content, horaStr]
+      ).catch(() => {});
+
+      return NextResponse.json({ success: true, action: "order_retried", orderId });
     }
 
     return NextResponse.json({ error: "Acción no reconocida" }, { status: 400 });

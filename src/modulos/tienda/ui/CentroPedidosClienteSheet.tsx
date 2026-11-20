@@ -22,6 +22,8 @@ import {
   ArrowRight,
   ExternalLink,
   ChevronRight,
+  RotateCcw,
+  AlertTriangle,
 } from "lucide-react";
 
 interface CentroPedidosClienteSheetProps {
@@ -29,6 +31,8 @@ interface CentroPedidosClienteSheetProps {
   onOpenChange: (open: boolean) => void;
   orders: any[];
   onSelectOrderChat: (order: any) => void;
+  onRetryOrder?: (orderId: string) => void;
+  onOrderFromAnother?: () => void;
 }
 
 export function CentroPedidosClienteSheet({
@@ -36,19 +40,59 @@ export function CentroPedidosClienteSheet({
   onOpenChange,
   orders = [],
   onSelectOrderChat,
+  onRetryOrder,
+  onOrderFromAnother,
 }: CentroPedidosClienteSheetProps) {
   const [selectedTicketOrder, setSelectedTicketOrder] = useState<any | null>(null);
   const [isTicketModalOpen, setIsTicketModalOpen] = useState(false);
+  const [retryingId, setRetryingId] = useState<string | null>(null);
 
   const formatMoney = (val: number) => "$" + (val || 0).toLocaleString("es-AR");
 
-  // Separar pedidos activos (en curso) de los ya entregados
+  // Separar pedidos activos (en curso), entregados y cancelados/expirados por timeout
   const activeOrders = orders.filter(
-    (o) => o.status !== "Delivered" && o.status !== "Cancelled"
+    (o) =>
+      o.status !== "Delivered" &&
+      o.status !== "delivered" &&
+      o.status !== "Cancelled" &&
+      o.status !== "cancelled" &&
+      o.status !== "cancelled_timeout" &&
+      o.status !== "Rejected" &&
+      o.status !== "rejected"
   );
+
   const deliveredOrders = orders.filter(
-    (o) => o.status === "Delivered"
+    (o) => o.status === "Delivered" || o.status === "delivered"
   );
+
+  const cancelledOrders = orders.filter(
+    (o) =>
+      o.status === "cancelled_timeout" ||
+      o.status === "Cancelled" ||
+      o.status === "cancelled" ||
+      o.status === "Rejected" ||
+      o.status === "rejected"
+  );
+
+  const handleRetry = async (orderId: string) => {
+    setRetryingId(orderId);
+    try {
+      if (onRetryOrder) {
+        onRetryOrder(orderId);
+      } else {
+        await fetch("/api/orders/custodio", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "retry_order", orderId }),
+        });
+        window.dispatchEvent(new CustomEvent("rf-orders-updated"));
+      }
+    } catch (e) {
+      console.error("Error al retomar pedido:", e);
+    } finally {
+      setRetryingId(null);
+    }
+  };
 
   return (
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
@@ -195,6 +239,82 @@ export function CentroPedidosClienteSheet({
                   </div>
                 );
               })}
+            </div>
+          )}
+
+          {/* Pedidos Cancelados o Expirados por Timeout (Decisión del Cliente) */}
+          {cancelledOrders.length > 0 && (
+            <div className="space-y-2 pt-2 border-t border-slate-800/80">
+              <span className="text-[10px] font-bold text-amber-400 uppercase tracking-wider block flex items-center gap-1.5">
+                <AlertTriangle className="w-3 h-3 text-amber-400" />
+                Pedidos Sin Aceptar o Cancelados ({cancelledOrders.length})
+              </span>
+              <div className="space-y-2.5">
+                {cancelledOrders.map((o) => {
+                  const isTimeout = o.status === "cancelled_timeout";
+                  const storeName = o.branch || o.sucursal_origen || "Comercio Cobro Fácil";
+                  return (
+                    <div
+                      key={o.id}
+                      className="p-3 rounded-2xl bg-slate-900/90 border border-amber-500/30 space-y-2 text-xs"
+                    >
+                      <div className="flex items-start justify-between gap-2 border-b border-slate-800/80 pb-1.5">
+                        <div className="min-w-0">
+                          <div className="font-bold text-white flex items-center gap-1.5 truncate">
+                            <Store className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                            <span className="truncate">{storeName}</span>
+                          </div>
+                          <span className="text-[11px] font-mono text-slate-400">
+                            #{o.id} · {formatMoney(o.total)}
+                          </span>
+                        </div>
+                        <Badge className="bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[9px] font-bold py-0.5">
+                          {isTimeout ? "⏰ 1h Sin Respuesta" : "❌ Cancelado"}
+                        </Badge>
+                      </div>
+
+                      <p className="text-[11px] text-slate-400 leading-snug">
+                        {isTimeout
+                          ? "El comercio no confirmó en el lapso de 1 hora. El pedido fue cancelado automáticamente para tu seguridad. Puedes retomarlo o solicitarlo a otra empresa."
+                          : "El pedido fue cancelado. Puedes reactivarlo con la empresa o pedir a otro comercio cercano."}
+                      </p>
+
+                      {/* Botones de Decisión del Cliente */}
+                      <div className="grid grid-cols-2 gap-2 pt-1">
+                        <Button
+                          type="button"
+                          disabled={retryingId === o.id}
+                          onClick={() => handleRetry(o.id)}
+                          className="h-8 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[11px] flex items-center justify-center gap-1.5 shadow-sm"
+                        >
+                          <RotateCcw className={`w-3 h-3 ${retryingId === o.id ? "animate-spin" : ""}`} />
+                          <span>{retryingId === o.id ? "Retomando..." : "Retomar Pedido"}</span>
+                        </Button>
+
+                        <Button
+                          type="button"
+                          onClick={() => {
+                            onOpenChange(false);
+                            if (onOrderFromAnother) onOrderFromAnother();
+                          }}
+                          className="h-8 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-bold text-[11px] flex items-center justify-center gap-1.5"
+                        >
+                          <Store className="w-3 h-3 text-emerald-400" />
+                          <span>Pedir a otra Empresa</span>
+                        </Button>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => onSelectOrderChat(o)}
+                        className="w-full text-center text-[10px] text-blue-400 hover:text-blue-300 font-bold pt-1 block"
+                      >
+                        💬 Ver conversación y tickets anteriores
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           )}
 
