@@ -300,8 +300,8 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
   const formatMoney = (val: number) => "$" + val.toLocaleString("es-AR");
 
   return (
-    <div className="min-h-screen w-full bg-slate-950 text-slate-100 flex flex-col font-sans pb-36">
-      {/* ─── Encabezado Superior (con selector de dirección editable y de empresa) ─── */}
+    <div className="min-h-screen w-full bg-white text-slate-900 flex flex-col font-sans pb-36">
+      {/* ─── Encabezado Superior (Blanco y Azul con el camioncito y el carrito arriba) ─── */}
       <HeaderTienda
         cartItemsCount={cartItemsCount}
         cartTotal={cartTotal}
@@ -324,7 +324,7 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
       {/* ─── Contenido Principal ─── */}
       <main className="flex-1 max-w-6xl w-full mx-auto px-3 sm:px-4 py-4 space-y-4">
         {!selectedCompany ? (
-          /* ─── Vista 1: PÁGINA PRINCIPAL - EMPRESAS Y MERCADOS (Captura 2 y 3) ─── */
+          /* ─── Vista 1: PÁGINA PRINCIPAL - EMPRESAS Y MERCADOS (Blanco y Azul estilo Mercado Libre / PedidosYa) ─── */
           <div className="space-y-4">
             <VistaMercadosEmpresas
               onSelectCompany={(comp, initialSearch) => {
@@ -336,10 +336,10 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
             />
           </div>
         ) : (
-          /* ─── Vista 2: CATÁLOGO DE LA EMPRESA SELECCIONADA (Captura 4) ─── */
+          /* ─── Vista 2: CATÁLOGO DE LA EMPRESA SELECCIONADA (Blanco y Azul) ─── */
           <div className="space-y-4">
             {/* Barra superior de retorno a empresas */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 p-3.5 rounded-2xl bg-slate-900/90 border border-slate-800 shadow-md">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 p-3.5 rounded-2xl bg-slate-50 border border-slate-200 shadow-xs">
               <div className="flex items-center gap-2.5">
                 <button
                   type="button"
@@ -347,28 +347,28 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
                     setSelectedCompany(null);
                     setSearchQuery("");
                   }}
-                  className="h-8 px-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-emerald-400 hover:text-emerald-300 font-bold text-xs flex items-center gap-1.5 transition-all active:scale-95 border border-slate-700/80"
+                  className="h-8 px-2.5 rounded-xl bg-white hover:bg-blue-50 text-blue-600 hover:text-blue-700 font-bold text-xs flex items-center gap-1.5 transition-all active:scale-95 border border-slate-200 shadow-2xs"
                 >
                   <ArrowLeft className="w-3.5 h-3.5" />
                   <span>Volver a Locales</span>
                 </button>
-                <div className="h-4 w-px bg-slate-700 hidden sm:block" />
-                <span className="text-xs font-bold text-white truncate">
+                <div className="h-4 w-px bg-slate-200 hidden sm:block" />
+                <span className="text-xs font-extrabold text-slate-900 truncate">
                   {selectedCompany.name}
                 </span>
               </div>
 
               {/* Métricas de la empresa */}
-              <div className="flex items-center gap-3 text-xs text-slate-400 font-semibold pl-1">
-                <span className="flex items-center gap-1 text-amber-400 font-bold">
-                  <Star className="w-3.5 h-3.5 fill-current" />
+              <div className="flex items-center gap-3 text-xs text-slate-600 font-semibold pl-1">
+                <span className="flex items-center gap-1 text-slate-900 font-extrabold">
+                  <Star className="w-3.5 h-3.5 fill-slate-900 text-slate-900" />
                   {selectedCompany.rating}
                 </span>
                 <span className="flex items-center gap-1">
-                  <Clock className="w-3.5 h-3.5 text-slate-500" />
+                  <Clock className="w-3.5 h-3.5 text-slate-400" />
                   {selectedCompany.deliveryTimeMin}-{selectedCompany.deliveryTimeMax} min
                 </span>
-                <span className="flex items-center gap-1 text-emerald-400 font-bold">
+                <span className="flex items-center gap-1 text-blue-600 font-bold">
                   <Bike className="w-3.5 h-3.5" />
                   ${selectedCompany.deliveryFee.toLocaleString("es-AR")}
                 </span>
@@ -401,8 +401,8 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
             </div>
 
             {filteredProducts.length === 0 && (
-              <div className="text-center py-16 space-y-2 bg-slate-900/30 rounded-3xl border border-slate-800/60 p-6">
-                <p className="text-base font-bold text-slate-300">
+              <div className="text-center py-16 space-y-2 bg-slate-50 rounded-3xl border border-slate-200 p-6">
+                <p className="text-base font-bold text-slate-800">
                   No encontramos productos con &ldquo;{searchQuery}&rdquo; en {selectedCompany.name}
                 </p>
                 <p className="text-xs text-slate-500">
@@ -413,7 +413,7 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
                   onClick={() => {
                     setSelectedCompany(null);
                   }}
-                  className="mt-3 px-4 py-2 rounded-xl bg-emerald-500 text-white font-bold text-xs"
+                  className="mt-3 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-sm"
                 >
                   Buscar en todos los comercios
                 </button>
@@ -433,7 +433,7 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
         >
           <Button
             onClick={() => setIsCartOpen(true)}
-            className="w-full h-13 rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white font-extrabold shadow-2xl shadow-emerald-500/40 border border-emerald-400/40 flex items-center justify-between px-4 active:scale-98 transition-all"
+            className="w-full h-13 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-extrabold shadow-xl shadow-blue-600/30 border border-blue-500 flex items-center justify-between px-4 active:scale-98 transition-all"
           >
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center">
@@ -443,7 +443,7 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
                 <div className="text-xs font-black leading-tight">
                   {cartItemsCount} {cartItemsCount === 1 ? "ítem" : "ítems"}
                 </div>
-                <div className="text-[10px] text-emerald-100 font-medium">Ver pedido</div>
+                <div className="text-[10px] text-blue-100 font-medium">Ver pedido</div>
               </div>
             </div>
             <div className="flex items-center gap-2">

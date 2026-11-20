@@ -31,12 +31,12 @@ export function FiltroCategorias({
     <div className="space-y-3">
       {/* Buscador de inventario de la empresa */}
       <div className="relative">
-        <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+        <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
         <Input
           placeholder="Buscar artículo o departamento en el inventario..."
           value={searchQuery}
           onChange={(e) => onSearchChange(e.target.value)}
-          className="bg-slate-900/90 border-slate-800 text-slate-100 placeholder:text-slate-500 rounded-2xl pl-9 pr-4 h-11 text-xs focus:ring-emerald-500 focus:border-emerald-500 transition-all shadow-inner"
+          className="bg-slate-100 hover:bg-slate-100/80 border-slate-200 text-slate-900 placeholder:text-slate-400 rounded-full pl-10 pr-4 h-11 text-xs sm:text-sm focus:bg-white focus:ring-2 focus:ring-blue-600/15 focus:border-blue-600 transition-all shadow-2xs"
         />
       </div>
 
@@ -48,10 +48,10 @@ export function FiltroCategorias({
             <button
               key={cat.id}
               onClick={() => onCategorySelect(cat.id)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all shrink-0 ${
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all shrink-0 cursor-pointer ${
                 isSelected
-                  ? "bg-emerald-500 text-white shadow-md shadow-emerald-500/25 scale-102"
-                  : "bg-slate-900 border border-slate-800 text-slate-300 hover:border-slate-700 hover:text-white"
+                  ? "bg-blue-600 text-white shadow-sm shadow-blue-600/20 scale-102"
+                  : "bg-white border border-slate-200 text-slate-700 hover:border-blue-300 hover:text-blue-600"
               }`}
             >
               <span>{cat.icon}</span>

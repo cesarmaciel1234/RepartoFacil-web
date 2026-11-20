@@ -5,11 +5,11 @@ import { useEffect } from "react";
 export function PwaRegister() {
   useEffect(() => {
     if (typeof window !== "undefined") {
-      // 1. Purgar proactivamente cualquier caché vieja anterior a v5.7
+      // 1. Purgar proactivamente cualquier caché vieja anterior a v5.8
       if ("caches" in window) {
         caches.keys().then((keys) => {
           keys.forEach((key) => {
-            if (key !== "repartofacil-v5.7") {
+            if (key !== "repartofacil-v5.8") {
               console.log("[PWA] Purgando caché obsoleta:", key);
               caches.delete(key);
             }
