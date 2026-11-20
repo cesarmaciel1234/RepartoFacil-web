@@ -33,7 +33,12 @@ export function HeaderTienda({
   const formatMoney = (val: number) => "$" + val.toLocaleString("es-AR");
 
   return (
-    <header className="sticky top-0 z-40 bg-slate-950 border-b border-slate-800 px-3 sm:px-4 py-2 shadow-lg">
+    <header
+      style={{
+        paddingTop: "max(0.625rem, calc(env(safe-area-inset-top, 0px) + 0.5rem))",
+      }}
+      className="sticky top-0 z-40 bg-slate-950/95 backdrop-blur-md border-b border-slate-800 px-3 sm:px-4 pt-safe-header pb-2 shadow-lg"
+    >
       <div className="max-w-6xl mx-auto flex items-center justify-between gap-2">
         {/* Lado Izquierdo: Botón Sidebar / Perfil DiDi + Marca */}
         <div className="flex items-center gap-2 min-w-0">

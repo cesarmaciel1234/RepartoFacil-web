@@ -100,7 +100,13 @@ export function SidebarGeneral({
           side="left"
           className="w-[85vw] max-w-xs bg-slate-950 border-r border-slate-800 text-slate-100 p-0 flex flex-col justify-between"
         >
-          <div className="overflow-y-auto p-5 space-y-6">
+          <div
+            style={{
+              paddingTop: "max(1.25rem, calc(env(safe-area-inset-top, 0px) + 0.75rem))",
+              paddingBottom: "max(1.25rem, calc(env(safe-area-inset-bottom, 0px) + 0.75rem))",
+            }}
+            className="overflow-y-auto p-5 space-y-6"
+          >
             {/* 1. Header Perfil (Estilo DiDi / PedidosYa - Captura 1) */}
             <div className="flex items-center gap-3 pb-4 border-b border-slate-800/80">
               <div className="w-14 h-14 rounded-full bg-slate-800 border-2 border-emerald-500/40 flex items-center justify-center font-black text-xl text-white shadow-lg shrink-0">

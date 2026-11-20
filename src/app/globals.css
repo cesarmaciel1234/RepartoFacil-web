@@ -74,6 +74,19 @@
 .pr-safe {
   padding-right: env(safe-area-inset-right, 0px);
 }
+
+/* Safe area con padding dinámico para headers y navbars en iOS / Dynamic Island */
+.pt-safe-header {
+  padding-top: 0.625rem;
+  padding-top: max(0.625rem, calc(constant(safe-area-inset-top, 0px) + 0.5rem));
+  padding-top: max(0.625rem, calc(env(safe-area-inset-top, 0px) + 0.5rem));
+}
+
+.pb-safe-bottom {
+  padding-bottom: 1rem;
+  padding-bottom: max(1rem, calc(constant(safe-area-inset-bottom, 0px) + 0.75rem));
+  padding-bottom: max(1rem, calc(env(safe-area-inset-bottom, 0px) + 0.75rem));
+}
 .h-screen-dvh {
   height: 100vh;
   height: 100dvh;

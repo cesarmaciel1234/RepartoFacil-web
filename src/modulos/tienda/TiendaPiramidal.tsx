@@ -88,7 +88,7 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
   const formatMoney = (val: number) => "$" + val.toLocaleString("es-AR");
 
   return (
-    <div className="min-h-screen w-full bg-slate-950 text-slate-100 flex flex-col font-sans pb-36 overflow-y-auto">
+    <div className="min-h-screen w-full bg-slate-950 text-slate-100 flex flex-col font-sans pb-36">
       {/* ─── Encabezado Superior (con Sidebar DiDi reutilizado y selector de empresa) ─── */}
       <HeaderTienda
         cartItemsCount={cartItemsCount}
@@ -209,7 +209,12 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
 
       {/* ─── Barra Inferior Flotante Móvil (Acceso Rápido al Carrito) ─── */}
       {cartItemsCount > 0 && (
-        <div className="fixed bottom-4 left-3 right-3 sm:left-auto sm:right-6 sm:w-96 z-30">
+        <div
+          style={{
+            bottom: "max(1rem, calc(env(safe-area-inset-bottom, 0px) + 0.75rem))",
+          }}
+          className="fixed left-3 right-3 sm:left-auto sm:right-6 sm:w-96 z-30"
+        >
           <Button
             onClick={() => setIsCartOpen(true)}
             className="w-full h-13 rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white font-extrabold shadow-2xl shadow-emerald-500/40 border border-emerald-400/40 flex items-center justify-between px-4 active:scale-98 transition-all"

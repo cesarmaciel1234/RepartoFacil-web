@@ -38,7 +38,12 @@ export function DrawerCarrito({
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
       <SheetContent className="w-full max-w-[100vw] sm:max-w-md bg-slate-900 border-l border-slate-800 text-slate-100 p-0 flex flex-col h-full overflow-x-hidden">
         {/* Header Drawer */}
-        <SheetHeader className="p-4 border-b border-slate-800 flex flex-row items-center justify-between">
+        <SheetHeader
+          style={{
+            paddingTop: "max(1rem, calc(env(safe-area-inset-top, 0px) + 0.75rem))",
+          }}
+          className="p-4 border-b border-slate-800 flex flex-row items-center justify-between"
+        >
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
               <ShoppingBag className="w-4 h-4" />
@@ -132,7 +137,12 @@ export function DrawerCarrito({
 
         {/* Footer y Totales */}
         {cart.length > 0 && (
-          <div className="p-4 border-t border-slate-800 bg-slate-900/90 space-y-3">
+          <div
+            style={{
+              paddingBottom: "max(1rem, calc(env(safe-area-inset-bottom, 0px) + 0.75rem))",
+            }}
+            className="p-4 border-t border-slate-800 bg-slate-900/90 space-y-3"
+          >
             {/* Banner Envío Gratis */}
             {deliveryType === "delivery" && (
               <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-2.5 flex items-center gap-2 text-xs">
