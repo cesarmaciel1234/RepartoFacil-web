@@ -113,6 +113,17 @@ export function OrderChatSheet({
         if (Array.isArray(parsed) && parsed.length > 0) {
           setMessages(parsed);
         }
+      } else {
+        setMessages([
+          {
+            id: `welcome-${orderId}`,
+            orderId,
+            authorRole: "company",
+            authorName: "Central CobroFácil",
+            content: `¡Canal directo abierto para el Pedido #${orderId}! Podés coordinar la entrega en tiempo real entre el repartidor y el cliente.`,
+            timestamp: "Ahora",
+          },
+        ]);
       }
     } catch {}
 
@@ -133,9 +144,25 @@ export function OrderChatSheet({
     };
 
     fetchCloudMessages();
-    const interval = setInterval(fetchCloudMessages, 3500);
+    const interval = setInterval(fetchCloudMessages, 2000);
 
-    return () => clearInterval(interval);
+    // 3. Escucha reactiva entre pestañas (Storage Event)
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === storageKey && e.newValue) {
+        try {
+          const parsed = JSON.parse(e.newValue);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setMessages(parsed);
+          }
+        } catch {}
+      }
+    };
+    window.addEventListener("storage", handleStorageChange);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("storage", handleStorageChange);
+    };
   }, [isOpen, orderId, storageKey]);
 
   useEffect(() => {

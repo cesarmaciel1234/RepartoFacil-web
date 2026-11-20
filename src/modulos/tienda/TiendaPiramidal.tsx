@@ -53,6 +53,30 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
   const [deliveryAddress, setDeliveryAddress] = useState("Tucumán 2130, Rosario");
   const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
   const [orderConfirmed, setOrderConfirmed] = useState<OrderData | null>(null);
+  const [activeClientOrder, setActiveClientOrder] = useState<any>(null);
+
+  // Sincronizar última orden del comprador para el chat de seguimiento
+  useEffect(() => {
+    if (orderConfirmed) {
+      setActiveClientOrder(orderConfirmed);
+      return;
+    }
+    const syncLatest = () => {
+      try {
+        const hist = JSON.parse(localStorage.getItem("rf_orders_history") || "[]");
+        if (Array.isArray(hist) && hist.length > 0) {
+          setActiveClientOrder(hist[0]);
+        }
+      } catch {}
+    };
+    syncLatest();
+    window.addEventListener("rf-orders-updated", syncLatest);
+    window.addEventListener("storage", syncLatest);
+    return () => {
+      window.removeEventListener("rf-orders-updated", syncLatest);
+      window.removeEventListener("storage", syncLatest);
+    };
+  }, [orderConfirmed]);
 
   // Sincronizar catálogo real directamente desde la base de datos de Cobro Fácil
   useEffect(() => {
@@ -341,6 +365,7 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
       <OrderChatSheet
         isOpen={isOrderChatOpen}
         onOpenChange={setIsOrderChatOpen}
+        activeOrder={activeClientOrder}
         viewerRole="client"
         deliveryAddress={deliveryAddress}
       />
