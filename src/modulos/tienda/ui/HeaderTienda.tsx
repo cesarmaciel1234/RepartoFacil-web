@@ -17,6 +17,7 @@ interface HeaderTiendaProps {
   onOpenCart: () => void;
   onOpenMarkets: () => void;
   onSwitchToDriver: () => void;
+  onOpenOrderChat?: () => void;
 }
 
 export function HeaderTienda({
@@ -31,6 +32,7 @@ export function HeaderTienda({
   onOpenCart,
   onOpenMarkets,
   onSwitchToDriver,
+  onOpenOrderChat,
 }: HeaderTiendaProps) {
   const formatMoney = (val: number) => "$" + val.toLocaleString("es-AR");
 
@@ -112,18 +114,19 @@ export function HeaderTienda({
           </div>
         </div>
 
-        {/* Lado Derecho: Carrito + Switch Rápido */}
+        {/* Lado Derecho: Carrito + Botón Seguimiento Reparto y Chat */}
         <div className="flex items-center gap-1.5 shrink-0">
-          {/* Botón Acceso Rápido Modo Repartidor */}
+          {/* Botón Seguimiento en Vivo y Chat con Repartidor / Central */}
           <Button
-            onClick={onSwitchToDriver}
+            onClick={onOpenOrderChat || onSwitchToDriver}
             size="sm"
             variant="outline"
-            className="border-slate-800 bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white rounded-xl text-xs font-bold px-2 h-9 flex items-center gap-1 shadow-sm"
-            title="Ir a Modo Repartidor"
+            className="border-slate-800 bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white rounded-xl text-xs font-bold px-2.5 h-9 flex items-center gap-1.5 shadow-sm relative active:scale-95 transition-all"
+            title="Ver seguimiento en vivo y chat con el repartidor"
           >
             <Truck className="w-3.5 h-3.5 text-emerald-400" />
-            <span className="hidden sm:inline">Repartidor</span>
+            <span className="hidden sm:inline">Reparto en Curso</span>
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
           </Button>
 
           {/* Botón Carrito */}

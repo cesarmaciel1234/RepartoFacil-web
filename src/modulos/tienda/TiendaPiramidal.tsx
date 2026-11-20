@@ -14,6 +14,7 @@ import { DrawerCarrito } from "./ui/DrawerCarrito";
 import { ModalCheckout } from "./ui/ModalCheckout";
 import { ModalCambiarDireccion } from "./ui/ModalCambiarDireccion";
 import { ModalClientAuth } from "./ui/ModalClientAuth";
+import { OrderChatSheet } from "../repartidor/ui/OrderChatSheet";
 import { SidebarGeneral } from "@/components/SidebarGeneral";
 import { ModalMercados } from "@/components/ModalMercados";
 import { loadClientProfile } from "../repartidor/motor/driverService";
@@ -48,6 +49,7 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [isClientAuthOpen, setIsClientAuthOpen] = useState(false);
   const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
+  const [isOrderChatOpen, setIsOrderChatOpen] = useState(false);
   const [deliveryAddress, setDeliveryAddress] = useState("Tucumán 2130, Rosario");
   const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
   const [orderConfirmed, setOrderConfirmed] = useState<OrderData | null>(null);
@@ -139,6 +141,7 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
         onOpenCart={() => setIsCartOpen(true)}
         onOpenMarkets={() => setIsMarketsOpen(true)}
         onSwitchToDriver={onSwitchToDriver}
+        onOpenOrderChat={() => setIsOrderChatOpen(true)}
       />
 
       {/* ─── Contenido Principal ─── */}
@@ -320,6 +323,14 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
             setIsCheckoutOpen(true);
           }
         }}
+      />
+
+      {/* ─── Chat Tripartito y Seguimiento del Repartidor en Vivo (Captura 2) ─── */}
+      <OrderChatSheet
+        isOpen={isOrderChatOpen}
+        onOpenChange={setIsOrderChatOpen}
+        defaultRole="client"
+        deliveryAddress={deliveryAddress}
       />
 
       {/* ─── Sidebar Unificado DiDi / PedidosYa (Captura 1) ─── */}

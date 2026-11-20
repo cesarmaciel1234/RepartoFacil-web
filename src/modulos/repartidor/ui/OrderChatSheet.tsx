@@ -65,6 +65,8 @@ interface OrderChatSheetProps {
   onOpenChange: (open: boolean) => void;
   activeOrder?: DriverOrder | null;
   driverName?: string;
+  defaultRole?: ChatAuthorRole;
+  deliveryAddress?: string;
 }
 
 export function OrderChatSheet({
@@ -72,13 +74,19 @@ export function OrderChatSheet({
   onOpenChange,
   activeOrder,
   driverName = "Lucas Motomensajero",
+  defaultRole = "driver",
+  deliveryAddress,
 }: OrderChatSheetProps) {
   const orderId = activeOrder?.id || "RF-7420";
   const storageKey = `rf_chat_${orderId}`;
 
   const [messages, setMessages] = useState<OrderChatMessage[]>(DEFAULT_MESSAGES);
   const [inputText, setInputText] = useState("");
-  const [activeRole, setActiveRole] = useState<ChatAuthorRole>("driver");
+  const [activeRole, setActiveRole] = useState<ChatAuthorRole>(defaultRole);
+
+  useEffect(() => {
+    setActiveRole(defaultRole);
+  }, [defaultRole, isOpen]);
 
   // Cargar historial persistente
   useEffect(() => {
@@ -157,6 +165,30 @@ export function OrderChatSheet({
             EN VIVO
           </Badge>
         </SheetHeader>
+
+        {/* Banner de Ubicación y Estado del Repartidor en Vivo */}
+        <div className="px-4 py-2.5 bg-emerald-950/40 border-b border-emerald-500/20 flex items-center justify-between">
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-xs shrink-0 shadow-sm">
+              🏍️
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs font-black text-white truncate">{driverName}</span>
+                <span className="text-[9px] bg-emerald-500/20 text-emerald-300 px-1.5 py-0.2 rounded-full font-bold shrink-0">
+                  En viaje
+                </span>
+              </div>
+              <p className="text-[10px] text-slate-400 font-medium truncate">
+                Destino: {deliveryAddress || "Tucumán 2130, Rosario"}
+              </p>
+            </div>
+          </div>
+          <div className="text-right shrink-0 pl-2">
+            <span className="text-xs font-black text-emerald-400">12-15 min</span>
+            <span className="block text-[9px] text-slate-400 font-medium">GPS activo</span>
+          </div>
+        </div>
 
         {/* Banner de Integración con CobroFácil Cloud */}
         <div className="px-4 py-2 bg-slate-950/70 border-b border-slate-800/80 flex items-center justify-between text-[11px] text-slate-300">
