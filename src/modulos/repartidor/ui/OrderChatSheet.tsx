@@ -326,6 +326,22 @@ export function OrderChatSheet({
         {/* Lista de Mensajes: Tu mensaje a la derecha, otros a la izquierda */}
         <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-3.5">
           {messages.map((m) => {
+            const isSystem = (m.authorRole as string) === "system";
+            if (isSystem) {
+              return (
+                <div key={m.id} className="flex flex-col items-center my-2 w-full">
+                  <div className="w-full bg-amber-950/50 border border-amber-500/50 rounded-2xl p-3 shadow-lg flex flex-col gap-1.5 text-center">
+                    <div className="flex items-center justify-center gap-1.5 text-[10.5px] font-black text-amber-400 uppercase tracking-wider">
+                      <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
+                      <span>{m.authorName || "Custodio del Sistema"}</span>
+                      <span className="text-slate-400 font-normal">· {m.timestamp}</span>
+                    </div>
+                    <p className="text-[12px] text-amber-100 font-medium leading-snug">{m.content}</p>
+                  </div>
+                </div>
+              );
+            }
+
             const isMe = m.authorRole === effectiveRole;
             const isDriver = m.authorRole === "driver";
             const isClient = m.authorRole === "client";

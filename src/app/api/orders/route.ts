@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { queryDb } from "@/lib/db";
+import { ejecutarAuditoriaCustodio } from "./custodio/route";
 
 export const dynamic = "force-dynamic";
 
@@ -44,6 +45,9 @@ function mapDbRowToOrder(row: any) {
 // GET /api/orders: Obtener todos los pedidos reales de PostgreSQL crm-libro-local
 export async function GET(request: NextRequest) {
   try {
+    // Custodio Intermediario del Sistema: audita desconexiones e inmovilidad de choferes asignados
+    await ejecutarAuditoriaCustodio().catch(() => {});
+
     const statusParam = request.nextUrl.searchParams.get("status");
     let query = "SELECT * FROM repartofacil_pedidos";
     const values: any[] = [];
@@ -138,6 +142,9 @@ export async function PATCH(request: NextRequest) {
     if (status) {
       updateQuery += `, estado = $${idx++}`;
       values.push(status);
+      if (status === "Assigned") {
+        updateQuery += `, driver_last_ping = NOW(), custodio_estado = 'normal', custodio_advertencia_at = NULL`;
+      }
     }
     if (driverId !== undefined) {
       updateQuery += `, repartidor_id = $${idx++}`;

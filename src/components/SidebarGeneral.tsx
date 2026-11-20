@@ -106,6 +106,18 @@ export function SidebarGeneral({
   const handleCloseSession = () => {
     onOpenChange(false);
     if (currentMode === "driver") {
+      // Notificar al Custodio del Sistema para liberar pedidos si el chofer se desconecta con órdenes activas
+      if (driverProfileLocal?.id) {
+        fetch("/api/orders/custodio", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "driver_disconnected",
+            driverId: driverProfileLocal.id,
+            driverName: driverProfileLocal.name || "Lucas Motomensajero",
+          }),
+        }).catch(() => {});
+      }
       clearDriverProfile();
       setDriverProfileLocal(null);
       if (onLogout) onLogout();

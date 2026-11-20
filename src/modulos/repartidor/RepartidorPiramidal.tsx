@@ -81,6 +81,30 @@ export function RepartidorPiramidal({ onSwitchToStore }: RepartidorPiramidalProp
     wallet,
   } = useDriverOrders(driverProfile?.id);
 
+  // Heartbeat de telemetría y presencia para el Custodio del Sistema
+  useEffect(() => {
+    if (!driverProfile?.id || myActiveOrders.length === 0) return;
+    const sendPing = async () => {
+      try {
+        await fetch("/api/orders/custodio", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "ping",
+            driverId: driverProfile.id,
+            lat: coords?.lat || null,
+            lng: coords?.lng || null,
+          }),
+        });
+      } catch {
+        // Red offline transitoria
+      }
+    };
+    sendPing();
+    const timer = setInterval(sendPing, 15000);
+    return () => clearInterval(timer);
+  }, [driverProfile?.id, coords?.lat, coords?.lng, myActiveOrders.length]);
+
   // Manejo de drag en móvil
   const handleDragStart = (clientY: number) => {
     setIsDragging(true);

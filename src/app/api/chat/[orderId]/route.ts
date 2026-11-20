@@ -55,6 +55,14 @@ export async function POST(
 
     const rows = await queryDb(insertQuery, [id, orderId, authorRole, authorName, content, timestampStr]);
 
+    // Si el repartidor responde en el chat, el Custodio limpia cualquier advertencia de inactividad
+    if (authorRole === "driver") {
+      await queryDb(
+        "UPDATE repartofacil_pedidos SET driver_last_ping = NOW(), custodio_advertencia_at = NULL, custodio_estado = 'normal', updated_at = NOW() WHERE id = $1",
+        [orderId]
+      ).catch(() => {});
+    }
+
     return NextResponse.json({
       success: true,
       message: {
