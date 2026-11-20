@@ -3,7 +3,16 @@ import hashlib
 import sqlite3
 import json
 import os
+import sys
 from datetime import datetime
+
+# Asegurar importación de app
+sys.path.insert(0, os.path.dirname(__file__))
+from app.database import engine, Base
+from app.models.local import LocalUser, Document
+
+# Crear tablas si no existen
+Base.metadata.create_all(bind=engine)
 
 db_path = os.path.join(os.path.dirname(__file__), "repartofacil.db")
 con = sqlite3.connect(db_path)

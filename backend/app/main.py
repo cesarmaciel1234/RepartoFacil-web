@@ -11,9 +11,22 @@ from app.models.local import Document, LocalUser
 
 app = FastAPI(title="RepartoFacil Local API", version="2.0")
 
+cors_origins_env = os.getenv("CORS_ORIGINS", "")
+allowed_origins = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "https://repartofacil.onrender.com",
+    "https://repartofacil-web.onrender.com",
+]
+if cors_origins_env:
+    for o in cors_origins_env.split(","):
+        stripped = o.strip()
+        if stripped and stripped not in allowed_origins:
+            allowed_origins.append(stripped)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_origins=allowed_origins if "*" not in allowed_origins else ["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
