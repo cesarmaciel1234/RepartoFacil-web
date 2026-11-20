@@ -353,6 +353,10 @@ export function RepartidorPiramidal({ onSwitchToStore }: RepartidorPiramidalProp
         }}
         driverProfile={driverProfile}
         walletBalance={wallet.balance}
+        onOpenOrders={() => {
+          setActiveTab("ruta");
+          setIsExpanded(true);
+        }}
         onOpenWallet={() => setIsWalletModalOpen(true)}
         onOpenMarkets={() => setIsMarketsOpen(true)}
         onLogout={() => {
