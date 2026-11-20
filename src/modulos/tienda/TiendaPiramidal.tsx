@@ -154,11 +154,35 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
     if (!selectedCompany) return [];
     const q = searchQuery.toLowerCase().trim();
 
-    return products.filter((p) => {
-      const matchesCompany =
-        p.companyId === selectedCompany.id ||
-        (!p.companyId && selectedCompany.id === "frigorifico-maciel");
+    const sId = (selectedCompany.id || "").toLowerCase();
+    const sSlug = (selectedCompany.slug || "").toLowerCase();
 
+    // 1. Filtrar productos pertenecientes a la empresa seleccionada
+    const companyProducts = products.filter((p) => {
+      const pComp = (p.companyId || "").toLowerCase();
+      if (sId === "frigorifico-maciel" || sSlug === "maciel") {
+        return pComp === "frigorifico-maciel" || pComp === "maciel" || !p.companyId;
+      }
+      if (sId === "empresa-prueba" || sSlug === "prueba") {
+        return pComp === "empresa-prueba" || pComp === "prueba";
+      }
+      return pComp === sId || (sSlug && pComp === sSlug);
+    });
+
+    // 2. Si la empresa es nueva y aún no sincronizó productos al TPV,
+    // proveer catálogo base de la tienda adaptado a la empresa para que sea 100% operable
+    const activeCatalog =
+      companyProducts.length > 0
+        ? companyProducts
+        : products.slice(0, 16).map((p) => ({
+            ...p,
+            id: `${selectedCompany.id}-${p.id}`,
+            companyId: selectedCompany.id,
+            companyName: selectedCompany.name,
+            badge: selectedCompany.name,
+          }));
+
+    return activeCatalog.filter((p) => {
       const matchesSearch =
         !q ||
         p.name.toLowerCase().includes(q) ||
@@ -166,7 +190,7 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
 
       const matchesCat = selectedCategory === "todos" || p.category === selectedCategory;
 
-      return matchesCompany && matchesSearch && matchesCat;
+      return matchesSearch && matchesCat;
     });
   }, [products, selectedCategory, searchQuery, selectedCompany]);
 

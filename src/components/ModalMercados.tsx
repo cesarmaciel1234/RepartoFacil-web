@@ -40,6 +40,19 @@ export function ModalMercados({
 }: ModalMercadosProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCat, setSelectedCat] = useState<string>("todos");
+  const [companies, setCompanies] = useState<CompanyStore[]>(MOCK_COMPANIES);
+
+  // Sincronizar dinámicamente las empresas dadas de alta en Cobro Fácil (PostgreSQL)
+  React.useEffect(() => {
+    fetch("/api/cobrofacil/companies")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data && Array.isArray(data.empresas) && data.empresas.length > 0) {
+          setCompanies(data.empresas);
+        }
+      })
+      .catch((err) => console.warn("Error cargando empresas dinámicas en modal:", err));
+  }, []);
 
   const categories = [
     { id: "todos", name: "Todos", emoji: "🛒" },
@@ -50,12 +63,12 @@ export function ModalMercados({
 
   const term = searchTerm.toLowerCase().trim();
 
-  const filtered = MOCK_COMPANIES.map((comp) => {
+  const filtered = companies.map((comp) => {
     // Buscar si la empresa tiene productos que coincidan en su catálogo
     const matchingProducts = term
       ? INITIAL_PRODUCTS.filter(
           (p) =>
-            p.companyId === comp.id &&
+            (p.companyId === comp.id || (comp.slug && p.companyId === comp.slug) || (!p.companyId && comp.id === "frigorifico-maciel")) &&
             (p.name.toLowerCase().includes(term) ||
               p.description.toLowerCase().includes(term) ||
               p.category.toLowerCase().includes(term))

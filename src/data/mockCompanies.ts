@@ -1,6 +1,8 @@
 export interface CompanyStore {
   id: string;
   name: string;
+  slug?: string;
+  empresa_id?: number;
   category: string;
   categorySlug: "carnes" | "supermercados" | "bebidas" | "kioscos" | "minimercados";
   rating: number;
@@ -15,6 +17,7 @@ export interface CompanyStore {
   phone: string;
   cobroFacilApiEndpoint?: string;
   isOpen: boolean;
+  sucursales?: { id: number; nombre: string }[];
 }
 
 export const MOCK_COMPANIES: CompanyStore[] = [

@@ -31,6 +31,19 @@ export function VistaMercadosEmpresas({
 }: VistaMercadosEmpresasProps) {
   const [internalSearch, setInternalSearch] = useState("");
   const [selectedCat, setSelectedCat] = useState<string>("todos");
+  const [companies, setCompanies] = useState<CompanyStore[]>(MOCK_COMPANIES);
+
+  // Sincronizar dinámicamente las empresas dadas de alta en Cobro Fácil (PostgreSQL)
+  React.useEffect(() => {
+    fetch("/api/cobrofacil/companies")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data && Array.isArray(data.empresas) && data.empresas.length > 0) {
+          setCompanies(data.empresas);
+        }
+      })
+      .catch((err) => console.warn("Error cargando empresas dinámicas:", err));
+  }, []);
 
   const searchTerm = externalSearch !== undefined ? externalSearch : internalSearch;
   const handleSearchChange = (val: string) => {
@@ -50,12 +63,12 @@ export function VistaMercadosEmpresas({
 
   const term = searchTerm.toLowerCase().trim();
 
-  const filtered = MOCK_COMPANIES.map((comp) => {
+  const filtered = companies.map((comp) => {
     // Buscar productos de esta empresa que coincidan con la búsqueda
     const matchingProducts = term
       ? INITIAL_PRODUCTS.filter(
           (p) =>
-            (p.companyId === comp.id || (!p.companyId && comp.id === "frigorifico-maciel")) &&
+            (p.companyId === comp.id || (comp.slug && p.companyId === comp.slug) || (!p.companyId && comp.id === "frigorifico-maciel")) &&
             (p.name.toLowerCase().includes(term) ||
               p.description.toLowerCase().includes(term) ||
               p.category.toLowerCase().includes(term))

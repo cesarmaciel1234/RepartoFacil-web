@@ -119,6 +119,54 @@ export async function GET(
             companyName: "Cobro Fácil - Empresa Prueba",
             source: "sandbox",
           },
+          {
+            id: "prueba-3",
+            name: "Asado Especial Prueba",
+            category: "vacuno",
+            categoryName: "Cortes Vacunos",
+            price: 18900,
+            unit: "kg",
+            description: "Corte de asado fresco listo para entrega en Empresa Prueba.",
+            image: "https://images.unsplash.com/photo-1544025162-d76694265947?w=600&auto=format&fit=crop&q=80",
+            stockKg: 40,
+            badge: "Empresa Prueba",
+            isPopular: true,
+            companyId: "empresa-prueba",
+            companyName: "Cobro Fácil - Empresa Prueba",
+            source: "sandbox",
+          },
+          {
+            id: "prueba-4",
+            name: "Vacío Fino Prueba",
+            category: "vacuno",
+            categoryName: "Cortes Vacunos",
+            price: 19900,
+            unit: "kg",
+            description: "Vacío seleccionado para asado en Empresa Prueba.",
+            image: "https://images.unsplash.com/photo-1558030006-450675393462?w=600&auto=format&fit=crop&q=80",
+            stockKg: 35,
+            badge: "Empresa Prueba",
+            isPopular: true,
+            companyId: "empresa-prueba",
+            companyName: "Cobro Fácil - Empresa Prueba",
+            source: "sandbox",
+          },
+          {
+            id: "prueba-5",
+            name: "Suprema Pollo Prueba",
+            category: "pollo",
+            categoryName: "Pollo & Granja",
+            price: 13500,
+            unit: "kg",
+            description: "Suprema fresca de primera calidad en Empresa Prueba.",
+            image: "https://images.unsplash.com/photo-1587593810167-a84920ea0781?w=600&auto=format&fit=crop&q=80",
+            stockKg: 60,
+            badge: "Empresa Prueba",
+            isPopular: true,
+            companyId: "empresa-prueba",
+            companyName: "Cobro Fácil - Empresa Prueba",
+            source: "sandbox",
+          },
         ];
 
         return NextResponse.json({
@@ -135,15 +183,131 @@ export async function GET(
     }
   }
 
-  // 2. Empresas reales directamente desde crm-libro-local
+  // 2. Empresas reales directamente desde crm-libro-local (PostgreSQL)
   if (pathStr === "companies") {
     try {
-      const sucursales = await queryDb("SELECT DISTINCT sucursal_id, sucursal_nombre FROM pos_base ORDER BY sucursal_id");
+      let dbEmpresas: any[] = [];
+      try {
+        dbEmpresas = await queryDb(
+          "SELECT id, nombre, slug, cuit FROM empresas WHERE activo = 1 ORDER BY id ASC"
+        );
+      } catch (err: any) {
+        console.warn("[CobroFacil query empresas warning]:", err.message);
+      }
 
-      const companyList = [
-        {
+      let sucursales: any[] = [];
+      try {
+        sucursales = await queryDb(
+          "SELECT DISTINCT sucursal_id, sucursal_nombre FROM pos_base ORDER BY sucursal_id"
+        );
+      } catch {}
+
+      const dynamicCompanies = (dbEmpresas || []).map((row: any) => {
+        const slug = (row.slug || "").toLowerCase().trim();
+        const isMaciel = slug === "maciel" || row.id === 1;
+        const isPrueba = slug === "prueba" || row.id === 2;
+
+        if (isMaciel) {
+          return {
+            id: "frigorifico-maciel",
+            name: "Frigorífico Maciel - Central",
+            slug: "maciel",
+            empresa_id: row.id,
+            category: "Carnes y Pescados",
+            categorySlug: "carnes" as const,
+            rating: 4.8,
+            ratingCount: 342,
+            deliveryTimeMin: 15,
+            deliveryTimeMax: 40,
+            deliveryFee: 1605,
+            freeDeliveryThreshold: 35000,
+            badges: ["Sincronizado Cobro Fácil TPV", "MACIEL - DESKTOP-7Q2Q4VD", "Mismo precio que en local"],
+            address: "Tucumán 2130, Rosario",
+            phone: "+54 9 341 555-1234",
+            cobroFacilApiEndpoint: "https://cobrofacil.onrender.com",
+            isOpen: true,
+            sucursales: sucursales.map((s) => ({ id: s.sucursal_id, nombre: s.sucursal_nombre })),
+          };
+        }
+
+        if (isPrueba) {
+          return {
+            id: "empresa-prueba",
+            name: "Cobro Fácil - Empresa Prueba",
+            slug: "prueba",
+            empresa_id: row.id,
+            category: "Comercio de Prueba & Sandbox",
+            categorySlug: "carnes" as const,
+            rating: 5.0,
+            ratingCount: 15,
+            deliveryTimeMin: 10,
+            deliveryTimeMax: 20,
+            deliveryFee: 1500,
+            freeDeliveryThreshold: 20000,
+            badges: ["Sandbox Cobro Fácil", "Empresa Prueba", "Entorno Seguro"],
+            address: "Tucumán 2130, Rosario",
+            phone: "+54 9 341 555-9999",
+            cobroFacilApiEndpoint: "https://cobrofacil.onrender.com",
+            isOpen: true,
+          };
+        }
+
+        return {
+          id: slug ? `empresa-${slug}` : `empresa-${row.id}`,
+          name: row.nombre || `Empresa ${row.id}`,
+          slug: slug,
+          empresa_id: row.id,
+          category: "Comercio & Almacén",
+          categorySlug: "carnes" as const,
+          rating: 4.9,
+          ratingCount: 8,
+          deliveryTimeMin: 15,
+          deliveryTimeMax: 30,
+          deliveryFee: 1500,
+          freeDeliveryThreshold: 25000,
+          badges: ["Comercio Verificado", "Cobro Fácil PRO", "Sincronizado"],
+          address: "Tucumán 2130, Rosario",
+          phone: "+54 9 341 555-0000",
+          cobroFacilApiEndpoint: "https://cobrofacil.onrender.com",
+          isOpen: true,
+        };
+      });
+
+      // Asegurar que siempre figuren Frigorífico Maciel y Empresa Prueba
+      const hasMaciel = dynamicCompanies.some((c: any) => c.id === "frigorifico-maciel");
+      const hasPrueba = dynamicCompanies.some((c: any) => c.id === "empresa-prueba");
+
+      const companyList: any[] = [];
+      if (!hasPrueba) {
+        companyList.push({
+          id: "empresa-prueba",
+          name: "Cobro Fácil - Empresa Prueba",
+          slug: "prueba",
+          empresa_id: 2,
+          category: "Comercio de Prueba & Sandbox",
+          categorySlug: "carnes",
+          rating: 5.0,
+          ratingCount: 15,
+          deliveryTimeMin: 10,
+          deliveryTimeMax: 20,
+          deliveryFee: 1500,
+          freeDeliveryThreshold: 20000,
+          badges: ["Sandbox Cobro Fácil", "Empresa Prueba", "Entorno Seguro"],
+          address: "Tucumán 2130, Rosario",
+          phone: "+54 9 341 555-9999",
+          cobroFacilApiEndpoint: "https://cobrofacil.onrender.com",
+          isOpen: true,
+        });
+      }
+
+      dynamicCompanies.forEach((dc) => companyList.push(dc));
+
+      if (!hasMaciel) {
+        companyList.push({
           id: "frigorifico-maciel",
           name: "Frigorífico Maciel - Central",
+          slug: "maciel",
+          empresa_id: 1,
           category: "Carnes y Pescados",
           categorySlug: "carnes",
           rating: 4.8,
@@ -157,26 +321,27 @@ export async function GET(
           phone: "+54 9 341 555-1234",
           cobroFacilApiEndpoint: "https://cobrofacil.onrender.com",
           isOpen: true,
-          sucursales: sucursales.map((s) => ({ id: s.sucursal_id, nombre: s.sucursal_nombre })),
-        },
-        {
-          id: "kiosco-al-toque",
-          name: "Kiosco Al Toque - 24hs",
-          category: "Kioscos y Golosinas",
-          categorySlug: "kioscos",
-          rating: 4.6,
-          ratingCount: 189,
-          deliveryTimeMin: 15,
-          deliveryTimeMax: 30,
-          deliveryFee: 1359,
-          freeDeliveryThreshold: 25000,
-          badges: ["Abierto 24hs", "Bebidas frías", "Cobro Fácil QR"],
-          address: "San Lorenzo 1920, Rosario",
-          phone: "+54 9 341 444-5678",
-          cobroFacilApiEndpoint: "https://cobrofacil.onrender.com/api/v1/kiosco",
-          isOpen: true,
-        },
-      ];
+        });
+      }
+
+      companyList.push({
+        id: "kiosco-al-toque",
+        name: "Kiosco Al Toque - 24hs",
+        slug: "kiosco-al-toque",
+        category: "Kioscos y Golosinas",
+        categorySlug: "kioscos",
+        rating: 4.6,
+        ratingCount: 189,
+        deliveryTimeMin: 15,
+        deliveryTimeMax: 30,
+        deliveryFee: 1359,
+        freeDeliveryThreshold: 25000,
+        badges: ["Abierto 24hs", "Bebidas frías", "Cobro Fácil QR"],
+        address: "San Lorenzo 1920, Rosario",
+        phone: "+54 9 341 444-5678",
+        cobroFacilApiEndpoint: "https://cobrofacil.onrender.com/api/v1/kiosco",
+        isOpen: true,
+      });
 
       return NextResponse.json({
         success: true,
