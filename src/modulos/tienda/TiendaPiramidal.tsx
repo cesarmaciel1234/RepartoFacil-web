@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { INITIAL_PRODUCTS, Product } from "@/data/mockProducts";
 import { MOCK_COMPANIES, CompanyStore } from "@/data/mockCompanies";
 import { useCart } from "./motor/useCart";
@@ -12,8 +12,11 @@ import { TarjetaProducto } from "./ui/TarjetaProducto";
 import { VistaMercadosEmpresas } from "./ui/VistaMercadosEmpresas";
 import { DrawerCarrito } from "./ui/DrawerCarrito";
 import { ModalCheckout } from "./ui/ModalCheckout";
+import { ModalCambiarDireccion } from "./ui/ModalCambiarDireccion";
+import { ModalClientAuth } from "./ui/ModalClientAuth";
 import { SidebarGeneral } from "@/components/SidebarGeneral";
 import { ModalMercados } from "@/components/ModalMercados";
+import { loadClientProfile } from "../repartidor/motor/driverService";
 import { useFirestore } from "@/firebase";
 import { ShoppingBag, ArrowRight, ArrowLeft, Store, Star, Clock, Bike } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -43,8 +46,34 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
   const [isMarketsOpen, setIsMarketsOpen] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
+  const [isClientAuthOpen, setIsClientAuthOpen] = useState(false);
+  const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
+  const [deliveryAddress, setDeliveryAddress] = useState("Tucumán 2130, Rosario");
   const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
   const [orderConfirmed, setOrderConfirmed] = useState<OrderData | null>(null);
+
+  // Cargar y sincronizar dirección de entrega del cliente
+  useEffect(() => {
+    const client = loadClientProfile();
+    const savedAddr = localStorage.getItem("repartofacil_delivery_address");
+    if (client?.address) {
+      setDeliveryAddress(client.address);
+    } else if (savedAddr) {
+      setDeliveryAddress(savedAddr);
+    }
+
+    const syncAuth = () => {
+      const c = loadClientProfile();
+      if (c?.address) setDeliveryAddress(c.address);
+    };
+    window.addEventListener("repartofacil-auth", syncAuth);
+    return () => window.removeEventListener("repartofacil-auth", syncAuth);
+  }, []);
+
+  const handleAddressChange = (newAddr: string) => {
+    setDeliveryAddress(newAddr);
+    localStorage.setItem("repartofacil_delivery_address", newAddr);
+  };
 
   // Filtrado reactivo de productos cuando se está dentro del catálogo de una empresa
   const filteredProducts = useMemo(() => {
@@ -67,9 +96,14 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
     });
   }, [products, selectedCategory, searchQuery, selectedCompany]);
 
-  // Manejo de checkout
+  // Manejo de checkout: libre navegación en tienda, solo se pide login al pagar (y luego no vuelve a pedir)
   const handleProceedToPayment = () => {
     setIsCartOpen(false);
+    const client = loadClientProfile();
+    if (!client) {
+      setIsClientAuthOpen(true);
+      return;
+    }
     setIsCheckoutOpen(true);
   };
 
@@ -89,17 +123,18 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
 
   return (
     <div className="min-h-screen w-full bg-slate-950 text-slate-100 flex flex-col font-sans pb-36">
-      {/* ─── Encabezado Superior (con Sidebar DiDi reutilizado y selector de empresa) ─── */}
+      {/* ─── Encabezado Superior (con selector de dirección editable y de empresa) ─── */}
       <HeaderTienda
         cartItemsCount={cartItemsCount}
         cartTotal={cartTotal}
         deliveryType="delivery"
-        deliveryAddress=""
+        deliveryAddress={deliveryAddress}
         selectedCompanyName={selectedCompany ? selectedCompany.name : null}
         onBackToMarkets={() => {
           setSelectedCompany(null);
           setSearchQuery("");
         }}
+        onChangeAddress={() => setIsAddressModalOpen(true)}
         onOpenSidebar={() => setIsSidebarOpen(true)}
         onOpenCart={() => setIsCartOpen(true)}
         onOpenMarkets={() => setIsMarketsOpen(true)}
@@ -257,9 +292,34 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
         onOpenChange={setIsCheckoutOpen}
         cartTotal={cartTotal}
         isSubmitting={isSubmittingOrder}
+        defaultDeliveryAddress={deliveryAddress}
         onConfirmOrder={handleConfirmOrder}
         orderConfirmed={orderConfirmed}
         onCloseConfirmed={() => setOrderConfirmed(null)}
+      />
+
+      {/* ─── Modal para Editar / Cambiar Dirección de Entrega ─── */}
+      <ModalCambiarDireccion
+        isOpen={isAddressModalOpen}
+        onOpenChange={setIsAddressModalOpen}
+        currentAddress={deliveryAddress}
+        onSelectAddress={handleAddressChange}
+      />
+
+      {/* ─── Modal de Autenticación de Cliente (Solo requerido al pagar si no está logueado) ─── */}
+      <ModalClientAuth
+        isOpen={isClientAuthOpen}
+        onOpenChange={setIsClientAuthOpen}
+        onSuccess={() => {
+          setIsClientAuthOpen(false);
+          const client = loadClientProfile();
+          if (client?.address) {
+            setDeliveryAddress(client.address);
+          }
+          if (cart.length > 0) {
+            setIsCheckoutOpen(true);
+          }
+        }}
       />
 
       {/* ─── Sidebar Unificado DiDi / PedidosYa (Captura 1) ─── */}

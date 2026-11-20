@@ -12,6 +12,7 @@ interface HeaderTiendaProps {
   deliveryAddress: string;
   selectedCompanyName?: string | null;
   onBackToMarkets?: () => void;
+  onChangeAddress?: () => void;
   onOpenSidebar: () => void;
   onOpenCart: () => void;
   onOpenMarkets: () => void;
@@ -25,6 +26,7 @@ export function HeaderTienda({
   deliveryAddress,
   selectedCompanyName,
   onBackToMarkets,
+  onChangeAddress,
   onOpenSidebar,
   onOpenCart,
   onOpenMarkets,
@@ -74,14 +76,18 @@ export function HeaderTienda({
                     {selectedCompanyName}
                   </span>
                 </div>
-                <p className="text-[10px] text-slate-400 font-semibold flex items-center gap-1 truncate">
+                <button
+                  type="button"
+                  onClick={onChangeAddress || onOpenSidebar}
+                  className="text-[10px] text-slate-400 hover:text-white font-semibold flex items-center gap-1 truncate group cursor-pointer transition-colors"
+                  title="Cambiar dirección de entrega"
+                >
                   <MapPin className="w-2.5 h-2.5 text-emerald-400 shrink-0" />
                   <span className="truncate max-w-[140px] sm:max-w-[220px]">
-                    {deliveryType === "delivery" && deliveryAddress
-                      ? deliveryAddress
-                      : "Tucumán 2130, Rosario"}
+                    {deliveryAddress || "Tucumán 2130, Rosario"}
                   </span>
-                </p>
+                  <ChevronDown className="w-2.5 h-2.5 text-slate-500 group-hover:text-emerald-400 shrink-0" />
+                </button>
               </div>
             ) : (
               /* En la Home (Estilo PedidosYa): solo muestra la dirección de entrega */
@@ -91,15 +97,13 @@ export function HeaderTienda({
                 </span>
                 <button
                   type="button"
-                  onClick={onOpenSidebar}
-                  className="flex items-center gap-1 text-left group mt-0.5"
+                  onClick={onChangeAddress || onOpenSidebar}
+                  className="flex items-center gap-1 text-left group mt-0.5 cursor-pointer"
                   title="Cambiar dirección de entrega"
                 >
                   <MapPin className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
                   <span className="font-black text-sm text-white truncate group-hover:text-emerald-400 transition-colors max-w-[160px] sm:max-w-[260px]">
-                    {deliveryType === "delivery" && deliveryAddress
-                      ? deliveryAddress
-                      : "Tucumán 2130, Rosario"}
+                    {deliveryAddress || "Tucumán 2130, Rosario"}
                   </span>
                   <ChevronDown className="w-3.5 h-3.5 text-slate-400 group-hover:text-emerald-400 shrink-0" />
                 </button>

@@ -34,6 +34,7 @@ interface ModalCheckoutProps {
   onOpenChange: (open: boolean) => void;
   cartTotal: number;
   isSubmitting: boolean;
+  defaultDeliveryAddress?: string;
   onConfirmOrder: (formData: CheckoutFormData) => void;
   orderConfirmed: OrderData | null;
   onCloseConfirmed: () => void;
@@ -44,6 +45,7 @@ export function ModalCheckout({
   onOpenChange,
   cartTotal,
   isSubmitting,
+  defaultDeliveryAddress,
   onConfirmOrder,
   orderConfirmed,
   onCloseConfirmed,
@@ -68,12 +70,17 @@ export function ModalCheckout({
         ...prev,
         customerName: saved.customerName || prev.customerName,
         customerPhone: saved.customerPhone || prev.customerPhone,
-        deliveryAddress: saved.deliveryAddress || prev.deliveryAddress,
+        deliveryAddress: saved.deliveryAddress || defaultDeliveryAddress || prev.deliveryAddress,
         deliveryType: saved.deliveryType || prev.deliveryType,
         selectedBranch: saved.selectedBranch || prev.selectedBranch,
       }));
+    } else if (defaultDeliveryAddress) {
+      setForm((prev) => ({
+        ...prev,
+        deliveryAddress: defaultDeliveryAddress,
+      }));
     }
-  }, []);
+  }, [defaultDeliveryAddress]);
 
   // Cálculo de tarifa estándar Uber / PedidosYa
   const tarifa = useMemo(

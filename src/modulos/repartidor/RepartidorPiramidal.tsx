@@ -49,10 +49,13 @@ export function RepartidorPiramidal({ onSwitchToStore }: RepartidorPiramidalProp
   const [isDragging, setIsDragging] = useState(false);
   const startY = useRef(0);
 
-  // Cargar perfil del conductor
+  // Cargar perfil del conductor (para entrar como repartidor se requiere estar logueado)
   useEffect(() => {
     const p = loadDriverProfile();
     setDriverProfile(p);
+    if (!p) {
+      setShowLoginModal(true);
+    }
 
     const handleAuthChange = () => {
       setDriverProfile(loadDriverProfile());
@@ -294,17 +297,24 @@ export function RepartidorPiramidal({ onSwitchToStore }: RepartidorPiramidalProp
         </div>
       </div>
 
-      {/* ─── 5. Modal de Identificación del Repartidor (Solo se activa al aceptar pedido) ─── */}
+      {/* ─── 5. Modal de Identificación del Repartidor (Requerido para operar como repartidor) ─── */}
       <ModalDriverAuth
         isOpen={showLoginModal}
-        onOpenChange={setShowLoginModal}
+        onOpenChange={(open) => {
+          setShowLoginModal(open);
+          if (!open && !loadDriverProfile()) {
+            onSwitchToStore();
+          }
+        }}
         pendingOrder={pendingAcceptOrder}
         onSuccess={(id) => {
           const prof = loadDriverProfile();
           setDriverProfile(prof);
-          confirmOrderAfterLogin(id);
-          setActiveTab("ruta");
-          setIsExpanded(true);
+          if (pendingAcceptOrder) {
+            confirmOrderAfterLogin(id);
+            setActiveTab("ruta");
+            setIsExpanded(true);
+          }
         }}
       />
 
