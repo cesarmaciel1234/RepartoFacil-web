@@ -23,13 +23,38 @@ export function useDriverOrders(currentDriverId?: string | null) {
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [wallet, setWallet] = useState<DriverWallet>(loadDriverWallet());
 
-  // Cargar órdenes y wallet locales iniciales
+  // Cargar órdenes y wallet locales iniciales y sincronizar con base de datos real
   useEffect(() => {
     setLocalOrders(loadLocalOrders());
     setWallet(loadDriverWallet());
 
+    const fetchCloudOrders = async () => {
+      try {
+        const res = await fetch("/api/orders", { cache: "no-store" });
+        if (res.ok) {
+          const cloudOrders = await res.json();
+          if (Array.isArray(cloudOrders) && cloudOrders.length > 0) {
+            setLocalOrders((prev) => {
+              const map = new Map<string, DriverOrder>();
+              cloudOrders.forEach((o: DriverOrder) => map.set(o.id, o));
+              prev.forEach((o) => {
+                if (!map.has(o.id)) map.set(o.id, o);
+              });
+              return Array.from(map.values());
+            });
+          }
+        }
+      } catch (err) {
+        // Usar datos locales si no hay conexión
+      }
+    };
+
+    fetchCloudOrders();
+    const pollInterval = setInterval(fetchCloudOrders, 7000);
+
     const handleOrdersUpdated = () => {
       setLocalOrders(loadLocalOrders());
+      fetchCloudOrders();
     };
     const handleWalletUpdated = (e: any) => {
       if (e.detail) setWallet(e.detail);
@@ -39,6 +64,7 @@ export function useDriverOrders(currentDriverId?: string | null) {
     window.addEventListener("rf-orders-updated", handleOrdersUpdated);
     window.addEventListener("rf-wallet-updated", handleWalletUpdated);
     return () => {
+      clearInterval(pollInterval);
       window.removeEventListener("rf-orders-updated", handleOrdersUpdated);
       window.removeEventListener("rf-wallet-updated", handleWalletUpdated);
     };

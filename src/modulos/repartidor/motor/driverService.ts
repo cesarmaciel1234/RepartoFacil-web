@@ -209,6 +209,20 @@ export async function assignOrderToDriver(
 
   saveLocalOrders(updated);
 
+  // Sincronizar en base de datos PostgreSQL de Cobro Fácil
+  try {
+    fetch("/api/orders", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        id: orderId,
+        status: "Assigned",
+        driverId,
+        driverName: "Lucas Motomensajero",
+      }),
+    }).catch(() => null);
+  } catch {}
+
   if (firestoreInstance) {
     try {
       updateDoc(doc(firestoreInstance, "orders", orderId), {
@@ -249,6 +263,18 @@ export async function completeOrderDelivery(
 
   saveLocalOrders(updated);
   const wallet = creditDeliveryEarning(orderId, creditedEarning, cashCollected);
+
+  // Sincronizar en base de datos PostgreSQL de Cobro Fácil
+  try {
+    fetch("/api/orders", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        id: orderId,
+        status: "Delivered",
+      }),
+    }).catch(() => null);
+  } catch {}
 
   if (firestoreInstance) {
     try {

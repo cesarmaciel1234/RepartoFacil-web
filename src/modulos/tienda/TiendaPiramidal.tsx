@@ -38,7 +38,7 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
     cartItemsCount,
   } = useCart();
 
-  const [products] = useState<Product[]>(INITIAL_PRODUCTS);
+  const [products, setProducts] = useState<Product[]>(INITIAL_PRODUCTS);
   // Al arrancar, no hay empresa "clavada": arranca en la vista de empresas / mercados
   const [selectedCompany, setSelectedCompany] = useState<CompanyStore | null>(null);
   const [selectedCategory, setSelectedCategory] = useState("todos");
@@ -53,6 +53,18 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
   const [deliveryAddress, setDeliveryAddress] = useState("Tucumán 2130, Rosario");
   const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
   const [orderConfirmed, setOrderConfirmed] = useState<OrderData | null>(null);
+
+  // Sincronizar catálogo real directamente desde la base de datos de Cobro Fácil
+  useEffect(() => {
+    fetch("/api/cobrofacil/products")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data && Array.isArray(data.products) && data.products.length > 0) {
+          setProducts(data.products);
+        }
+      })
+      .catch((err) => console.warn("Error cargando productos de Cobro Fácil:", err));
+  }, []);
 
   // Cargar y sincronizar dirección de entrega del cliente
   useEffect(() => {

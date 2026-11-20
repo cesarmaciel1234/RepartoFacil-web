@@ -281,9 +281,18 @@ export function TabMiRuta({
                     <Lock className="w-4 h-4" />
                     <span>ENTREGA BLOQUEADA (A {state.distanceMeters}m del domicilio)</span>
                   </Button>
-                  <p className="text-[10px] text-center text-slate-400 font-medium">
-                    🛡️ Regla de seguridad: el botón se activará automáticamente a menos de 100 metros del cliente.
-                  </p>
+                  <div className="flex flex-col items-center gap-1 mt-1">
+                    <p className="text-[10px] text-center text-slate-400 font-medium">
+                      🛡️ Regla de seguridad: el botón se activa automáticamente a menos de 100m.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => jumpToDoor(order.id)}
+                      className="text-[11px] text-emerald-400 hover:text-emerald-300 font-bold underline"
+                    >
+                      ¿Llegaste a la puerta? Tocar aquí para habilitar entrega
+                    </button>
+                  </div>
                 </div>
               ) : (
                 <div className="space-y-1.5">

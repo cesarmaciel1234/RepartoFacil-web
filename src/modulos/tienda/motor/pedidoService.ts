@@ -118,7 +118,18 @@ export async function createOrder(
     console.warn("Error guardando en historial local:", e);
   }
 
-  // 3. Persistencia en Firestore / backend si está activo
+  // 3. Persistencia en base de datos PostgreSQL de Cobro Fácil (crm-libro-local)
+  try {
+    fetch("/api/orders", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(newOrder),
+    }).catch((err) => console.warn("Sync cloud order non-blocking error:", err));
+  } catch (err) {
+    console.warn("Error enviando pedido a /api/orders:", err);
+  }
+
+  // 4. Persistencia en Firestore / backend si está activo
   try {
     if (firestoreInstance) {
       addDocumentNonBlocking(collection(firestoreInstance, "orders"), newOrder);
