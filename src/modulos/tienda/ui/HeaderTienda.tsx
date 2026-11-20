@@ -3,14 +3,15 @@
 import React from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ShoppingBag, Truck, MapPin, Store, ChevronDown } from "lucide-react";
+import { ShoppingBag, Truck, MapPin, Store, ChevronDown, ArrowLeft } from "lucide-react";
 
 interface HeaderTiendaProps {
   cartItemsCount: number;
   cartTotal: number;
   deliveryType: "delivery" | "pickup";
   deliveryAddress: string;
-  selectedCompanyName?: string;
+  selectedCompanyName?: string | null;
+  onBackToMarkets?: () => void;
   onOpenSidebar: () => void;
   onOpenCart: () => void;
   onOpenMarkets: () => void;
@@ -22,7 +23,8 @@ export function HeaderTienda({
   cartTotal,
   deliveryType,
   deliveryAddress,
-  selectedCompanyName = "Frigorífico Maciel - Central",
+  selectedCompanyName,
+  onBackToMarkets,
   onOpenSidebar,
   onOpenCart,
   onOpenMarkets,
@@ -34,39 +36,70 @@ export function HeaderTienda({
     <header className="sticky top-0 z-40 bg-slate-950 border-b border-slate-800 px-3 sm:px-4 py-2 shadow-lg">
       <div className="max-w-6xl mx-auto flex items-center justify-between gap-2">
         {/* Lado Izquierdo: Botón Sidebar / Perfil DiDi + Marca */}
-        <div className="flex items-center gap-2.5 min-w-0">
-          {/* Botón Avatar DiDi / PedidosYa reutilizado */}
-          <button
-            type="button"
-            onClick={onOpenSidebar}
-            className="w-9 h-9 rounded-full bg-slate-900 hover:bg-slate-800 border-2 border-emerald-500/40 flex items-center justify-center font-black text-sm text-white shadow-md shrink-0 active:scale-95 transition-all relative"
-            title="Abrir Menú y Perfil"
-          >
-            <span>C</span>
-            <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-500 border-2 border-slate-950 rounded-full" />
-          </button>
-
-          {/* Selector de Empresa / Mercado (Captura 4) */}
-          <div className="min-w-0">
+        <div className="flex items-center gap-2 min-w-0">
+          {/* Botón Volver si está dentro de una empresa */}
+          {selectedCompanyName && onBackToMarkets ? (
             <button
               type="button"
-              onClick={onOpenMarkets}
-              className="flex items-center gap-1 text-left group"
-              title="Cambiar de Empresa / Mercado"
+              onClick={onBackToMarkets}
+              className="w-9 h-9 rounded-full bg-slate-900 hover:bg-slate-800 border border-slate-700/80 flex items-center justify-center text-slate-300 hover:text-white shrink-0 active:scale-95 transition-all shadow-sm"
+              title="Volver a Empresas y Mercados"
             >
-              <span className="font-black text-sm text-white truncate group-hover:text-emerald-400 transition-colors">
-                {selectedCompanyName}
-              </span>
-              <ChevronDown className="w-3.5 h-3.5 text-slate-400 group-hover:text-emerald-400 shrink-0" />
+              <ArrowLeft className="w-4 h-4 text-emerald-400" />
             </button>
-            <p className="text-[10px] text-slate-400 font-semibold flex items-center gap-1 truncate">
-              <MapPin className="w-2.5 h-2.5 text-emerald-400 shrink-0" />
-              <span className="truncate max-w-[140px] sm:max-w-[220px]">
-                {deliveryType === "delivery" && deliveryAddress
-                  ? deliveryAddress
-                  : "Tucumán 2130, Rosario"}
-              </span>
-            </p>
+          ) : (
+            /* Botón Avatar DiDi / PedidosYa */
+            <button
+              type="button"
+              onClick={onOpenSidebar}
+              className="w-9 h-9 rounded-full bg-slate-900 hover:bg-slate-800 border-2 border-emerald-500/40 flex items-center justify-center font-black text-sm text-white shadow-md shrink-0 active:scale-95 transition-all relative"
+              title="Abrir Menú y Perfil"
+            >
+              <span>C</span>
+              <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-500 border-2 border-slate-950 rounded-full" />
+            </button>
+          )}
+
+          {/* Selector de Dirección (Home) o Nombre del Comercio (Dentro de la tienda) */}
+          <div className="min-w-0">
+            {selectedCompanyName ? (
+              <div>
+                <div className="flex items-center gap-1 text-left">
+                  <span className="font-black text-sm text-white truncate max-w-[170px] sm:max-w-[280px]">
+                    {selectedCompanyName}
+                  </span>
+                </div>
+                <p className="text-[10px] text-slate-400 font-semibold flex items-center gap-1 truncate">
+                  <MapPin className="w-2.5 h-2.5 text-emerald-400 shrink-0" />
+                  <span className="truncate max-w-[140px] sm:max-w-[220px]">
+                    {deliveryType === "delivery" && deliveryAddress
+                      ? deliveryAddress
+                      : "Tucumán 2130, Rosario"}
+                  </span>
+                </p>
+              </div>
+            ) : (
+              /* En la Home (Estilo PedidosYa): solo muestra la dirección de entrega */
+              <div>
+                <span className="text-[10px] text-slate-400 font-bold block leading-none">
+                  Entregar en
+                </span>
+                <button
+                  type="button"
+                  onClick={onOpenSidebar}
+                  className="flex items-center gap-1 text-left group mt-0.5"
+                  title="Cambiar dirección de entrega"
+                >
+                  <MapPin className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                  <span className="font-black text-sm text-white truncate group-hover:text-emerald-400 transition-colors max-w-[160px] sm:max-w-[260px]">
+                    {deliveryType === "delivery" && deliveryAddress
+                      ? deliveryAddress
+                      : "Tucumán 2130, Rosario"}
+                  </span>
+                  <ChevronDown className="w-3.5 h-3.5 text-slate-400 group-hover:text-emerald-400 shrink-0" />
+                </button>
+              </div>
+            )}
           </div>
         </div>
 

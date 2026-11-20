@@ -86,6 +86,9 @@ export function DrawerCarrito({
                   className="w-14 h-14 rounded-xl object-cover shrink-0 bg-slate-800"
                 />
                 <div className="flex-1 min-w-0">
+                  <span className="text-[9px] font-bold text-emerald-400 block truncate">
+                    {item.product.companyName || "Frigorífico Maciel"}
+                  </span>
                   <h4 className="font-bold text-xs text-white truncate">{item.product.name}</h4>
                   <p className="text-[11px] text-emerald-400 font-extrabold mt-0.5">
                     {formatMoney(item.product.price)}
@@ -174,7 +177,7 @@ export function DrawerCarrito({
 
             <p className="text-[10px] text-slate-500 text-center flex items-center justify-center gap-1">
               <ShieldCheck className="w-3 h-3 text-emerald-400" />
-              Compra directa con Frigorífico Maciel · Pago seguro
+              Compra directa y segura · Conectado con Cobro Fácil
             </p>
           </div>
         )}

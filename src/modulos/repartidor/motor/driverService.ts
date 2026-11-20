@@ -1,6 +1,6 @@
-import { DriverOrder, DriverProfile, OrderStatus } from "./tipos";
+import { DriverOrder, DriverProfile, OrderStatus, DriverWallet } from "./tipos";
 import { doc, updateDoc } from "@/firebase/local-firestore";
-import { creditDeliveryEarning, loadDriverWallet, DriverWallet } from "./walletService";
+import { creditDeliveryEarning, loadDriverWallet } from "./walletService";
 
 export const ORDERS_STORAGE_KEY = "rf_orders_history";
 export const DRIVER_USER_KEY = "repartofacil_user";
@@ -117,7 +117,54 @@ export function loadDriverProfile(): DriverProfile | null {
   if (typeof window === "undefined") return null;
   try {
     const raw = localStorage.getItem(DRIVER_USER_KEY);
-    return raw ? JSON.parse(raw) : null;
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    // Si la sesión activa corresponde a un cliente, no es repartidor
+    if (parsed.role && parsed.role.toLowerCase() !== "driver") {
+      return null;
+    }
+    return {
+      id: parsed.id || parsed.uid || "repartidor-01",
+      uid: parsed.uid || parsed.id || "repartidor-01",
+      firstName: parsed.firstName || parsed.displayName || "Repartidor",
+      role: "Driver",
+      vehicleType: parsed.vehicleType || "Motorcycle",
+      availabilityStatus: parsed.availabilityStatus || "Available",
+      createdAt: parsed.createdAt || new Date().toISOString(),
+    };
+  } catch {
+    return null;
+  }
+}
+
+export interface ClientProfile {
+  id: string;
+  uid: string;
+  displayName: string;
+  email: string;
+  role: "Client";
+  phone?: string;
+  address?: string;
+}
+
+export function loadClientProfile(): ClientProfile | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(DRIVER_USER_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (parsed.role && parsed.role.toLowerCase() !== "client") {
+      return null;
+    }
+    return {
+      id: parsed.id || parsed.uid,
+      uid: parsed.uid || parsed.id,
+      displayName: parsed.displayName || parsed.firstName || "Cliente Frecuente",
+      email: parsed.email || "cliente@repartofacil.com",
+      role: "Client",
+      phone: parsed.phone,
+      address: parsed.address,
+    };
   } catch {
     return null;
   }
@@ -137,6 +184,7 @@ export function clearDriverProfile() {
   if (typeof window === "undefined") return;
   try {
     localStorage.removeItem(DRIVER_USER_KEY);
+    localStorage.removeItem("repartofacil_token");
     window.dispatchEvent(new Event("repartofacil-auth"));
   } catch {}
 }

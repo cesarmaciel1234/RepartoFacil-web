@@ -97,13 +97,14 @@ export function useDriverOrders(currentDriverId?: string | null) {
   // Aceptar pedido: requiere login solo si no está identificado
   const handleTakeOrder = useCallback(
     (order: DriverOrder, driverId?: string | null) => {
-      if (!driverId) {
+      const activeDriverId = driverId || currentDriverId;
+      if (!activeDriverId) {
         setPendingAcceptOrder(order);
         setShowLoginModal(true);
         return;
       }
 
-      assignOrderToDriver(order.id, driverId, firestore).then((updated) => {
+      assignOrderToDriver(order.id, activeDriverId, firestore).then((updated) => {
         setLocalOrders(updated);
         toast({
           title: "¡Pedido Asignado!",
@@ -111,7 +112,7 @@ export function useDriverOrders(currentDriverId?: string | null) {
         });
       });
     },
-    [firestore, toast]
+    [currentDriverId, firestore, toast]
   );
 
   // Confirmar pedido tras loguearse

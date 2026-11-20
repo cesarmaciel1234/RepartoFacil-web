@@ -28,6 +28,9 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { DriverProfile } from "@/modulos/repartidor/motor/tipos";
+import { loadClientProfile, ClientProfile, clearDriverProfile } from "@/modulos/repartidor/motor/driverService";
+import { ModalClientAuth } from "@/modulos/tienda/ui/ModalClientAuth";
+import { useState, useEffect } from "react";
 
 interface SidebarGeneralProps {
   isOpen: boolean;
@@ -56,15 +59,29 @@ export function SidebarGeneral({
 }: SidebarGeneralProps) {
   const formatMoney = (val: number) => "$" + val.toLocaleString("es-AR");
 
+  const [clientProfile, setClientProfile] = useState<ClientProfile | null>(null);
+  const [isClientAuthOpen, setIsClientAuthOpen] = useState(false);
+
+  useEffect(() => {
+    setClientProfile(loadClientProfile());
+    const sync = () => setClientProfile(loadClientProfile());
+    window.addEventListener("repartofacil-auth", sync);
+    return () => window.removeEventListener("repartofacil-auth", sync);
+  }, []);
+
   const userName =
     currentMode === "driver" && driverProfile
       ? driverProfile.firstName
+      : clientProfile
+      ? clientProfile.displayName
       : "Cliente Reparto Fácil";
 
   const userInitial = userName.charAt(0).toUpperCase();
 
   const handleCloseSession = () => {
     onOpenChange(false);
+    clearDriverProfile();
+    setClientProfile(null);
     if (onLogout) onLogout();
     if (currentMode === "driver") {
       onSwitchMode("store");
@@ -77,41 +94,59 @@ export function SidebarGeneral({
   };
 
   return (
-    <Sheet open={isOpen} onOpenChange={onOpenChange}>
-      <SheetContent
-        side="left"
-        className="w-[85vw] max-w-xs bg-slate-950 border-r border-slate-800 text-slate-100 p-0 flex flex-col justify-between"
-      >
-        <div className="overflow-y-auto p-5 space-y-6">
-          {/* 1. Header Perfil (Estilo DiDi / PedidosYa - Captura 1) */}
-          <div className="flex items-center gap-3 pb-4 border-b border-slate-800/80">
-            <div className="w-14 h-14 rounded-full bg-slate-800 border-2 border-emerald-500/40 flex items-center justify-center font-black text-xl text-white shadow-lg shrink-0">
-              {userInitial}
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-1.5">
-                <span className="font-black text-base text-white truncate block">
-                  {userName}
+    <>
+      <Sheet open={isOpen} onOpenChange={onOpenChange}>
+        <SheetContent
+          side="left"
+          className="w-[85vw] max-w-xs bg-slate-950 border-r border-slate-800 text-slate-100 p-0 flex flex-col justify-between"
+        >
+          <div className="overflow-y-auto p-5 space-y-6">
+            {/* 1. Header Perfil (Estilo DiDi / PedidosYa - Captura 1) */}
+            <div className="flex items-center gap-3 pb-4 border-b border-slate-800/80">
+              <div className="w-14 h-14 rounded-full bg-slate-800 border-2 border-emerald-500/40 flex items-center justify-center font-black text-xl text-white shadow-lg shrink-0">
+                {userInitial}
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1.5">
+                  <span className="font-black text-base text-white truncate block">
+                    {userName}
+                  </span>
+                </div>
+                <span className="text-xs text-slate-400 block truncate">
+                  {currentMode === "driver"
+                    ? "Repartidor Activo · En Turno"
+                    : clientProfile
+                    ? clientProfile.email
+                    : "Frigorífico Maciel Ecosistema"}
                 </span>
-              </div>
-              <span className="text-xs text-slate-400 block truncate">
-                {currentMode === "driver"
-                  ? "Repartidor Activo · En Turno"
-                  : "Frigorífico Maciel Ecosistema"}
-              </span>
-              <div className="mt-1">
-                <Badge
-                  className={
-                    currentMode === "driver"
-                      ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[9px] font-bold py-0"
-                      : "bg-blue-500/20 text-blue-400 border border-blue-500/30 text-[9px] font-bold py-0"
-                  }
-                >
-                  {currentMode === "driver" ? "Modo Conductor" : "Modo Tienda"}
-                </Badge>
+                <div className="mt-1 flex items-center gap-1.5 flex-wrap">
+                  <Badge
+                    className={
+                      currentMode === "driver"
+                        ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[9px] font-bold py-0"
+                        : "bg-blue-500/20 text-blue-400 border border-blue-500/30 text-[9px] font-bold py-0"
+                    }
+                  >
+                    {currentMode === "driver"
+                      ? "Modo Conductor"
+                      : clientProfile
+                      ? "Cliente Registrado"
+                      : "Modo Tienda"}
+                  </Badge>
+
+                  {/* Botón Iniciar Sesión Cliente si está en modo tienda y no está logueado */}
+                  {currentMode === "store" && !clientProfile && (
+                    <button
+                      type="button"
+                      onClick={() => setIsClientAuthOpen(true)}
+                      className="text-[10px] font-bold text-blue-400 hover:text-blue-300 underline underline-offset-2"
+                    >
+                      Iniciar Sesión
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
 
           {/* 2. Grid 3x3 de Acciones Rápidas (Estilo DiDi - Captura 1) */}
           <div className="space-y-2">
@@ -272,23 +307,32 @@ export function SidebarGeneral({
           </div>
         </div>
 
-        {/* 4. Footer con Cerrar Sesión (Nos vuelve a Tienda si estamos en Repartidor) */}
-        <div className="p-4 border-t border-slate-800 bg-slate-900/60">
-          <Button
-            type="button"
-            variant="ghost"
-            onClick={handleCloseSession}
-            className="w-full h-11 rounded-2xl bg-red-500/10 hover:bg-red-500/20 text-red-300 hover:text-red-200 border border-red-500/30 font-bold text-xs flex items-center justify-center gap-2 transition-all"
-          >
-            <LogOut className="w-4 h-4 text-red-400" />
-            <span>
-              {currentMode === "driver"
-                ? "Cerrar Sesión Repartidor (Salir a Tienda)"
-                : "Reiniciar Sesión"}
-            </span>
-          </Button>
-        </div>
-      </SheetContent>
-    </Sheet>
+          {/* 4. Footer con Cerrar Sesión (Nos vuelve a Tienda si estamos en Repartidor) */}
+          <div className="p-4 border-t border-slate-800 bg-slate-900/60">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={handleCloseSession}
+              className="w-full h-11 rounded-2xl bg-red-500/10 hover:bg-red-500/20 text-red-300 hover:text-red-200 border border-red-500/30 font-bold text-xs flex items-center justify-center gap-2 transition-all"
+            >
+              <LogOut className="w-4 h-4 text-red-400" />
+              <span>
+                {currentMode === "driver"
+                  ? "Cerrar Sesión Repartidor"
+                  : clientProfile
+                  ? "Cerrar Sesión Cliente"
+                  : "Limpiar Sesión"}
+              </span>
+            </Button>
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      {/* Modal de Autenticación para Cliente */}
+      <ModalClientAuth
+        isOpen={isClientAuthOpen}
+        onOpenChange={setIsClientAuthOpen}
+      />
+    </>
   );
 }

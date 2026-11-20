@@ -35,14 +35,52 @@
   html {
     scroll-behavior: smooth;
     height: 100%;
+    overscroll-behavior-y: none;
   }
   body {
     @apply bg-slate-950 text-slate-100;
     min-height: 100vh;
+    min-height: 100dvh;
     overflow-x: hidden;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: none;
+    -webkit-font-smoothing: antialiased;
   }
+
+  /* Optimización para botones y toques táctiles */
+  button, a, [role="button"], input, select, textarea {
+    touch-action: manipulation;
+  }
+
+  /* Prevenir menú contextual de pulsación larga en botones de la interfaz */
+  button, nav, [role="navigation"] {
+    -webkit-touch-callout: none;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+}
+
+/* ─── Utilidades PWA Mobile: Safe Area Insets (Notch / Home Indicator) ─── */
+.pt-safe {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.pl-safe {
+  padding-left: env(safe-area-inset-left, 0px);
+}
+.pr-safe {
+  padding-right: env(safe-area-inset-right, 0px);
+}
+.h-screen-dvh {
+  height: 100vh;
+  height: 100dvh;
+}
+.min-h-screen-dvh {
+  min-height: 100vh;
+  min-height: 100dvh;
 }
 
 .scrollbar-hide::-webkit-scrollbar {

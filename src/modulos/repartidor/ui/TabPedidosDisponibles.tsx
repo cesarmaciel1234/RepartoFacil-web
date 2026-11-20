@@ -131,28 +131,30 @@ export function TabPedidosDisponibles({ orders, onAcceptOrder }: TabPedidosDispo
             )}
 
             {/* Cortes resumidos */}
-            <div className="text-[11px] text-slate-300 space-y-0.5">
-              <span className="text-[10px] text-slate-500 uppercase font-bold block">
-                Cortes a transportar:
-              </span>
-              {order.items.slice(0, 2).map((item, idx) => (
-                <div key={idx} className="flex justify-between text-[11px]">
-                  <span className="truncate max-w-[210px] text-slate-300">
-                    • {item.quantity} {item.unit} {item.name}
-                  </span>
-                  {item.price != null && !isNaN(item.price) && (
-                    <span className="text-slate-400 font-medium">
-                      {formatMoney(item.price * item.quantity)}
-                    </span>
-                  )}
-                </div>
-              ))}
-              {order.items.length > 2 && (
-                <span className="text-[10px] text-emerald-400 font-semibold block italic">
-                  + {order.items.length - 2} cortes más...
+            {Array.isArray(order.items) && order.items.length > 0 && (
+              <div className="text-[11px] text-slate-300 space-y-0.5">
+                <span className="text-[10px] text-slate-500 uppercase font-bold block">
+                  Cortes a transportar:
                 </span>
-              )}
-            </div>
+                {order.items.slice(0, 2).map((item, idx) => (
+                  <div key={idx} className="flex justify-between text-[11px]">
+                    <span className="truncate max-w-[210px] text-slate-300">
+                      • {item.quantity} {item.unit || "un"} {item.name}
+                    </span>
+                    {item.price != null && !isNaN(item.price) && (
+                      <span className="text-slate-400 font-medium">
+                        {formatMoney(item.price * item.quantity)}
+                      </span>
+                    )}
+                  </div>
+                ))}
+                {order.items.length > 2 && (
+                  <span className="text-[10px] text-emerald-400 font-semibold block italic">
+                    + {order.items.length - 2} cortes más...
+                  </span>
+                )}
+              </div>
+            )}
 
             {/* Botón Aceptar Pedido */}
             <Button

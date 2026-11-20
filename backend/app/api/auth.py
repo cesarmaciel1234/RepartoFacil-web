@@ -135,7 +135,10 @@ def register(request: LoginRequest, db: Session = Depends(get_db)):
 
 @router.post("/login", response_model=AuthResponse)
 def login(request: LoginRequest, db: Session = Depends(get_db)):
-    user = db.query(LocalUser).filter(LocalUser.email == request.email.lower()).first()
+    ident = request.email.lower().strip()
+    user = db.query(LocalUser).filter(
+        (LocalUser.email == ident) | (LocalUser.email == f"{ident}@repartofacil.com")
+    ).first()
     if not user or not user.password_hash or not verify_password(request.password, user.password_hash):
         raise HTTPException(status_code=401, detail="Incorrect email or password")
     return AuthResponse(access_token=create_token(user.id, user.role), user=user_data(user))

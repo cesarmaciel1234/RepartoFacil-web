@@ -68,3 +68,18 @@ export interface DriverWallet {
   completedOrdersCount: number;
   transactions: WalletTransaction[];
 }
+
+export type HeadingSource = "gps" | "compass" | "bearing_history" | "initial";
+
+export interface TelemetryState {
+  coords: GPSCoords | null;
+  heading: number;         // Rumbo suavizado final (0-360)
+  rawHeading: number;      // Rumbo crudo antes del filtro
+  speed: number | null;    // Velocidad instantánea en m/s (null si está detenido o desconocido)
+  accuracy: number | null; // Precisión del GPS en metros
+  source: HeadingSource;   // Origen de la orientación (GPS o Brújula)
+  isMoving: boolean;       // true si la velocidad supera el umbral de movimiento
+  gpsError: string | null;
+  requestCompassPermission?: () => Promise<boolean>;
+}
+

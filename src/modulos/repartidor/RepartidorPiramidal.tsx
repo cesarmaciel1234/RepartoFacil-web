@@ -21,6 +21,7 @@ import { TabMiRuta } from "./ui/TabMiRuta";
 import { ModalDriverAuth } from "./ui/ModalDriverAuth";
 import { ModalCarteraRepartidor } from "./ui/ModalCarteraRepartidor";
 import { DriverCopilotSheet } from "./ui/DriverCopilotSheet";
+import { OrderChatSheet } from "./ui/OrderChatSheet";
 import { SidebarGeneral } from "@/components/SidebarGeneral";
 import { ModalMercados } from "@/components/ModalMercados";
 import { Layers, Truck, ShieldAlert, Navigation, Target } from "lucide-react";
@@ -37,6 +38,7 @@ export function RepartidorPiramidal({ onSwitchToStore }: RepartidorPiramidalProp
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isMarketsOpen, setIsMarketsOpen] = useState(false);
   const [isCopilotOpen, setIsCopilotOpen] = useState(false);
+  const [isOrderChatOpen, setIsOrderChatOpen] = useState(false);
   const [isWalletModalOpen, setIsWalletModalOpen] = useState(false);
   const [isNavigating, setIsNavigating] = useState(false);
   const [mapCenterTrigger, setMapCenterTrigger] = useState(0);
@@ -113,12 +115,20 @@ export function RepartidorPiramidal({ onSwitchToStore }: RepartidorPiramidalProp
 
   const sheetY = isExpanded ? Math.max(0, dragY) : `calc(100% - 150px + ${Math.min(0, dragY)}px)`;
 
+  const handleFocusActiveRoute = () => {
+    setActiveTab("ruta");
+    setIsExpanded(true);
+    setIsNavigating(true);
+    setMapCenterTrigger((prev) => prev + 1);
+  };
+
   return (
-    <div className="relative h-screen w-full overflow-hidden bg-slate-950 text-slate-100 flex flex-col font-sans">
+    <div className="relative h-screen h-[100dvh] w-full overflow-hidden bg-slate-950 text-slate-100 flex flex-col font-sans select-none">
       {/* ─── 1. Mapa Interactivo de Fondo (Full Screen) ─── */}
       <div className="absolute inset-0 z-0">
         <InteractiveMap
           center={coords ? [coords.lat, coords.lng] : [-32.9372, -60.6542]}
+          heading={heading}
           alerts={null}
           activeOrders={null}
           fleet={null}
@@ -132,8 +142,11 @@ export function RepartidorPiramidal({ onSwitchToStore }: RepartidorPiramidalProp
       <DriverTopBar
         driverProfile={driverProfile}
         walletBalance={wallet.balance}
+        activeOrder={myActiveOrders[0] || null}
         onOpenSidebar={() => setIsSidebarOpen(true)}
         onOpenCopilot={() => setIsCopilotOpen(true)}
+        onOpenOrderChat={() => setIsOrderChatOpen(true)}
+        onFocusActiveRoute={handleFocusActiveRoute}
         onOpenWallet={() => setIsWalletModalOpen(true)}
         onLogout={() => {
           clearDriverProfile();
@@ -253,7 +266,7 @@ export function RepartidorPiramidal({ onSwitchToStore }: RepartidorPiramidalProp
           </div>
 
           {/* Contenido scrolleable de la pestaña */}
-          <div className="flex-1 overflow-y-auto px-4 pb-16 pt-2 scrollbar-none text-left">
+          <div className="flex-1 overflow-y-auto px-4 pb-[max(4rem,calc(env(safe-area-inset-bottom)+2rem))] pt-2 scrollbar-none text-left">
             {activeTab === "pedidos" && (
               <TabPedidosDisponibles
                 orders={availableOrders}
@@ -300,6 +313,14 @@ export function RepartidorPiramidal({ onSwitchToStore }: RepartidorPiramidalProp
         isOpen={isCopilotOpen}
         onOpenChange={setIsCopilotOpen}
         activeOrdersCount={myActiveOrders.length}
+      />
+
+      {/* ─── 6b. Chat Tripartito de Entrega (Repartidor · Cliente · Empresa CobroFácil) ─── */}
+      <OrderChatSheet
+        isOpen={isOrderChatOpen}
+        onOpenChange={setIsOrderChatOpen}
+        activeOrder={myActiveOrders[0] || null}
+        driverName={driverProfile?.firstName || "Lucas Motomensajero"}
       />
 
       {/* ─── 7. Modal Cartera / Billetera Repartidor ─── */}

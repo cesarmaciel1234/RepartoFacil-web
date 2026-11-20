@@ -32,7 +32,7 @@ export function FiltroCategorias({
       </div>
 
       {/* Pills de categorías horizontales */}
-      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
         {CATEGORIES.map((cat) => {
           const isSelected = selectedCategory === cat.id;
           return (

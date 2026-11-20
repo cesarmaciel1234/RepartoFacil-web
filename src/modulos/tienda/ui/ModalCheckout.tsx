@@ -317,7 +317,7 @@ export function ModalCheckout({
               ¡Pedido Confirmado!
             </DialogTitle>
             <DialogDescription className="text-xs text-slate-400">
-              Tu compra ya fue ingresada al radar del frigorífico.
+              Tu compra ya fue ingresada al radar del comercio y repartidores.
             </DialogDescription>
           </div>
 
@@ -357,7 +357,7 @@ export function ModalCheckout({
                 className="w-full h-11 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/30 transition-all"
               >
                 <MessageCircle className="w-4 h-4 fill-current" />
-                <span>Avisar a la Carnicería por WhatsApp</span>
+                <span>Avisar al Comercio por WhatsApp</span>
               </a>
             )}
 

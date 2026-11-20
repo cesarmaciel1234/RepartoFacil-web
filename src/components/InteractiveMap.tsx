@@ -186,8 +186,10 @@ export default function InteractiveMap({
     <div className="h-full w-full relative overflow-hidden bg-slate-100">
       <div 
         className={cn(
-          "h-full w-full transition-all duration-700 ease-[cubic-bezier(0.32,0.72,0,1)]",
-          isNavigating && "scale-[1.4]"
+          "h-full w-full",
+          isNavigating 
+            ? "scale-[1.4] transition-transform duration-150 ease-out" 
+            : "transition-transform duration-700 ease-[cubic-bezier(0.32,0.72,0,1)]"
         )}
         style={{ 
           transform: isNavigating ? `rotate(${-heading}deg)` : 'none',
@@ -267,6 +269,37 @@ export default function InteractiveMap({
                 <div className="p-1">
                   <p className="font-black text-[10px] text-slate-400 uppercase tracking-widest">DESTINO</p>
                   <p className="font-bold text-xs text-slate-900">Punto de Entrega</p>
+                </div>
+              </Popup>
+            </Marker>
+          )}
+
+          {/* Marcador del propio usuario/repartidor con flecha orientada en vista libre */}
+          {!isNavigating && center && (!fleet || !fleet.some(d => d.id === currentUserId)) && (
+            <Marker
+              position={center}
+              icon={L.divIcon({
+                html: renderToStaticMarkup(
+                  <div className="relative flex items-center justify-center">
+                    <div 
+                      className="w-10 h-10 bg-blue-600 rounded-full shadow-lg border-2 border-white flex items-center justify-center"
+                      style={{ transform: `rotate(${heading}deg)` }}
+                    >
+                      <NavIcon className="w-5 h-5 text-white fill-current -rotate-45" />
+                    </div>
+                    <div className="absolute w-14 h-14 bg-blue-500/20 rounded-full animate-ping pointer-events-none" />
+                  </div>
+                ),
+                className: 'driver-self-marker',
+                iconSize: [40, 40],
+                iconAnchor: [20, 20],
+              })}
+              zIndexOffset={2000}
+            >
+              <Popup>
+                <div className="p-1">
+                  <p className="font-black text-[9px] uppercase tracking-widest text-blue-600">TU POSICIÓN</p>
+                  <p className="font-bold text-xs text-slate-800">Rumbo: {Math.round(heading)}°</p>
                 </div>
               </Popup>
             </Marker>

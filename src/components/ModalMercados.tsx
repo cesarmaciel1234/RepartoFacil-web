@@ -23,6 +23,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { MOCK_COMPANIES, CompanyStore } from "@/data/mockCompanies";
+import { INITIAL_PRODUCTS } from "@/data/mockProducts";
 
 interface ModalMercadosProps {
   isOpen: boolean;
@@ -47,18 +48,39 @@ export function ModalMercados({
     { id: "minimercados", name: "Almacén", emoji: "🧀" },
   ];
 
-  const filtered = MOCK_COMPANIES.filter((comp) => {
+  const term = searchTerm.toLowerCase().trim();
+
+  const filtered = MOCK_COMPANIES.map((comp) => {
+    // Buscar si la empresa tiene productos que coincidan en su catálogo
+    const matchingProducts = term
+      ? INITIAL_PRODUCTS.filter(
+          (p) =>
+            p.companyId === comp.id &&
+            (p.name.toLowerCase().includes(term) ||
+              p.description.toLowerCase().includes(term) ||
+              p.category.toLowerCase().includes(term))
+        )
+      : [];
+
     const matchesSearch =
-      comp.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      comp.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      comp.address.toLowerCase().includes(searchTerm.toLowerCase());
+      !term ||
+      comp.name.toLowerCase().includes(term) ||
+      comp.category.toLowerCase().includes(term) ||
+      comp.address.toLowerCase().includes(term) ||
+      matchingProducts.length > 0;
+
     const matchesCat = selectedCat === "todos" || comp.categorySlug === selectedCat;
-    return matchesSearch && matchesCat;
-  });
+
+    return {
+      comp,
+      matchingProducts,
+      isVisible: matchesSearch && matchesCat,
+    };
+  }).filter((item) => item.isVisible);
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-slate-950 border-slate-800 text-slate-100 w-[94vw] max-w-md p-5 rounded-3xl max-h-[85vh] overflow-y-auto">
+      <DialogContent className="bg-slate-950 border-slate-800 text-slate-100 w-[94vw] max-w-md p-5 rounded-3xl max-h-[85vh] overflow-y-auto overflow-x-hidden scrollbar-hide">
         <DialogHeader className="text-left pb-2 border-b border-slate-800">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -84,13 +106,13 @@ export function ModalMercados({
             <Input
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Buscar productos y locales..."
+              placeholder="Buscar productos (ej. asado, coca, fernet)..."
               className="pl-9 h-11 bg-slate-900 border-slate-800 text-slate-100 placeholder:text-slate-500 rounded-2xl text-xs"
             />
           </div>
 
           {/* Carrusel de Categorías Rápidas */}
-          <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+          <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
             {categories.map((cat) => (
               <button
                 key={cat.id}
@@ -110,7 +132,7 @@ export function ModalMercados({
 
           {/* Lista de Empresas / Locales (Captura 4) */}
           <div className="space-y-2.5">
-            {filtered.map((comp) => {
+            {filtered.map(({ comp, matchingProducts }) => {
               const isSelected = comp.id === selectedCompanyId;
               return (
                 <div
@@ -164,8 +186,28 @@ export function ModalMercados({
                     </div>
                   </div>
 
+                  {/* Resultados encontrados en el catálogo de esta empresa */}
+                  {matchingProducts.length > 0 && (
+                    <div className="mt-2.5 pt-2 border-t border-slate-800/80">
+                      <span className="text-[10px] text-emerald-400 font-bold flex items-center gap-1">
+                        <Sparkles className="w-3 h-3" />
+                        Productos disponibles en catálogo:
+                      </span>
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {matchingProducts.map((p) => (
+                          <span
+                            key={p.id}
+                            className="text-[9px] font-bold px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
+                          >
+                            {p.name} · ${p.price.toLocaleString("es-AR")}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   {/* Badges de Promociones (Estilo PedidosYa) */}
-                  {comp.badges && comp.badges.length > 0 && (
+                  {comp.badges && comp.badges.length > 0 && matchingProducts.length === 0 && (
                     <div className="flex flex-wrap gap-1 mt-2.5 pt-2 border-t border-slate-800/80">
                       {comp.badges.map((b, idx) => (
                         <span

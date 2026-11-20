@@ -1,14 +1,17 @@
 "use client";
 
 import React from "react";
-import { Sparkles, User, LogOut, Truck, Wallet, Menu } from "lucide-react";
-import { DriverProfile } from "../motor/tipos";
+import { Sparkles, User, Truck, Wallet, Bell } from "lucide-react";
+import { DriverProfile, DriverOrder } from "../motor/tipos";
 
 interface DriverTopBarProps {
   driverProfile: DriverProfile | null;
   walletBalance: number;
+  activeOrder?: DriverOrder | null;
   onOpenSidebar: () => void;
   onOpenCopilot: () => void;
+  onOpenOrderChat: () => void;
+  onFocusActiveRoute?: () => void;
   onOpenWallet: () => void;
   onLogout: () => void;
   onOpenLoginModal: () => void;
@@ -18,8 +21,11 @@ interface DriverTopBarProps {
 export function DriverTopBar({
   driverProfile,
   walletBalance,
+  activeOrder,
   onOpenSidebar,
   onOpenCopilot,
+  onOpenOrderChat,
+  onFocusActiveRoute,
   onOpenWallet,
   onLogout,
   onOpenLoginModal,
@@ -30,7 +36,7 @@ export function DriverTopBar({
     : "R";
 
   return (
-    <header className="absolute top-0 left-0 right-0 z-40 p-3 sm:p-4 pointer-events-none flex items-center justify-between gap-2">
+    <header className="absolute top-0 left-0 right-0 z-40 p-3 sm:p-4 pt-[max(0.75rem,env(safe-area-inset-top))] pointer-events-none flex items-center justify-between gap-2">
       {/* Botón Avatar / Menú Lateral Flotante (Estilo DiDi / PedidosYa - Captura 1) */}
       <button
         type="button"
@@ -57,8 +63,9 @@ export function DriverTopBar({
         </span>
       </button>
 
-      {/* Acciones Derecha: Copiloto IA + Perfil Repartidor flotantes */}
+      {/* Acciones Derecha: Copiloto IA + Campana Chat Tripartito + Estado Pedido/Perfil */}
       <div className="pointer-events-auto flex items-center gap-1.5 shrink-0">
+        {/* Copiloto IA */}
         <button
           type="button"
           onClick={onOpenCopilot}
@@ -68,7 +75,44 @@ export function DriverTopBar({
           <Sparkles className="w-4 h-4" />
         </button>
 
-        {driverProfile ? (
+        {/* Campana de Notificaciones & Chat de Pedido Tripartito */}
+        <button
+          type="button"
+          onClick={onOpenOrderChat}
+          className="relative h-11 w-11 rounded-full bg-slate-900/95 hover:bg-slate-800 border border-slate-700/80 text-amber-400 shadow-2xl shadow-black/80 backdrop-blur-md flex items-center justify-center active:scale-95 transition-all"
+          title="Chat y Avisos de Entrega (Repartidor · Cliente · Empresa)"
+        >
+          <Bell className="w-4 h-4" />
+          <span className="absolute top-2 right-2 flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+          </span>
+        </button>
+
+        {/* Píldora de Pedido en Curso o Perfil del Repartidor */}
+        {activeOrder ? (
+          <button
+            type="button"
+            onClick={onFocusActiveRoute}
+            className="h-11 px-3 rounded-full bg-emerald-950/90 hover:bg-emerald-900/90 border border-emerald-500 shadow-2xl shadow-emerald-950/60 backdrop-blur-md flex items-center gap-2 active:scale-95 transition-all text-left group"
+            title="Pedido activo en curso · Toca para centrar la ruta en vivo"
+          >
+            <div className="relative flex items-center justify-center">
+              <span className="animate-ping absolute inline-flex h-3 w-3 rounded-full bg-emerald-400 opacity-75" />
+              <div className="w-6 h-6 rounded-full bg-emerald-500 text-slate-950 flex items-center justify-center text-[10px] font-black">
+                <Truck className="w-3.5 h-3.5" />
+              </div>
+            </div>
+            <div className="flex flex-col pr-1">
+              <span className="text-[11px] font-black text-emerald-300 leading-tight">
+                {activeOrder.id}
+              </span>
+              <span className="text-[9px] font-bold text-emerald-400/90 leading-tight uppercase tracking-wider">
+                En curso
+              </span>
+            </div>
+          </button>
+        ) : driverProfile ? (
           <button
             type="button"
             onClick={onOpenSidebar}

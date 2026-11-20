@@ -9,12 +9,13 @@ import { CheckoutFormData, OrderData } from "./motor/tipos";
 import { HeaderTienda } from "./ui/HeaderTienda";
 import { FiltroCategorias } from "./ui/FiltroCategorias";
 import { TarjetaProducto } from "./ui/TarjetaProducto";
+import { VistaMercadosEmpresas } from "./ui/VistaMercadosEmpresas";
 import { DrawerCarrito } from "./ui/DrawerCarrito";
 import { ModalCheckout } from "./ui/ModalCheckout";
 import { SidebarGeneral } from "@/components/SidebarGeneral";
 import { ModalMercados } from "@/components/ModalMercados";
 import { useFirestore } from "@/firebase";
-import { ShoppingBag, ArrowRight } from "lucide-react";
+import { ShoppingBag, ArrowRight, ArrowLeft, Store, Star, Clock, Bike } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface TiendaPiramidalProps {
@@ -34,7 +35,8 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
   } = useCart();
 
   const [products] = useState<Product[]>(INITIAL_PRODUCTS);
-  const [selectedCompany, setSelectedCompany] = useState<CompanyStore>(MOCK_COMPANIES[0]);
+  // Al arrancar, no hay empresa "clavada": arranca en la vista de empresas / mercados
+  const [selectedCompany, setSelectedCompany] = useState<CompanyStore | null>(null);
   const [selectedCategory, setSelectedCategory] = useState("todos");
   const [searchQuery, setSearchQuery] = useState("");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -44,16 +46,26 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
   const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
   const [orderConfirmed, setOrderConfirmed] = useState<OrderData | null>(null);
 
-  // Filtrado reactivo de productos
+  // Filtrado reactivo de productos cuando se está dentro del catálogo de una empresa
   const filteredProducts = useMemo(() => {
+    if (!selectedCompany) return [];
+    const q = searchQuery.toLowerCase().trim();
+
     return products.filter((p) => {
-      const matchesCat = selectedCategory === "todos" || p.category === selectedCategory;
+      const matchesCompany =
+        p.companyId === selectedCompany.id ||
+        (!p.companyId && selectedCompany.id === "frigorifico-maciel");
+
       const matchesSearch =
-        p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.description.toLowerCase().includes(searchQuery.toLowerCase());
-      return matchesCat && matchesSearch;
+        !q ||
+        p.name.toLowerCase().includes(q) ||
+        p.description.toLowerCase().includes(q);
+
+      const matchesCat = selectedCategory === "todos" || p.category === selectedCategory;
+
+      return matchesCompany && matchesSearch && matchesCat;
     });
-  }, [products, selectedCategory, searchQuery]);
+  }, [products, selectedCategory, searchQuery, selectedCompany]);
 
   // Manejo de checkout
   const handleProceedToPayment = () => {
@@ -83,7 +95,11 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
         cartTotal={cartTotal}
         deliveryType="delivery"
         deliveryAddress=""
-        selectedCompanyName={selectedCompany.name}
+        selectedCompanyName={selectedCompany ? selectedCompany.name : null}
+        onBackToMarkets={() => {
+          setSelectedCompany(null);
+          setSearchQuery("");
+        }}
         onOpenSidebar={() => setIsSidebarOpen(true)}
         onOpenCart={() => setIsCartOpen(true)}
         onOpenMarkets={() => setIsMarketsOpen(true)}
@@ -91,35 +107,102 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
       />
 
       {/* ─── Contenido Principal ─── */}
-      <main className="flex-1 max-w-6xl w-full mx-auto px-3 sm:px-4 py-4 space-y-5">
-        {/* Filtros y Buscador */}
-        <FiltroCategorias
-          searchQuery={searchQuery}
-          onSearchChange={setSearchQuery}
-          selectedCategory={selectedCategory}
-          onCategorySelect={setSelectedCategory}
-        />
+      <main className="flex-1 max-w-6xl w-full mx-auto px-3 sm:px-4 py-4 space-y-4">
+        {!selectedCompany ? (
+          /* ─── Vista 1: PÁGINA PRINCIPAL - EMPRESAS Y MERCADOS (Captura 2 y 3) ─── */
+          <div className="space-y-4">
+            <VistaMercadosEmpresas
+              onSelectCompany={(comp, initialSearch) => {
+                setSelectedCompany(comp);
+                if (initialSearch) setSearchQuery(initialSearch);
+              }}
+              searchQuery={searchQuery}
+              onSearchChange={setSearchQuery}
+            />
+          </div>
+        ) : (
+          /* ─── Vista 2: CATÁLOGO DE LA EMPRESA SELECCIONADA (Captura 4) ─── */
+          <div className="space-y-4">
+            {/* Barra superior de retorno a empresas */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 p-3.5 rounded-2xl bg-slate-900/90 border border-slate-800 shadow-md">
+              <div className="flex items-center gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedCompany(null);
+                    setSearchQuery("");
+                  }}
+                  className="h-8 px-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-emerald-400 hover:text-emerald-300 font-bold text-xs flex items-center gap-1.5 transition-all active:scale-95 border border-slate-700/80"
+                >
+                  <ArrowLeft className="w-3.5 h-3.5" />
+                  <span>Volver a Locales</span>
+                </button>
+                <div className="h-4 w-px bg-slate-700 hidden sm:block" />
+                <span className="text-xs font-bold text-white truncate">
+                  {selectedCompany.name}
+                </span>
+              </div>
 
-        {/* Grilla de Productos */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
-          {filteredProducts.map((product) => {
-            const inCart = cart.find((i) => i.product.id === product.id)?.quantity || 0;
-            return (
-              <TarjetaProducto
-                key={product.id}
-                product={product}
-                quantityInCart={inCart}
-                onAddToCart={addToCart}
-                onUpdateQuantity={updateQuantity}
-              />
-            );
-          })}
-        </div>
+              {/* Métricas de la empresa */}
+              <div className="flex items-center gap-3 text-xs text-slate-400 font-semibold pl-1">
+                <span className="flex items-center gap-1 text-amber-400 font-bold">
+                  <Star className="w-3.5 h-3.5 fill-current" />
+                  {selectedCompany.rating}
+                </span>
+                <span className="flex items-center gap-1">
+                  <Clock className="w-3.5 h-3.5 text-slate-500" />
+                  {selectedCompany.deliveryTimeMin}-{selectedCompany.deliveryTimeMax} min
+                </span>
+                <span className="flex items-center gap-1 text-emerald-400 font-bold">
+                  <Bike className="w-3.5 h-3.5" />
+                  ${selectedCompany.deliveryFee.toLocaleString("es-AR")}
+                </span>
+              </div>
+            </div>
 
-        {filteredProducts.length === 0 && (
-          <div className="text-center py-16 space-y-2">
-            <p className="text-base font-bold text-slate-300">No encontramos productos con esa búsqueda</p>
-            <p className="text-xs text-slate-500">Probá con otro término o seleccioná otra categoría.</p>
+            {/* Filtros de Categorías y Buscador interno */}
+            <FiltroCategorias
+              searchQuery={searchQuery}
+              onSearchChange={setSearchQuery}
+              selectedCategory={selectedCategory}
+              onCategorySelect={setSelectedCategory}
+            />
+
+            {/* Grilla de Productos */}
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
+              {filteredProducts.map((product) => {
+                const inCart = cart.find((i) => i.product.id === product.id)?.quantity || 0;
+                return (
+                  <TarjetaProducto
+                    key={product.id}
+                    product={product}
+                    quantityInCart={inCart}
+                    onAddToCart={addToCart}
+                    onUpdateQuantity={updateQuantity}
+                  />
+                );
+              })}
+            </div>
+
+            {filteredProducts.length === 0 && (
+              <div className="text-center py-16 space-y-2 bg-slate-900/30 rounded-3xl border border-slate-800/60 p-6">
+                <p className="text-base font-bold text-slate-300">
+                  No encontramos productos con &ldquo;{searchQuery}&rdquo; en {selectedCompany.name}
+                </p>
+                <p className="text-xs text-slate-500">
+                  Probá con otro término o volvé a la lista de empresas para buscar en otros locales.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedCompany(null);
+                  }}
+                  className="mt-3 px-4 py-2 rounded-xl bg-emerald-500 text-white font-bold text-xs"
+                >
+                  Buscar en todos los comercios
+                </button>
+              </div>
+            )}
           </div>
         )}
       </main>
@@ -191,8 +274,11 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
       <ModalMercados
         isOpen={isMarketsOpen}
         onOpenChange={setIsMarketsOpen}
-        selectedCompanyId={selectedCompany.id}
-        onSelectCompany={setSelectedCompany}
+        selectedCompanyId={selectedCompany?.id || ""}
+        onSelectCompany={(comp) => {
+          setSelectedCompany(comp);
+          setIsMarketsOpen(false);
+        }}
       />
     </div>
   );

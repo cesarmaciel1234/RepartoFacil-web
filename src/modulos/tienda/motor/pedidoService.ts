@@ -2,6 +2,7 @@ import { CartItem, CheckoutFormData, OrderData } from "./tipos";
 import { calcularTarifaEnvio, estimateAddressCoords, MARKET_CENTRAL } from "./tarifaUberService";
 import { addDocumentNonBlocking } from "@/firebase";
 import { collection } from "@/firebase/local-firestore";
+import { loadClientProfile } from "@/modulos/repartidor/motor/driverService";
 
 const ORDERS_STORAGE_KEY = "rf_orders_history";
 const CUSTOMER_STORAGE_KEY = "rf_customer_data";
@@ -9,6 +10,16 @@ const CUSTOMER_STORAGE_KEY = "rf_customer_data";
 export function loadSavedCustomer(): Partial<CheckoutFormData> {
   if (typeof window === "undefined") return {};
   try {
+    const client = loadClientProfile();
+    if (client) {
+      return {
+        customerName: client.displayName,
+        customerPhone: client.phone || "+54 9 341 555-1234",
+        deliveryAddress: client.address || "Bv. Oroño 1200, Rosario",
+        deliveryType: "delivery",
+      };
+    }
+
     const raw = localStorage.getItem(CUSTOMER_STORAGE_KEY);
     return raw ? JSON.parse(raw) : {};
   } catch {

@@ -4,7 +4,7 @@ import React from "react";
 import { Product } from "@/data/mockProducts";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Plus, Minus, Sparkles } from "lucide-react";
+import { Plus, Minus, Sparkles, Store, MapPin } from "lucide-react";
 
 interface TarjetaProductoProps {
   product: Product;
@@ -25,7 +25,7 @@ export function TarjetaProducto({
     <div className="group bg-slate-900/90 border border-slate-800/80 hover:border-emerald-500/40 rounded-2xl p-3 flex flex-col justify-between transition-all duration-200 hover:shadow-xl hover:shadow-emerald-500/5">
       <div>
         {/* Imagen y Badges */}
-        <div className="relative aspect-4/3 w-full rounded-xl overflow-hidden bg-slate-800 mb-2.5">
+        <div className="relative aspect-[4/3] w-full rounded-xl overflow-hidden bg-slate-800 mb-2.5">
           <img
             src={product.image}
             alt={product.name}
@@ -47,6 +47,18 @@ export function TarjetaProducto({
 
         {/* Info */}
         <div className="space-y-1">
+          {/* Badge de Empresa y Distancia (Multi-Empresa) */}
+          <div className="flex items-center justify-between text-[10px] text-slate-400 pb-0.5">
+            <span className="font-bold text-emerald-400 truncate max-w-[130px] flex items-center gap-1">
+              <Store className="w-3 h-3 shrink-0 text-emerald-400" />
+              <span>{product.companyName || "Frigorífico Maciel"}</span>
+            </span>
+            <span className="font-semibold text-slate-400 flex items-center gap-0.5 shrink-0 bg-slate-800/80 px-1.5 py-0.5 rounded-md text-[9px]">
+              <MapPin className="w-2.5 h-2.5 text-blue-400" />
+              <span>{product.distanceKm ? `${product.distanceKm} km` : "1.2 km"}</span>
+            </span>
+          </div>
+
           <h3 className="font-extrabold text-sm text-white line-clamp-1 leading-snug group-hover:text-emerald-400 transition-colors">
             {product.name}
           </h3>
