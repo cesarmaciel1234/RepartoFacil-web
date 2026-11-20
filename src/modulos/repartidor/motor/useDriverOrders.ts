@@ -4,43 +4,47 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import { DriverOrder, OrderStatus, DriverWallet } from "./tipos";
 import {
   loadLocalOrders,
+  saveLocalOrders,
   assignOrderToDriver,
   completeOrderDelivery,
-  DEFAULT_AVAILABLE_ORDERS,
 } from "./driverService";
 import { loadDriverWallet } from "./walletService";
-import { useFirestore } from "@/firebase";
-import { collection, query, where, limit } from "@/firebase/local-firestore";
-import { useCollection } from "@/firebase/firestore/use-collection";
 import { useToast } from "@/hooks/use-toast";
 
 export function useDriverOrders(currentDriverId?: string | null) {
-  const firestore = useFirestore();
   const { toast } = useToast();
 
-  const [localOrders, setLocalOrders] = useState<DriverOrder[]>(DEFAULT_AVAILABLE_ORDERS);
+  const [localOrders, setLocalOrders] = useState<DriverOrder[]>([]);
   const [pendingAcceptOrder, setPendingAcceptOrder] = useState<DriverOrder | null>(null);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [wallet, setWallet] = useState<DriverWallet>(loadDriverWallet());
+  const [isCompleting, setIsCompleting] = useState(false);
 
-  // Cargar órdenes y wallet locales iniciales y sincronizar con base de datos real
+  // Cargar órdenes y wallet locales iniciales y sincronizar con base de datos PostgreSQL
   useEffect(() => {
-    setLocalOrders(loadLocalOrders());
+    // 1. Cargar local primero
+    const initial = loadLocalOrders();
+    setLocalOrders(initial);
     setWallet(loadDriverWallet());
 
+    // 2. Traer órdenes reales desde PostgreSQL crm-libro-local
     const fetchCloudOrders = async () => {
       try {
         const res = await fetch("/api/orders", { cache: "no-store" });
         if (res.ok) {
-          const cloudOrders = await res.json();
+          const cloudOrders: DriverOrder[] = await res.json();
           if (Array.isArray(cloudOrders) && cloudOrders.length > 0) {
             setLocalOrders((prev) => {
+              // Combinar respetando el estado más reciente
               const map = new Map<string, DriverOrder>();
               cloudOrders.forEach((o: DriverOrder) => map.set(o.id, o));
+              // Si localmente hay una orden que aún no se reflejó en red, conservarla
               prev.forEach((o) => {
                 if (!map.has(o.id)) map.set(o.id, o);
               });
-              return Array.from(map.values());
+              const combined = Array.from(map.values());
+              saveLocalOrders(combined);
+              return combined;
             });
           }
         }
@@ -50,11 +54,10 @@ export function useDriverOrders(currentDriverId?: string | null) {
     };
 
     fetchCloudOrders();
-    const pollInterval = setInterval(fetchCloudOrders, 7000);
+    const pollInterval = setInterval(fetchCloudOrders, 6000);
 
     const handleOrdersUpdated = () => {
       setLocalOrders(loadLocalOrders());
-      fetchCloudOrders();
     };
     const handleWalletUpdated = (e: any) => {
       if (e.detail) setWallet(e.detail);
@@ -70,59 +73,24 @@ export function useDriverOrders(currentDriverId?: string | null) {
     };
   }, []);
 
-  // Consulta en Firestore de pedidos pendientes
-  const pendingOrdersQuery = useMemo(() => {
-    if (!firestore) return null;
-    return query(collection(firestore, "orders"), where("status", "==", "Pending"), limit(25));
-  }, [firestore]);
-  const { data: firestorePendingOrders } = useCollection(pendingOrdersQuery);
-
-  // Consulta en Firestore de pedidos tomados por este repartidor
-  const driverOrdersQuery = useMemo(() => {
-    if (!firestore || !currentDriverId) return null;
-    return query(
-      collection(firestore, "orders"),
-      where("driverId", "==", currentDriverId),
-      where("status", "in", ["Assigned", "Picked Up", "In Transit"])
-    );
-  }, [firestore, currentDriverId]);
-  const { data: firestoreDriverOrders } = useCollection(driverOrdersQuery);
-
-  // Pedidos Disponibles combinados (Firestore + Local)
+  // Pedidos Disponibles en el radar: SOLO aquellos con estado 'Pending'
   const availableOrders = useMemo(() => {
-    const list: DriverOrder[] = [...(firestorePendingOrders || [])];
-    const localPending = localOrders.filter((o) => o.status === "Pending");
+    return localOrders.filter((o) => o.status === "Pending");
+  }, [localOrders]);
 
-    localPending.forEach((loc) => {
-      if (!list.some((item) => item.id === loc.id)) {
-        list.push(loc);
-      }
-    });
-
-    return list.length > 0 ? list : DEFAULT_AVAILABLE_ORDERS;
-  }, [firestorePendingOrders, localOrders]);
-
-  // Mis pedidos activos en ruta
+  // Mis pedidos activos en ruta: SOLO aquellos con estado 'Assigned', 'Picked Up' o 'In Transit'
+  // IMPORTANTE: Pedidos 'Delivered' o 'Cancelled' NO aparecen aquí.
   const myActiveOrders = useMemo(() => {
-    const list: DriverOrder[] = [...(firestoreDriverOrders || [])];
-    const localActive = localOrders.filter(
+    return localOrders.filter(
       (o) =>
         (o.status === "Assigned" || o.status === "Picked Up" || o.status === "In Transit") &&
-        (!currentDriverId || o.driverId === currentDriverId)
+        (!currentDriverId || !o.driverId || o.driverId === currentDriverId)
     );
-
-    localActive.forEach((loc) => {
-      if (!list.some((item) => item.id === loc.id)) {
-        list.push(loc);
-      }
-    });
-
-    return list;
-  }, [firestoreDriverOrders, localOrders, currentDriverId]);
+  }, [localOrders, currentDriverId]);
 
   // Aceptar pedido: requiere login solo si no está identificado
   const handleTakeOrder = useCallback(
-    (order: DriverOrder, driverId?: string | null) => {
+    async (order: DriverOrder, driverId?: string | null) => {
       const activeDriverId = driverId || currentDriverId;
       if (!activeDriverId) {
         setPendingAcceptOrder(order);
@@ -130,47 +98,76 @@ export function useDriverOrders(currentDriverId?: string | null) {
         return;
       }
 
-      assignOrderToDriver(order.id, activeDriverId, firestore).then((updated) => {
-        setLocalOrders(updated);
-        toast({
-          title: "¡Pedido Asignado!",
-          description: `El pedido #${order.id} fue agregado a tu ruta activa.`,
-        });
+      // Actualización optimista inmediata
+      setLocalOrders((prev) =>
+        prev.map((o) =>
+          o.id === order.id
+            ? { ...o, status: "Assigned" as OrderStatus, driverId: activeDriverId }
+            : o
+        )
+      );
+
+      const updated = await assignOrderToDriver(order.id, activeDriverId);
+      setLocalOrders(updated);
+      toast({
+        title: "¡Pedido Asignado!",
+        description: `El pedido #${order.id} fue agregado a tu ruta activa.`,
       });
     },
-    [currentDriverId, firestore, toast]
+    [currentDriverId, toast]
   );
 
   // Confirmar pedido tras loguearse
   const confirmOrderAfterLogin = useCallback(
-    (driverId: string) => {
+    async (driverId: string) => {
       setShowLoginModal(false);
       if (pendingAcceptOrder) {
-        assignOrderToDriver(pendingAcceptOrder.id, driverId, firestore).then((updated) => {
-          setLocalOrders(updated);
-          toast({
-            title: "¡Pedido Tomado con Éxito!",
-            description: `El pedido #${pendingAcceptOrder.id} está en tu ruta.`,
-          });
-          setPendingAcceptOrder(null);
+        const updated = await assignOrderToDriver(pendingAcceptOrder.id, driverId);
+        setLocalOrders(updated);
+        toast({
+          title: "¡Pedido Tomado con Éxito!",
+          description: `El pedido #${pendingAcceptOrder.id} está en tu ruta.`,
         });
+        setPendingAcceptOrder(null);
       }
     },
-    [pendingAcceptOrder, firestore, toast]
+    [pendingAcceptOrder, toast]
   );
 
   // Completar entrega y acreditar ganancia a cartera
   const handleCompleteDelivery = useCallback(
     async (orderId: string) => {
-      const res = await completeOrderDelivery(orderId, firestore);
-      setLocalOrders(res.updatedOrders);
-      setWallet(res.wallet);
-      toast({
-        title: "¡Entrega Completada! 🛵🎉",
-        description: `Ganancia acreditada a tu Cartera. Total acumulado: $${res.wallet.balance.toLocaleString("es-AR")}`,
-      });
+      if (isCompleting) return;
+      setIsCompleting(true);
+
+      // 1. Desaparecer inmediatamente de la ruta activa (UI reactiva instantánea)
+      setLocalOrders((prev) =>
+        prev.map((o) =>
+          o.id === orderId
+            ? { ...o, status: "Delivered" as OrderStatus, updatedAt: new Date().toISOString() }
+            : o
+        )
+      );
+
+      try {
+        // 2. Persistir en la base de datos PostgreSQL crm-libro-local y acreditar billetera
+        const res = await completeOrderDelivery(orderId);
+        setLocalOrders(res.updatedOrders);
+        setWallet(res.wallet);
+
+        toast({
+          title: "¡Entrega Completada! 🛵🎉",
+          description: `Ganancia acreditada a tu Cartera. Total acumulado: $${res.wallet.balance.toLocaleString(
+            "es-AR"
+          )}`,
+        });
+      } catch (err: any) {
+        console.warn("Aviso al completar entrega:", err);
+      } finally {
+        setIsCompleting(false);
+      }
     },
-    [firestore, toast]
+    [isCompleting, toast]
   );
 
   return {

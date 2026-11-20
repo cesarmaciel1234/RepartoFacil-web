@@ -247,7 +247,7 @@ export async function assignOrderToDriver(
 
   // Sincronizar en base de datos PostgreSQL de Cobro Fácil
   try {
-    fetch("/api/orders", {
+    await fetch("/api/orders", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -256,8 +256,10 @@ export async function assignOrderToDriver(
         driverId,
         driverName: "Lucas Motomensajero",
       }),
-    }).catch(() => null);
-  } catch {}
+    });
+  } catch (err) {
+    console.warn("Aviso actualizando orden asignada:", err);
+  }
 
   if (firestoreInstance) {
     try {
@@ -302,15 +304,17 @@ export async function completeOrderDelivery(
 
   // Sincronizar en base de datos PostgreSQL de Cobro Fácil
   try {
-    fetch("/api/orders", {
+    await fetch("/api/orders", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         id: orderId,
         status: "Delivered",
       }),
-    }).catch(() => null);
-  } catch {}
+    });
+  } catch (err) {
+    console.warn("Aviso completando entrega en PostgreSQL:", err);
+  }
 
   if (firestoreInstance) {
     try {

@@ -52,9 +52,15 @@ export async function GET(
   // Si se consultan órdenes, conectar directamente a PostgreSQL crm-libro-local
   if (pathStr === "orders") {
     try {
-      const rows = await queryDb(
-        "SELECT * FROM repartofacil_pedidos ORDER BY created_at DESC LIMIT 50"
-      );
+      const statusParam = request.nextUrl.searchParams.get("status");
+      let query = "SELECT * FROM repartofacil_pedidos";
+      const values: any[] = [];
+      if (statusParam) {
+        query += " WHERE estado = $1";
+        values.push(statusParam);
+      }
+      query += " ORDER BY created_at DESC LIMIT 50";
+      const rows = await queryDb(query, values);
       return NextResponse.json(rows.map(mapDbRowToOrder));
     } catch (err: any) {
       console.warn("[DB Proxy Orders GET Error]:", err.message);

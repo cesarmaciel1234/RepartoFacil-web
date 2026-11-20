@@ -43,9 +43,16 @@ function mapDbRowToOrder(row: any) {
 // GET /api/orders: Obtener todos los pedidos reales de PostgreSQL crm-libro-local
 export async function GET(request: NextRequest) {
   try {
-    const rows = await queryDb(
-      "SELECT * FROM repartofacil_pedidos ORDER BY created_at DESC LIMIT 50"
-    );
+    const statusParam = request.nextUrl.searchParams.get("status");
+    let query = "SELECT * FROM repartofacil_pedidos";
+    const values: any[] = [];
+    if (statusParam) {
+      query += " WHERE estado = $1";
+      values.push(statusParam);
+    }
+    query += " ORDER BY created_at DESC LIMIT 50";
+
+    const rows = await queryDb(query, values);
     const orders = rows.map(mapDbRowToOrder);
     return NextResponse.json(orders);
   } catch (err: any) {
