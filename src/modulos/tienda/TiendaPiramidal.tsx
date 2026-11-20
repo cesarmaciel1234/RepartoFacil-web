@@ -112,13 +112,19 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
     ).length;
   }, [clientOrdersList]);
 
-  // Sincronizar catálogo real directamente desde la base de datos de Cobro Fácil
+  // Sincronizar catálogo real directamente desde la base de datos de Cobro Fácil (pos_base)
   useEffect(() => {
-    fetch("/api/cobrofacil/products")
+    fetch("/api/cobrofacil/products", { cache: "no-store" })
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         if (data && Array.isArray(data.products) && data.products.length > 0) {
-          const otherProducts = INITIAL_PRODUCTS.filter((p) => p.companyId !== "frigorifico-maciel");
+          // Mantener solo productos mock de empresas que NO sean Maciel ni Empresa Prueba (ej. kiosco-al-toque)
+          const otherProducts = INITIAL_PRODUCTS.filter(
+            (p) =>
+              p.companyId &&
+              p.companyId !== "frigorifico-maciel" &&
+              p.companyId !== "empresa-prueba"
+          );
           const map = new Map<string, any>();
           data.products.forEach((p: any) => map.set(p.id, p));
           otherProducts.forEach((p: any) => {
@@ -153,19 +159,16 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
     localStorage.setItem("repartofacil_delivery_address", newAddr);
   };
 
-  // Filtrado reactivo de productos cuando se está dentro del catálogo de una empresa
-  const filteredProducts = useMemo(() => {
+  // Catálogo activo de la empresa seleccionada desde su inventario de base de datos
+  const activeCompanyCatalog = useMemo(() => {
     if (!selectedCompany) return [];
-    const q = searchQuery.toLowerCase().trim();
-
     const sId = (selectedCompany.id || "").toLowerCase();
     const sSlug = (selectedCompany.slug || "").toLowerCase();
 
-    // 1. Filtrar productos pertenecientes a la empresa seleccionada
     const companyProducts = products.filter((p) => {
       const pComp = (p.companyId || "").toLowerCase();
       if (sId === "frigorifico-maciel" || sSlug === "maciel") {
-        return pComp === "frigorifico-maciel" || pComp === "maciel" || !p.companyId;
+        return pComp === "frigorifico-maciel" || pComp === "maciel";
       }
       if (sId === "empresa-prueba" || sSlug === "prueba") {
         return pComp === "empresa-prueba" || pComp === "prueba";
@@ -173,30 +176,85 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
       return pComp === sId || (sSlug && pComp === sSlug);
     });
 
-    // 2. Si la empresa es nueva y aún no sincronizó productos al TPV,
-    // proveer catálogo base de la tienda adaptado a la empresa para que sea 100% operable
-    const activeCatalog =
-      companyProducts.length > 0
-        ? companyProducts
-        : products.slice(0, 16).map((p) => ({
+    return companyProducts.length > 0
+      ? companyProducts
+      : products
+          .filter((p) => p.companyId === "frigorifico-maciel")
+          .slice(0, 16)
+          .map((p) => ({
             ...p,
             id: `${selectedCompany.id}-${p.id}`,
             companyId: selectedCompany.id,
             companyName: selectedCompany.name,
-            badge: selectedCompany.name,
           }));
+  }, [products, selectedCompany]);
 
-    return activeCatalog.filter((p) => {
+  // Departamentos reales del inventario de la empresa seleccionada (para los filtros por departamento)
+  const companyDepartments = useMemo(() => {
+    if (!selectedCompany) return [];
+    const counts = new Map<string, number>();
+    activeCompanyCatalog.forEach((p: any) => {
+      const dep = String(p.department || p.categoryName || p.category || "GENERAL")
+        .trim()
+        .toUpperCase();
+      counts.set(dep, (counts.get(dep) || 0) + 1);
+    });
+
+    const getDeptIcon = (d: string) => {
+      if (d.includes("CARNE") || d.includes("VACUN")) return "🥩";
+      if (d.includes("AVE") || d.includes("POLLO")) return "🍗";
+      if (d.includes("CERDO")) return "🥓";
+      if (d.includes("ACHURA")) return "🔥";
+      if (d.includes("EMBUTID") || d.includes("FIAMBR")) return "🌭";
+      if (d.includes("PREPARAD") || d.includes("MILANES")) return "🍲";
+      if (d.includes("HUEVO")) return "🥚";
+      if (d.includes("ALMACEN") || d.includes("CONDIMENT")) return "🛒";
+      if (d.includes("VERDU")) return "🥬";
+      if (d.includes("CONGELAD")) return "❄️";
+      if (d.includes("GRASA")) return "🧈";
+      if (d.includes("BEBIDA") || d.includes("KIOSCO")) return "🥤";
+      return "📦";
+    };
+
+    const deptList = Array.from(counts.entries())
+      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+      .map(([dep, count]) => ({
+        id: dep.toLowerCase(),
+        name: `${dep} (${count})`,
+        icon: getDeptIcon(dep),
+      }));
+
+    return [
+      { id: "todos", name: `Todos (${activeCompanyCatalog.length})`, icon: "🔥" },
+      ...deptList,
+    ];
+  }, [selectedCompany, activeCompanyCatalog]);
+
+  // Filtrado reactivo de productos por departamento del inventario y búsqueda
+  const filteredProducts = useMemo(() => {
+    if (!selectedCompany) return [];
+    const q = searchQuery.toLowerCase().trim();
+    const selCat = selectedCategory.toLowerCase();
+
+    return activeCompanyCatalog.filter((p: any) => {
+      const pDep = String(p.department || p.categoryName || p.category || "GENERAL")
+        .trim()
+        .toLowerCase();
+
       const matchesSearch =
         !q ||
         p.name.toLowerCase().includes(q) ||
-        p.description.toLowerCase().includes(q);
+        p.description.toLowerCase().includes(q) ||
+        pDep.includes(q);
 
-      const matchesCat = selectedCategory === "todos" || p.category === selectedCategory;
+      const matchesCat =
+        selCat === "todos" ||
+        pDep === selCat ||
+        (p.category || "").toLowerCase() === selCat;
 
       return matchesSearch && matchesCat;
     });
-  }, [products, selectedCategory, searchQuery, selectedCompany]);
+  }, [activeCompanyCatalog, selectedCategory, searchQuery, selectedCompany]);
 
   // Manejo de checkout: libre navegación en tienda, solo se pide login al pagar (y luego no vuelve a pedir)
   const handleProceedToPayment = () => {
@@ -304,12 +362,13 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
               </div>
             </div>
 
-            {/* Filtros de Categorías y Buscador interno */}
+            {/* Filtros por Departamentos reales del Inventario y Buscador interno */}
             <FiltroCategorias
               searchQuery={searchQuery}
               onSearchChange={setSearchQuery}
               selectedCategory={selectedCategory}
               onCategorySelect={setSelectedCategory}
+              categories={companyDepartments}
             />
 
             {/* Grilla de Productos */}

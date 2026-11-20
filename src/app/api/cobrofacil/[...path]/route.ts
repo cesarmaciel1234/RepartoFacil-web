@@ -64,27 +64,65 @@ export async function GET(
         const products = pRows.map((pr: any[]) => {
           const item: any = {};
           pCols.forEach((col: string, idx: number) => { item[col] = pr[idx]; });
-          const catName = categoryMap[item.categoria] || "Cortes Vacunos";
+          const rawDepto = String(item.departamento || "").trim();
+          const rawCat = String(item.categoria || categoryMap[item.categoria] || "").trim();
+          const deptoUpper = (rawDepto || rawCat || "GENERAL").toUpperCase();
 
           return {
             id: `tpv-${item.id}`,
             name: item.nombre,
-            category: catName.toLowerCase().includes("pollo") || catName.toLowerCase().includes("aves") ? "pollo" : "vacuno",
-            categoryName: catName,
+            category: deptoUpper.toLowerCase(),
+            categoryName: deptoUpper,
+            department: deptoUpper,
             price: Number(item.precio) || 12000,
             unit: item.unidad || "kg",
-            description: `Corte fresco seleccionado de Frigorífico Maciel. Calidad exportación directa de gancho. Código TPV: ${item.codigo || item.id}.`,
+            description: `${deptoUpper} · Inventario Frigorífico Maciel. Código TPV: ${item.codigo || item.id}.`,
             image: getProductImage(item.nombre),
             stockKg: item.stock !== null ? Number(item.stock) : 50,
-            badge: "TPV Cobro Fácil",
+            badge: deptoUpper,
             isPopular: ["Asado", "Vacio", "Matambre", "Entraña", "Suprema"].some((popular) =>
-              item.nombre.toLowerCase().includes(popular.toLowerCase())
+              String(item.nombre || "").toLowerCase().includes(popular.toLowerCase())
             ),
             companyId: "frigorifico-maciel",
             companyName: "Frigorífico Maciel - Central",
             source: "crm-libro-local (PostgreSQL)",
           };
         });
+
+        // También cargar el inventario real de Empresa Prueba desde su esquema empresa_2.pos_base
+        let pruebaDbProducts: any[] = [];
+        try {
+          const pruebaRows = await queryDb(
+            "SELECT columnas, filas FROM empresa_2.pos_base WHERE tabla = 'productos' ORDER BY id DESC LIMIT 1"
+          );
+          if (pruebaRows.length > 0) {
+            const prCols = typeof pruebaRows[0].columnas === "string" ? JSON.parse(pruebaRows[0].columnas) : pruebaRows[0].columnas;
+            const prFilas = typeof pruebaRows[0].filas === "string" ? JSON.parse(pruebaRows[0].filas) : pruebaRows[0].filas;
+            pruebaDbProducts = prFilas.map((pr: any[]) => {
+              const item: any = {};
+              prCols.forEach((col: string, idx: number) => { item[col] = pr[idx]; });
+              const rawDepto = String(item.departamento || item.categoria || "GENERAL").trim();
+              const deptoUpper = (rawDepto || "GENERAL").toUpperCase();
+              return {
+                id: `prueba-tpv-${item.id}`,
+                name: item.nombre,
+                category: deptoUpper.toLowerCase(),
+                categoryName: deptoUpper,
+                department: deptoUpper,
+                price: Number(item.precio) || 12000,
+                unit: item.unidad || "kg",
+                description: `${deptoUpper} · Inventario Empresa Prueba. Código: ${item.codigo || item.id}.`,
+                image: getProductImage(item.nombre),
+                stockKg: item.stock !== null ? Number(item.stock) : 50,
+                badge: deptoUpper,
+                isPopular: false,
+                companyId: "empresa-prueba",
+                companyName: "Cobro Fácil - Empresa Prueba",
+                source: "empresa_2.pos_base",
+              };
+            });
+          }
+        } catch {}
 
         const testProducts = [
           {
@@ -174,8 +212,8 @@ export async function GET(
           source: "crm-libro-local (PostgreSQL Render)",
           terminal: "MACIEL - DESKTOP-7Q2Q4VD",
           sucursal: prodRows[0].sucursal_nombre,
-          total: products.length + testProducts.length,
-          products: [...products, ...testProducts],
+          total: products.length + (pruebaDbProducts.length || testProducts.length),
+          products: [...products, ...(pruebaDbProducts.length > 0 ? pruebaDbProducts : testProducts)],
         });
       }
     } catch (dbErr: any) {
