@@ -5,7 +5,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.database import Base, engine
-from app.api import auth, db
+from app.api import auth, db, cobrofacil
 from app.models.local import Document, LocalUser
 
 
@@ -36,6 +36,7 @@ Base.metadata.create_all(bind=engine)
 
 app.include_router(auth.router)
 app.include_router(db.router)
+app.include_router(cobrofacil.router)
 
 static_dir = os.path.join(os.path.dirname(__file__), "static")
 if os.path.isdir(static_dir):

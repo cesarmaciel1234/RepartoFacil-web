@@ -29,10 +29,10 @@ export const MOCK_COMPANIES: CompanyStore[] = [
     deliveryTimeMax: 40,
     deliveryFee: 1605,
     freeDeliveryThreshold: 35000,
-    badges: ["Mismo precio que en local", "Hasta 20% OFF en combos"],
+    badges: ["Sincronizado Cobro Fácil TPV", "MACIEL - DESKTOP-7Q2Q4VD", "Mismo precio que en local"],
     address: "Tucumán 2130, Rosario",
     phone: "+54 9 341 555-1234",
-    cobroFacilApiEndpoint: "https://cobrofacil.onrender.com/api/v1/maciel",
+    cobroFacilApiEndpoint: "https://cobrofacil.onrender.com",
     isOpen: true,
   },
   {
