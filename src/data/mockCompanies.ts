@@ -19,6 +19,23 @@ export interface CompanyStore {
 
 export const MOCK_COMPANIES: CompanyStore[] = [
   {
+    id: "empresa-prueba",
+    name: "Cobro Fácil - Empresa Prueba",
+    category: "Comercio de Prueba & Sandbox",
+    categorySlug: "carnes",
+    rating: 5.0,
+    ratingCount: 15,
+    deliveryTimeMin: 10,
+    deliveryTimeMax: 20,
+    deliveryFee: 1500,
+    freeDeliveryThreshold: 20000,
+    badges: ["Sandbox Cobro Fácil", "Empresa Prueba", "Entorno Seguro"],
+    address: "Tucumán 2130, Rosario",
+    phone: "+54 9 341 555-9999",
+    cobroFacilApiEndpoint: "https://cobrofacil-web.onrender.com",
+    isOpen: true,
+  },
+  {
     id: "frigorifico-maciel",
     name: "Frigorífico Maciel - Central",
     category: "Carnes y Pescados",
