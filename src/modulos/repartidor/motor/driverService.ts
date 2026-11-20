@@ -87,21 +87,18 @@ export const DEFAULT_AVAILABLE_ORDERS: DriverOrder[] = [
 ];
 
 export function loadLocalOrders(): DriverOrder[] {
-  if (typeof window === "undefined") return DEFAULT_AVAILABLE_ORDERS;
+  if (typeof window === "undefined") return [];
   try {
     const raw = localStorage.getItem(ORDERS_STORAGE_KEY);
-    if (!raw) {
-      localStorage.setItem(ORDERS_STORAGE_KEY, JSON.stringify(DEFAULT_AVAILABLE_ORDERS));
-      return DEFAULT_AVAILABLE_ORDERS;
-    }
+    if (!raw) return [];
     const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed) || parsed.length === 0) {
-      localStorage.setItem(ORDERS_STORAGE_KEY, JSON.stringify(DEFAULT_AVAILABLE_ORDERS));
-      return DEFAULT_AVAILABLE_ORDERS;
-    }
-    return parsed;
+    if (!Array.isArray(parsed)) return [];
+    // Excluir órdenes demo antiguas sin clientId real
+    return parsed.filter(
+      (o) => o && o.id && !["RF-7420", "RF-7421", "RF-7422"].includes(o.id)
+    );
   } catch {
-    return DEFAULT_AVAILABLE_ORDERS;
+    return [];
   }
 }
 
@@ -267,8 +264,24 @@ export function saveClientProfile(profile: ClientProfile, token?: string) {
   try {
     localStorage.setItem(CLIENT_USER_KEY, JSON.stringify(profile));
     if (token) localStorage.setItem(CLIENT_TOKEN_KEY, token);
+    // Sincronizar identidad activa y limpiar pedidos locales de otros compradores
+    localStorage.setItem(
+      "repartofacil_guest_identity",
+      JSON.stringify({ clientId: profile.id, userId: profile.userId || profile.uid || profile.id })
+    );
+    try {
+      const rawOrders = localStorage.getItem(ORDERS_STORAGE_KEY);
+      if (rawOrders) {
+        const parsedOrders = JSON.parse(rawOrders);
+        if (Array.isArray(parsedOrders)) {
+          const onlyMine = parsedOrders.filter((o) => o && o.clientId === profile.id);
+          localStorage.setItem(ORDERS_STORAGE_KEY, JSON.stringify(onlyMine));
+        }
+      }
+    } catch {}
     window.dispatchEvent(new Event("repartofacil-auth"));
     window.dispatchEvent(new Event("repartofacil-client-auth"));
+    window.dispatchEvent(new Event("rf-orders-updated"));
   } catch (e) {
     console.warn("Error guardando perfil cliente:", e);
   }
@@ -279,6 +292,8 @@ export function clearClientProfile() {
   try {
     localStorage.removeItem(CLIENT_USER_KEY);
     localStorage.removeItem(CLIENT_TOKEN_KEY);
+    localStorage.removeItem("repartofacil_guest_identity");
+    localStorage.removeItem(ORDERS_STORAGE_KEY);
     const legacy = localStorage.getItem("repartofacil_user");
     if (legacy && legacy.toLowerCase().includes('"role":"client"')) {
       localStorage.removeItem("repartofacil_user");
@@ -286,6 +301,7 @@ export function clearClientProfile() {
     }
     window.dispatchEvent(new Event("repartofacil-auth"));
     window.dispatchEvent(new Event("repartofacil-client-auth"));
+    window.dispatchEvent(new Event("rf-orders-updated"));
   } catch {}
 }
 

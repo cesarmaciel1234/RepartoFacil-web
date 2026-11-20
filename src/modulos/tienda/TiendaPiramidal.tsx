@@ -90,7 +90,9 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
       } catch {}
 
       setClientOrdersList(combined);
-      if (!selectedChatOrder && combined.length > 0) {
+      if (combined.length === 0) {
+        setSelectedChatOrder(null);
+      } else if (!selectedChatOrder || !combined.some((o) => o.id === selectedChatOrder.id)) {
         setSelectedChatOrder(combined[0]);
       }
     };
@@ -98,10 +100,14 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
     syncOrders();
     const interval = setInterval(syncOrders, 4000);
     window.addEventListener("rf-orders-updated", syncOrders);
+    window.addEventListener("repartofacil-client-auth", syncOrders);
+    window.addEventListener("repartofacil-auth", syncOrders);
     window.addEventListener("storage", syncOrders);
     return () => {
       clearInterval(interval);
       window.removeEventListener("rf-orders-updated", syncOrders);
+      window.removeEventListener("repartofacil-client-auth", syncOrders);
+      window.removeEventListener("repartofacil-auth", syncOrders);
       window.removeEventListener("storage", syncOrders);
     };
   }, [selectedChatOrder, orderConfirmed]);
@@ -272,8 +278,15 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
     try {
       if (selectedCompany) {
         formData.companyId = selectedCompany.id;
-        formData.companySlug = selectedCompany.slug;
-        formData.empresaId = selectedCompany.empresa_id || (selectedCompany.slug === "prueba" ? 2 : 1);
+        formData.companySlug = selectedCompany.slug || selectedCompany.id.replace(/^empresa-/, "");
+        formData.empresaId =
+          selectedCompany.empresa_id ||
+          (selectedCompany.slug === "prueba" || selectedCompany.id === "empresa-prueba"
+            ? 2
+            : selectedCompany.slug === "maciel" || selectedCompany.id === "frigorifico-maciel"
+            ? 1
+            : undefined);
+        formData.selectedBranch = selectedCompany.name;
       }
       const newOrder = await createOrder(cart, formData, firestore);
       setIsCheckoutOpen(false);

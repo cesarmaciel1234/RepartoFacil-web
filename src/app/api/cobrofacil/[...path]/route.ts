@@ -89,38 +89,50 @@ export async function GET(
           };
         });
 
-        // También cargar el inventario real de Empresa Prueba desde su esquema empresa_2.pos_base
-        let pruebaDbProducts: any[] = [];
+        // Cargar dinámicamente el inventario real de TODAS las demás empresas registradas en Cobro Fácil (empresa_2, empresa_3, etc.)
+        let otherCompaniesProducts: any[] = [];
         try {
-          const pruebaRows = await queryDb(
-            "SELECT columnas, filas FROM empresa_2.pos_base WHERE tabla = 'productos' ORDER BY id DESC LIMIT 1"
+          const allEmpresas = await queryDb(
+            "SELECT id, nombre, slug FROM public.empresas WHERE activo = 1 AND id > 1 ORDER BY id ASC"
           );
-          if (pruebaRows.length > 0) {
-            const prCols = typeof pruebaRows[0].columnas === "string" ? JSON.parse(pruebaRows[0].columnas) : pruebaRows[0].columnas;
-            const prFilas = typeof pruebaRows[0].filas === "string" ? JSON.parse(pruebaRows[0].filas) : pruebaRows[0].filas;
-            pruebaDbProducts = prFilas.map((pr: any[]) => {
-              const item: any = {};
-              prCols.forEach((col: string, idx: number) => { item[col] = pr[idx]; });
-              const rawDepto = String(item.departamento || item.categoria || "GENERAL").trim();
-              const deptoUpper = (rawDepto || "GENERAL").toUpperCase();
-              return {
-                id: `prueba-tpv-${item.id}`,
-                name: item.nombre,
-                category: deptoUpper.toLowerCase(),
-                categoryName: deptoUpper,
-                department: deptoUpper,
-                price: Number(item.precio) || 12000,
-                unit: item.unidad || "kg",
-                description: `${deptoUpper} · Inventario Empresa Prueba. Código: ${item.codigo || item.id}.`,
-                image: getProductImage(item.nombre),
-                stockKg: item.stock !== null ? Number(item.stock) : 50,
-                badge: deptoUpper,
-                isPopular: false,
-                companyId: "empresa-prueba",
-                companyName: "Cobro Fácil - Empresa Prueba",
-                source: "empresa_2.pos_base",
-              };
-            });
+          for (const emp of allEmpresas) {
+            const eid = Number(emp.id);
+            const slug = String(emp.slug || "").toLowerCase().trim();
+            const compId = slug === "prueba" || eid === 2 ? "empresa-prueba" : slug ? `empresa-${slug}` : `empresa-${eid}`;
+            const compName = slug === "prueba" || eid === 2 ? "Cobro Fácil - Empresa Prueba" : emp.nombre || `Empresa ${eid}`;
+            try {
+              const empProdRows = await queryDb(
+                `SELECT columnas, filas FROM empresa_${eid}.pos_base WHERE tabla = 'productos' ORDER BY id DESC LIMIT 1`
+              );
+              if (empProdRows.length > 0) {
+                const prCols = typeof empProdRows[0].columnas === "string" ? JSON.parse(empProdRows[0].columnas) : empProdRows[0].columnas;
+                const prFilas = typeof empProdRows[0].filas === "string" ? JSON.parse(empProdRows[0].filas) : empProdRows[0].filas;
+                const mapped = prFilas.map((pr: any[]) => {
+                  const item: any = {};
+                  prCols.forEach((col: string, idx: number) => { item[col] = pr[idx]; });
+                  const rawDepto = String(item.departamento || item.categoria || "GENERAL").trim();
+                  const deptoUpper = (rawDepto || "GENERAL").toUpperCase();
+                  return {
+                    id: `emp-${eid}-tpv-${item.id}`,
+                    name: item.nombre,
+                    category: deptoUpper.toLowerCase(),
+                    categoryName: deptoUpper,
+                    department: deptoUpper,
+                    price: Number(item.precio) || 12000,
+                    unit: item.unidad || "kg",
+                    description: `${deptoUpper} · Inventario ${compName}. Código: ${item.codigo || item.id}.`,
+                    image: getProductImage(item.nombre),
+                    stockKg: item.stock !== null ? Number(item.stock) : 50,
+                    badge: deptoUpper,
+                    isPopular: false,
+                    companyId: compId,
+                    companyName: compName,
+                    source: `empresa_${eid}.pos_base`,
+                  };
+                });
+                otherCompaniesProducts.push(...mapped);
+              }
+            } catch {}
           }
         } catch {}
 
@@ -212,8 +224,8 @@ export async function GET(
           source: "crm-libro-local (PostgreSQL Render)",
           terminal: "MACIEL - DESKTOP-7Q2Q4VD",
           sucursal: prodRows[0].sucursal_nombre,
-          total: products.length + (pruebaDbProducts.length || testProducts.length),
-          products: [...products, ...(pruebaDbProducts.length > 0 ? pruebaDbProducts : testProducts)],
+          total: products.length + (otherCompaniesProducts.length || testProducts.length),
+          products: [...products, ...(otherCompaniesProducts.length > 0 ? otherCompaniesProducts : testProducts)],
         });
       }
     } catch (dbErr: any) {

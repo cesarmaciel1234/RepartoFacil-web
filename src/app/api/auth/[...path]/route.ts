@@ -45,25 +45,20 @@ function handleAuthFallback(pathStr: string, bodyText: string) {
       });
     }
 
-    // 2. Cliente demo
-    if (email === "cliente" || email === "cliente@repartofacil.com") {
-      return NextResponse.json({
-        access_token: "jwt_token_cliente_cloud_v5",
-        token_type: "bearer",
-        user: DEFAULT_CLIENT,
-      });
-    }
-
-    // 3. Cualquier usuario con credenciales
+    // 2. Cualquier usuario comprador: generar ID único determinístico por cuenta (nunca compartir cliente-01)
     if (email) {
       const namePart = email.split("@")[0];
+      const slug = namePart.replace(/[^a-z0-9]/gi, "").toLowerCase() || "user";
       const capitalized = namePart.charAt(0).toUpperCase() + namePart.slice(1);
+      const uniqueClientId = `cli_acc_${slug}`;
+      const uniqueUserId = `usr_cli_${slug}`;
       return NextResponse.json({
         access_token: `jwt_token_${Date.now()}`,
         token_type: "bearer",
         user: {
-          id: `cliente-${Date.now()}`,
-          uid: `cliente-${Date.now()}`,
+          id: uniqueClientId,
+          uid: uniqueUserId,
+          userId: uniqueUserId,
           displayName: body.displayName || capitalized,
           email: email.includes("@") ? email : `${email}@repartofacil.com`,
           role: "Client",
@@ -80,13 +75,18 @@ function handleAuthFallback(pathStr: string, bodyText: string) {
   }
 
   if (pathStr === "register") {
-    const namePart = (body.displayName || email.split("@")[0] || "Cliente").trim();
+    const namePart = (body.display_name || body.displayName || email.split("@")[0] || "Cliente").trim();
+    const rand = Math.random().toString(36).substring(2, 8);
+    const ts = Date.now().toString(36);
+    const newClientId = `cli_${ts}_${rand}`;
+    const newUserId = `usr_cli_${ts}_${rand}`;
     return NextResponse.json({
       access_token: `jwt_token_${Date.now()}`,
       token_type: "bearer",
       user: {
-        id: `cliente-${Date.now()}`,
-        uid: `cliente-${Date.now()}`,
+        id: newClientId,
+        uid: newUserId,
+        userId: newUserId,
         displayName: namePart,
         email: email.includes("@") ? email : `${email}@repartofacil.com`,
         role: "Client",

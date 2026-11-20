@@ -130,9 +130,40 @@ export async function POST(request: NextRequest) {
     const clienteId = data.clientId || data.cliente_id || `cli_${Math.random().toString(36).substring(2, 9)}`;
     const clienteUsuarioId = data.clientUserId || data.cliente_usuario_id || `usr_${clienteId}`;
 
-    const isPrueba = data.companyId === "empresa-prueba" || data.empresaSlug === "prueba" || data.empresaId === 2;
-    const empresaId = isPrueba ? 2 : (data.empresaId || 1);
-    const empresaSlug = isPrueba ? "prueba" : (data.empresaSlug || "maciel");
+    const rawCompanyId = String(data.companyId || "").toLowerCase().trim();
+    const rawSlug = String(data.empresaSlug || rawCompanyId.replace(/^empresa-/, "") || "").toLowerCase().trim();
+    const isPrueba = rawCompanyId === "empresa-prueba" || rawSlug === "prueba" || Number(data.empresaId) === 2;
+    const isMaciel = rawCompanyId === "frigorifico-maciel" || rawSlug === "maciel" || Number(data.empresaId) === 1;
+
+    let empresaId = Number(data.empresaId) || (isPrueba ? 2 : isMaciel ? 1 : 0);
+    let empresaSlug = isPrueba ? "prueba" : isMaciel ? "maciel" : rawSlug;
+    let empresaNombre = data.branch || "";
+
+    // Si es una empresa nueva registrada en Cobro Fácil (id > 2 o slug propio), resolver su ID exacto desde public.empresas
+    if (!empresaId || (!isMaciel && !isPrueba && rawSlug)) {
+      try {
+        const empRows = await queryDb(
+          "SELECT id, nombre, slug FROM public.empresas WHERE id = $1 OR LOWER(slug) = LOWER($2) LIMIT 1",
+          [empresaId || -1, rawSlug || ""]
+        );
+        if (empRows.length > 0) {
+          empresaId = Number(empRows[0].id);
+          empresaSlug = String(empRows[0].slug || rawSlug);
+          if (!empresaNombre || empresaNombre.includes("Tucumán 2130")) {
+            empresaNombre = empRows[0].nombre;
+          }
+        }
+      } catch {}
+    }
+    if (!empresaId) empresaId = 1;
+    if (!empresaSlug) empresaSlug = "maciel";
+    if (!empresaNombre) {
+      empresaNombre = isPrueba
+        ? "Cobro Fácil - Empresa Prueba"
+        : isMaciel
+        ? "Frigorífico Maciel - Central"
+        : empresaSlug.toUpperCase();
+    }
 
     const insertQuery = `
       INSERT INTO repartofacil_pedidos (
@@ -175,7 +206,7 @@ export async function POST(request: NextRequest) {
       data.driverEarnings || 2450,
       data.distanceKm || 1.8,
       data.estimatedMinutes || 20,
-      data.branch || (isPrueba ? "Cobro Fácil - Empresa Prueba" : "Frigorífico Maciel - Central"),
+      empresaNombre,
       data.notes || "",
       data.ticketId || data.ticket_id || null,
     ];

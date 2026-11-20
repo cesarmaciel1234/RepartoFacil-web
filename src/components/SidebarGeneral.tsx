@@ -518,10 +518,10 @@ export function SidebarGeneral({
                 }
               }}
               className="w-full h-10 rounded-2xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 hover:text-emerald-200 border border-emerald-500/30 font-bold text-xs flex items-center justify-center gap-2 transition-all"
-              title="Borrar caché guardada offline y recargar última versión v5.6"
+              title="Borrar caché guardada offline y recargar última versión v5.7"
             >
               <RefreshCw className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Actualizar a v5.6 (Limpiar Caché)</span>
+              <span>Actualizar a v5.7 (Limpiar Caché)</span>
             </Button>
 
             <Button

@@ -71,9 +71,22 @@ export async function createOrder(
   const clientUserId = identity.userId;
   
   const targetCompanyId = form.companyId || cart[0]?.product?.companyId || "frigorifico-maciel";
-  const isPrueba = targetCompanyId === "empresa-prueba" || form.companySlug === "prueba";
-  const empresaId = isPrueba ? 2 : 1;
-  const empresaSlug = isPrueba ? "prueba" : "maciel";
+  const rawSlug = (form.companySlug || targetCompanyId.replace(/^empresa-/, "")).toLowerCase().trim();
+  const isPrueba = targetCompanyId === "empresa-prueba" || rawSlug === "prueba";
+  const isMaciel = targetCompanyId === "frigorifico-maciel" || rawSlug === "maciel";
+  const empresaId =
+    typeof form.empresaId === "number" && form.empresaId > 0
+      ? form.empresaId
+      : isPrueba
+      ? 2
+      : isMaciel
+      ? 1
+      : Number(rawSlug) || 0;
+  const empresaSlug = isMaciel ? "maciel" : isPrueba ? "prueba" : rawSlug || "maciel";
+  const companyBranchName =
+    form.selectedBranch ||
+    cart[0]?.product?.companyName ||
+    (isPrueba ? "Cobro Fácil - Empresa Prueba" : isMaciel ? "Frigorífico Maciel - Central" : rawSlug.toUpperCase());
 
   const newOrder: any = {
     id: orderId,
@@ -87,7 +100,7 @@ export async function createOrder(
     customerPhone: form.customerPhone.trim(),
     deliveryType: form.deliveryType,
     deliveryAddress:
-      form.deliveryType === "delivery" ? form.deliveryAddress.trim() : form.selectedBranch,
+      form.deliveryType === "delivery" ? form.deliveryAddress.trim() : companyBranchName,
     paymentMethod: form.paymentMethod === "efectivo" ? "cash" : form.paymentMethod,
     notes: form.orderNotes.trim() || undefined,
     items: cart.map((i) => ({
@@ -109,7 +122,7 @@ export async function createOrder(
     driverEarnings: tarifa.driverEarnings,
     isPeakHour: tarifa.isPeakHour,
     estimatedMinutes: tarifa.estimatedMinutes,
-    branch: MARKET_CENTRAL.address,
+    branch: companyBranchName,
     storeCoords: MARKET_CENTRAL.coords,
     destinationCoords: destCoords,
 
