@@ -81,7 +81,7 @@ test("asignación concurrente y entrega idempotente en PostgreSQL", {
           return { NextResponse: { json: (body, options) => ({ body, status: options?.status ?? 200 }) } };
         }
         if (name === "@/lib/db") return { queryDb };
-        if (name === "@/lib/custodio") return { ejecutarAuditoriaCustodio: async () => {} };
+        if (name === "@/lib/custodio") return { ejecutarAuditoriaCustodio: async () => {}, isCustodioAutomaticEnabled: () => false };
         if (name === "@/lib/validateOrder") return {};
         if (name === "@/app/api/cobrofacil/[...path]/route") return {};
         if (name === "@/lib/orderAuth") return { authenticateOrderUser: async (req) => {

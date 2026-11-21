@@ -1,5 +1,9 @@
 import { queryDb } from "@/lib/db";
 
+export function isCustodioAutomaticEnabled() {
+  return process.env.RF_CUSTODIO_AUTOMATIC_ENABLED === "1";
+}
+
 // Función central del Custodio que audita las órdenes asignadas y actúa si hay desconexión o inmovilidad
 export async function ejecutarAuditoriaCustodio() {
   try {

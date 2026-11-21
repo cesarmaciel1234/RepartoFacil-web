@@ -155,7 +155,7 @@ test("la API admite una sola asignación y el reintento del mismo repartidor", a
   const api = loadModule("src/app/api/orders/route.ts", {
     "next/server": { NextResponse: { json: (body, options) => ({ body, status: options?.status ?? 200 }) } },
     "@/lib/db": { queryDb },
-    "@/lib/custodio": { ejecutarAuditoriaCustodio: async () => {} },
+    "@/lib/custodio": { ejecutarAuditoriaCustodio: async () => {}, isCustodioAutomaticEnabled: () => false },
     "@/lib/validateOrder": {},
     "@/app/api/cobrofacil/[...path]/route": {},
     "@/lib/orderAuth": { authenticateOrderUser: async (req) => {
@@ -197,7 +197,7 @@ test("la API rechaza la entrega de otro repartidor y acepta un reintento sin dup
   const api = loadModule("src/app/api/orders/route.ts", {
     "next/server": { NextResponse: { json: (body, options) => ({ body, status: options?.status ?? 200 }) } },
     "@/lib/db": { queryDb },
-    "@/lib/custodio": { ejecutarAuditoriaCustodio: async () => {} },
+    "@/lib/custodio": { ejecutarAuditoriaCustodio: async () => {}, isCustodioAutomaticEnabled: () => false },
     "@/lib/validateOrder": {},
     "@/app/api/cobrofacil/[...path]/route": {},
     "@/lib/orderAuth": { authenticateOrderUser: async (req) => {

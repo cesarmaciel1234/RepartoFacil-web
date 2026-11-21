@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { queryDb } from "@/lib/db";
-import { ejecutarAuditoriaCustodio } from "@/lib/custodio";
+import { ejecutarAuditoriaCustodio, isCustodioAutomaticEnabled } from "@/lib/custodio";
 import { authenticateOrderUser } from "@/lib/orderAuth";
 import { validateOrder } from "@/lib/validateOrder";
 import { GET as readCatalog } from "@/app/api/cobrofacil/[...path]/route";
@@ -86,7 +86,9 @@ export async function GET(request: NextRequest) {
     const auth = await authenticateOrderUser(request, ["Client", "Driver"]);
     if (auth.response) return auth.response;
     // Custodio Intermediario del Sistema: audita desconexiones e inmovilidad de choferes asignados
-    await ejecutarAuditoriaCustodio().catch(() => {});
+    if (isCustodioAutomaticEnabled()) {
+      await ejecutarAuditoriaCustodio().catch((error) => console.error("[Custodio] Error en auditoría:", error));
+    }
 
     const searchParams = request.nextUrl.searchParams;
     const statusParam = searchParams.get("status");

@@ -4,13 +4,16 @@ import { authenticateOrderUser } from "@/lib/orderAuth";
 
 export const dynamic = "force-dynamic";
 
-import { ejecutarAuditoriaCustodio } from "@/lib/custodio";
+import { ejecutarAuditoriaCustodio, isCustodioAutomaticEnabled } from "@/lib/custodio";
 
 
 // GET /api/orders/custodio: Auditoría periódica disparada por polling o cron
 export async function GET(request: NextRequest) {
   const auth = await authenticateOrderUser(request, ["Client", "Driver"]);
   if (auth.response) return auth.response;
+  if (!isCustodioAutomaticEnabled()) {
+    return NextResponse.json({ error: "La auditoría automática de Custodio está pausada." }, { status: 503 });
+  }
   const resultado = await ejecutarAuditoriaCustodio();
   return NextResponse.json({ success: true, ...resultado });
 }
@@ -32,6 +35,9 @@ export async function POST(request: NextRequest) {
     }
     if (driverAction && body.driverId !== undefined && body.driverId !== driverId) {
       return NextResponse.json({ error: "El repartidor no coincide con la sesión." }, { status: 403 });
+    }
+    if (action === "driver_disconnected" && !isCustodioAutomaticEnabled()) {
+      return NextResponse.json({ error: "La liberación automática de pedidos está pausada." }, { status: 503 });
     }
 
     // 1. Ping GPS de telemetría del repartidor activo

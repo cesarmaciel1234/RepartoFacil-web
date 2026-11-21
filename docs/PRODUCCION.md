@@ -90,6 +90,13 @@ refleja la última instantánea del TPV: esta verificación no reserva ni descue
 inventario, por lo que ventas simultáneas pueden agotarlo antes de preparar el
 pedido. La tarifa y la ganancia se recalculan en servidor.
 
+La auditoría automática de Custodio y la liberación al desconectarse están
+pausadas por defecto (`RF_CUSTODIO_AUTOMATIC_ENABLED` distinto de `1`). No se
+generan advertencias ni vencimientos automáticos durante la pausa; la liberación
+manual del comprador sigue disponible. Antes de reactivarla, corregir y probar
+las carreras y la gestión de sesiones inactivas, y revisar las advertencias
+antiguas para evitar liberaciones inmediatas.
+
 ## 3. Contrato de tienda y tarifa
 
 - Mantener el acceso abierto al catálogo y al carrito; el login se solicita al

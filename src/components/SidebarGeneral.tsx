@@ -137,7 +137,9 @@ export function SidebarGeneral({
             driverId: driverProfileLocal.id,
             driverName: driverProfileLocal.firstName || "Repartidor",
           }),
-        }).catch(() => {});
+        }).then((response) => {
+          if (!response.ok) console.warn("No se liberaron automáticamente los pedidos al cerrar sesión:", response.status);
+        }).catch((error) => console.warn("No se pudo notificar la desconexión:", error));
       }
       clearDriverProfile();
       setDriverProfileLocal(null);

@@ -58,7 +58,7 @@ function setup(queryDb = async () => []) {
   const api = load("src/app/api/orders/route.ts", {
     "next/server": next,
     "@/lib/db": { queryDb },
-    "@/lib/custodio": { ejecutarAuditoriaCustodio: async () => {} },
+    "@/lib/custodio": { ejecutarAuditoriaCustodio: async () => {}, isCustodioAutomaticEnabled: () => false },
     "@/lib/orderAuth": auth,
     "@/lib/validateOrder": validation,
     "@/app/api/cobrofacil/[...path]/route": { GET: async (_req, context) => {
@@ -206,12 +206,29 @@ test("custodio no permite operar con el rol o repartidor de otra cuenta", async 
     "next/server": next,
     "@/lib/orderAuth": auth,
     "@/lib/db": { queryDb: async () => { queries++; return []; } },
-    "@/lib/custodio": { ejecutarAuditoriaCustodio: async () => ({}) },
+    "@/lib/custodio": { ejecutarAuditoriaCustodio: async () => { throw new Error("No debe auditar"); }, isCustodioAutomaticEnabled: () => false },
   });
   assert.equal((await custodio.POST(request(null, { action: "ping" }))).status, 401);
   assert.equal((await custodio.POST(request("buyer", { action: "ping" }))).status, 403);
   assert.equal((await custodio.POST(request("driver", { action: "ping", driverId: "other" }))).status, 403);
   assert.equal((await custodio.POST(request("driver", { action: "force_release", orderId: "order-1" }))).status, 403);
+  assert.equal((await custodio.GET(request("driver"))).status, 503);
+  assert.equal((await custodio.POST(request("driver", { action: "driver_disconnected" }))).status, 503);
   assert.equal((await custodio.POST(request("buyer", { action: "retry_order", orderId: "other-order" }))).status, 404);
   assert.equal(queries, 1);
+});
+
+test("consultar pedidos no ejecuta la auditoría mientras está pausada", async () => {
+  const { auth } = setup();
+  let audits = 0;
+  const api = load("src/app/api/orders/route.ts", {
+    "next/server": next,
+    "@/lib/orderAuth": auth,
+    "@/lib/db": { queryDb: async () => [] },
+    "@/lib/custodio": { isCustodioAutomaticEnabled: () => false, ejecutarAuditoriaCustodio: async () => { audits++; } },
+    "@/lib/validateOrder": {},
+    "@/app/api/cobrofacil/[...path]/route": {},
+  });
+  assert.equal((await api.GET(request("driver"))).status, 200);
+  assert.equal(audits, 0);
 });
