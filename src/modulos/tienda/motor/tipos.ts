@@ -1,5 +1,11 @@
 import { Product } from "@/data/mockProducts";
 
+export interface DeliveryCoordinates {
+  address: string;
+  lat: number;
+  lng: number;
+}
+
 export interface CartItem {
   product: Product;
   quantity: number;

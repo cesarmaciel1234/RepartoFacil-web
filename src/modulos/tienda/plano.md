@@ -1,52 +1,117 @@
-# Plano de Rama: Perfil Tienda (Ecommerce Delivery)
+# Arquitectura piramidal de Tienda
 
-**Ubicación de la rama:** `src/modulos/tienda/`  
-**Propósito:** Provee la experiencia completa de compra de carnicería online tipo Rappi / Uber Eats / Mercado Libre para clientes particulares y familias, con catálogo abierto, carrito en tiempo real, motor de tarifas dinámicas por km y horario pico, checkout ágil (pago al entregar) y derivación automática a WhatsApp y al radar de repartidores.
+## Propósito
 
----
+`src/modulos/tienda/` implementa la experiencia de compra del cliente. La entrada es
+`TiendaPiramidal.tsx`: compone pantallas y flujos, pero delega catálogo, pedidos y
+presentación a sus módulos correspondientes.
 
-## 1. De dónde viene (Entradas / Triggers)
-- **Disparador:** Carga inicial de la aplicación web en `src/app/page.tsx` o botón "Volver a la Tienda" desde el Modo Repartidor.
-- **Ruta de entrada:** `src/app/page.tsx -> <TiendaPiramidal onSwitchToDriver={...} />`.
-- **Parámetros recibidos:** `onSwitchToDriver: () => void`.
+## Árbol del módulo
 
----
+```text
+tienda/
+├── TiendaPiramidal.tsx              # Composición y estado global de la tienda
+├── catalogo/
+│   ├── hooks/
+│   │   └── useCatalogoTienda.ts     # Carga, filtros y distancia de comercios/productos
+│   ├── pantallas/
+│   │   └── CatalogoEmpresaTienda.tsx # Catálogo de un comercio seleccionado
+│   └── README.md
+├── motor/
+│   ├── pedidoService.ts             # Creación y persistencia de pedidos
+│   ├── tarifaUberService.ts         # Distancias y tarifas de entrega
+│   ├── tipos.ts                     # Tipos compartidos del dominio
+│   ├── useCart.ts                   # Estado persistente del carrito
+│   └── README.md
+├── pedidos/
+│   ├── hooks/
+│   │   └── usePedidosCliente.ts    # Sincronización de pedidos del comprador
+│   └── README.md
+├── pantallas/
+│   ├── InicioTienda.tsx
+│   ├── SupermercadosTienda.tsx
+│   ├── PromocionesTienda.tsx
+│   ├── HistorialPedidosTienda.tsx
+│   ├── PerfilCliente.tsx
+│   └── tipos.ts
+└── ui/
+    ├── CentroPedidosClienteSheet.tsx # Seguimiento de pedidos activos
+    ├── DrawerCarrito.tsx
+    ├── FiltroCategorias.tsx
+    ├── HeaderTienda.tsx
+    ├── ModalCambiarDireccion.tsx
+    ├── ModalCheckout.tsx
+    ├── ModalClientAuth.tsx
+    ├── NavegacionTienda.tsx
+    ├── TarjetaProducto.tsx
+    ├── VistaMercadosEmpresas.tsx
+    └── README.md
+```
 
-## 2. Frente (Interfaz Visual)
-- **Qué ve el usuario:**
-  - Encabezado con logo "RF Reparto Fácil MARKET", indicador de sucursales Frigorífico Maciel, acceso al Modo Repartidor y badge reactivo del carrito.
-  - Barra de búsqueda de cortes y carrusel de categorías (Vacuno, Cerdo, Pollo, Achuras, Combos, Carbón).
-  - Grilla de tarjetas de productos con fotografía de cortes, badges de ahorro/popularidad y botones de control de cantidad (+/-) optimizados para móviles de 390px.
-  - Barra flotante inferior de acceso rápido al carrito cuando hay productos agregados.
-  - Drawer lateral deslizable (Sheet) para revisión del carrito con cálculo dinámico de envío gratis (> $35.000).
-  - Modal de Checkout con desglose de tarifa estándar estilo Uber/PedidosYa (tarifa base, distancia estimada por km y recargo dinámico en horario pico 1.35x), opciones de entrega y medio de pago (Efectivo al recibir por defecto).
-  - Diálogo de confirmación con número de orden `#RF-XXXX` y botón directo para enviar el ticket formateado a WhatsApp.
+## Responsabilidades por nivel
 
----
+### 1. Orquestación
 
-## 3. Fondo (Lógica y Motores)
-- **Controlador principal:** `TiendaPiramidal.tsx` coordina los subcomponentes visuales con los motores de negocio.
-- **Motores auxiliares:**
-  - `motor/useCart.ts`: Gestión del estado del carrito, sincronización reactiva en `localStorage` (`rf_cart`), cálculo de subtotales y cantidades.
-  - `motor/tarifaUberService.ts`: Cálculo de tarifas de entrega estilo Uber/PedidosYa: tarifa base ($1.200) + tarifa por distancia ($450/km) + recargo dinámico de horario pico (1.35x) y geocodificación de prueba cercana a la central.
-  - `motor/pedidoService.ts`: Generación de órdenes con id único `#RF-XXXX`, almacenamiento en historial (`rf_orders_history`), emisión de eventos en tiempo real (`rf-orders-updated`) y persistencia no bloqueante en Firestore.
-- **Flujo de ejecución:**
-  1. Paso 1: El usuario agrega productos y `useCart` actualiza el estado y persiste en `localStorage`.
-  2. Paso 2: El usuario presiona "Continuar y Pagar", abriendo `ModalCheckout`.
-  3. Paso 3: Al ingresar la dirección (ej. San Lorenzo 2040), el motor calcula la distancia y la tarifa de envío en tiempo real.
-  4. Paso 4: Al confirmar, `createOrder` genera el pedido `#RF-XXXX` en estado `"Pending"` con las coordenadas y ganancias del repartidor.
-  5. Paso 5: La orden impacta inmediatamente en la pestaña "Disponibles" del perfil del repartidor.
+`TiendaPiramidal.tsx` mantiene la selección de sección y comercio, conecta carrito,
+checkout, ubicación, perfil, historial, seguimiento en vivo y chat. No contiene la
+carga ni el filtrado del catálogo ni la sincronización periódica de pedidos.
 
----
+### 2. Dominios
 
-## 4. A dónde va (Salidas e Impacto)
-- **Destino inmediato:** Pantalla de confirmación con enlace directo a WhatsApp.
-- **Persistencia:** `localStorage` (`rf_cart`, `rf_customer_data`, `rf_orders_history`) y Firestore (colección `orders`).
-- **Integración:** Alimenta en tiempo real la pestaña "Disponibles" del perfil del repartidor.
+- **`catalogo/`** carga comercios y productos, obtiene la distancia aproximada y
+  entrega los datos filtrados a `CatalogoEmpresaTienda`.
+- **`pedidos/`** sincroniza el historial local/remoto e informa la cantidad de
+  pedidos activos.
+- **`motor/`** contiene operaciones reutilizables de carrito, pedidos, tarifas y
+  tipos del dominio.
+- **`pantallas/`** contiene módulos completos de navegación: Inicio, Súper,
+  Promociones, Pedidos e Perfil.
+- **`ui/`** contiene componentes visuales compartidos y paneles transitorios.
 
----
+### 3. Componentes visuales
 
-## 5. Qué NO romper (Invariantes Sagrados)
-- **Navegación 100% libre:** Nunca bloquear el catálogo ni el carrito con pantallas de login inicial.
-- **Moneda y formato:** Todos los precios deben formularse en pesos argentinos (`es-AR`).
-- **Modularidad:** Ningún archivo de la rama debe superar las 500 líneas.
+Las pantallas usan los componentes de `ui/`; el orquestador los conecta con los
+hooks y servicios del dominio. El panel `CentroPedidosClienteSheet` es únicamente
+para pedidos activos. El historial completo vive en `pantallas/HistorialPedidosTienda.tsx`.
+
+## Flujos principales
+
+```text
+src/app/page.tsx
+  └── TiendaPiramidal
+      ├── useCatalogoTienda ── API de comercios/productos
+      │   └── Inicio / Súper / Promociones / Catálogo de comercio
+      ├── useCart ── DrawerCarrito ── ModalCheckout ── createOrder
+      ├── usePedidosCliente ── HistorialPedidosTienda
+      │                     └── CentroPedidosClienteSheet ── OrderChatSheet
+      └── ModalCambiarDireccion ── coordenadas guardadas para el comprador
+```
+
+El catálogo mantiene datos de respaldo mientras obtiene datos dinámicos. La
+selección de dirección persiste texto y coordenadas; ambas se comparten para
+mostrar la distancia aproximada al comercio.
+
+## Reglas para extender el módulo
+
+1. Agregar una pantalla principal nueva en `pantallas/` y conectarla desde
+   `TiendaPiramidal.tsx`.
+2. Agregar lógica reutilizable en el dominio correspondiente (`catalogo/`,
+   `pedidos/` o `motor/`), no en una pantalla.
+3. Mantener los componentes visuales en `ui/` o junto al dominio si solo sirven a
+   ese dominio.
+4. No importar `TiendaPiramidal` desde un submódulo: las dependencias fluyen hacia
+   abajo y el orquestador compone hacia arriba.
+5. Mantener cada archivo de código por debajo de 500 líneas; extraer una pieza
+   visual o una responsabilidad cohesiva cuando se acerque al límite.
+
+## Invariantes
+
+- Se puede recorrer el catálogo y armar un carrito sin iniciar sesión; el acceso
+  se solicita al pagar.
+- La moneda y las fechas visibles se formatean con configuración `es-AR`.
+- El panel del camión muestra pedidos activos; el botón inferior Pedidos abre el
+  historial completo.
+- La distancia se presenta como aproximada y usa coordenadas elegidas cuando
+  existen.
+- El carrito conserva su persistencia y el envío gratis no elimina la ganancia
+  correspondiente del repartidor.

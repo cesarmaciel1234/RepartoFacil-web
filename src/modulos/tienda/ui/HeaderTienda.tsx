@@ -13,9 +13,7 @@ interface HeaderTiendaProps {
   selectedCompanyName?: string | null;
   onBackToMarkets?: () => void;
   onChangeAddress?: () => void;
-  onOpenSidebar: () => void;
   onOpenCart: () => void;
-  onOpenMarkets: () => void;
   onSwitchToDriver: () => void;
   onOpenOrderChat?: () => void;
   activeOrdersCount?: number;
@@ -29,9 +27,7 @@ export function HeaderTienda({
   selectedCompanyName,
   onBackToMarkets,
   onChangeAddress,
-  onOpenSidebar,
   onOpenCart,
-  onOpenMarkets,
   onSwitchToDriver,
   onOpenOrderChat,
   activeOrdersCount = 0,
@@ -58,18 +54,7 @@ export function HeaderTienda({
             >
               <ArrowLeft className="w-4 h-4 text-blue-600" />
             </button>
-          ) : (
-            /* Botón Avatar Perfil (Blanco y Azul estilo Mercado Pago) */
-            <button
-              type="button"
-              onClick={onOpenSidebar}
-              className="w-9 h-9 rounded-full bg-blue-600 hover:bg-blue-700 border-2 border-blue-100 flex items-center justify-center font-black text-sm text-white shadow-sm shrink-0 active:scale-95 transition-all relative"
-              title="Abrir Menú y Perfil"
-            >
-              <span>C</span>
-              <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-500 border-2 border-white rounded-full" />
-            </button>
-          )}
+          ) : null}
 
           {/* Selector de Dirección (Home) o Nombre del Comercio (Dentro de la tienda) */}
           <div className="min-w-0">
@@ -82,7 +67,7 @@ export function HeaderTienda({
                 </div>
                 <button
                   type="button"
-                  onClick={onChangeAddress || onOpenSidebar}
+                  onClick={onChangeAddress}
                   className="text-[11px] text-slate-500 hover:text-blue-600 font-semibold flex items-center gap-1 truncate group cursor-pointer transition-colors"
                   title="Cambiar dirección de entrega"
                 >
@@ -101,7 +86,7 @@ export function HeaderTienda({
                 </span>
                 <button
                   type="button"
-                  onClick={onChangeAddress || onOpenSidebar}
+                  onClick={onChangeAddress}
                   className="flex items-center gap-1 text-left group mt-0.5 cursor-pointer"
                   title="Cambiar dirección de entrega"
                 >
@@ -124,7 +109,7 @@ export function HeaderTienda({
             size="sm"
             variant="outline"
             className="border-slate-200 bg-white hover:bg-blue-50 text-slate-700 hover:text-blue-700 rounded-full text-xs font-bold px-3 h-9 flex items-center gap-1.5 shadow-xs relative active:scale-95 transition-all"
-            title="Centro de envíos activos y chats de pedidos"
+            title="Pedidos en vivo y seguimiento de envíos"
           >
             <Truck className="w-4 h-4 text-blue-600" />
             <span className="hidden sm:inline">Envíos</span>

@@ -1,7 +1,7 @@
 # Subcarpeta: Motor Tienda
 
 **Ubicación:** `src/modulos/tienda/motor/`  
-**Rol:** Lógica de datos, carrito de compras, cálculo de tarifas de envío estándar Uber/PedidosYa y persistencia de órdenes.
+**Rol:** Lógica reutilizable del dominio de compra: carrito, tarifas, pedidos y tipos.
 
 ---
 
@@ -10,6 +10,7 @@
 - Modela las tarifas dinámicas de delivery con `tarifaUberService.ts` (base fija, precio por km, horario pico y ganancias del repartidor).
 - Procesa el checkout y genera órdenes con `pedidoService.ts`.
 - Modela los tipos de datos en `tipos.ts`.
+- Define `DeliveryCoordinates` para conservar juntos la dirección y el punto elegido.
 
 ---
 
@@ -24,6 +25,7 @@
   - `createOrder()`: Genera pedido `#RF-XXXX` con métricas Uber (`driverEarnings`, distancias, coordenadas), persiste en `rf_orders_history` y emite `rf-orders-updated`.
   - `buildWhatsAppLink()`: Arma mensaje formateado para enviar a la central de carnicería.
 - `useCart.ts`: Hook reactivo para agregar, remover y modificar cantidades con persistencia en `rf_cart`.
+- `tipos.ts`: Tipos de pedido, carrito, checkout y ubicación compartidos por los dominios.
 
 ---
 
@@ -43,3 +45,4 @@
 ## 5. Qué NO romper (Invariantes Sagrados)
 - **Subsidio de envío gratis:** Si la compra es >= $35.000, el flete es $0 para el cliente pero el repartidor siempre cobra su ganancia estipulada.
 - **Formato de moneda:** Precios en pesos argentinos (`es-AR`).
+- **Dependencias:** `motor/` no importa pantallas ni componentes visuales.

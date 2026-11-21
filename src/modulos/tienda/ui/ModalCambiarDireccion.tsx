@@ -1,22 +1,32 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useCallback, useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import {
   Dialog,
   DialogContent,
-  DialogHeader,
-  DialogTitle,
   DialogDescription,
+  DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { MapPin, Navigation, Check, Home, Briefcase, Plus } from "lucide-react";
+import { ArrowLeft, Loader2, MapPin } from "lucide-react";
+import type { LocationPickerSelection } from "@/components/LocationPickerMap";
+
+const LocationPickerMap = dynamic(() => import("@/components/LocationPickerMap"), {
+  ssr: false,
+  loading: () => (
+    <div className="absolute inset-0 flex items-center justify-center bg-slate-100 text-sm font-semibold text-slate-500">
+      Cargando mapa...
+    </div>
+  ),
+});
 
 interface ModalCambiarDireccionProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   currentAddress: string;
-  onSelectAddress: (newAddress: string) => void;
+  onSelectAddress: (newAddress: string, coordinates: { lat: number; lng: number }) => void;
 }
 
 export function ModalCambiarDireccion({
@@ -25,106 +35,179 @@ export function ModalCambiarDireccion({
   currentAddress,
   onSelectAddress,
 }: ModalCambiarDireccionProps) {
+  const [step, setStep] = useState<"map" | "details">("map");
+  const [selectedLocation, setSelectedLocation] = useState<LocationPickerSelection | null>(null);
   const [addressInput, setAddressInput] = useState(currentAddress);
+  const [unitInput, setUnitInput] = useState("");
 
   useEffect(() => {
+    setStep("map");
     setAddressInput(currentAddress);
+    setSelectedLocation(null);
+    setUnitInput("");
   }, [currentAddress, isOpen]);
 
-  const quickAddresses = [
-    { label: "Tucumán 2130, Rosario", type: "Centro" },
-    { label: "Bv. Oroño 1200, Rosario", type: "Paseo del Siglo" },
-    { label: "Av. Pellegrini 1800, Rosario", type: "Pellegrini" },
-    { label: "San Lorenzo 1920, Rosario", type: "Pichincha" },
-  ];
+  const handleLocationChange = useCallback((location: LocationPickerSelection | null) => {
+    setSelectedLocation(location);
+  }, []);
 
   const handleSave = (addr: string) => {
-    const clean = addr.trim() || "Tucumán 2130, Rosario";
-    onSelectAddress(clean);
+    if (!selectedLocation) return;
+    const clean = addr.trim();
+    const unit = unitInput.trim();
+    onSelectAddress(
+      unit ? `${clean}, ${unit}` : clean,
+      { lat: selectedLocation.lat, lng: selectedLocation.lng }
+    );
+    onOpenChange(false);
+  };
+
+  const handleContinue = () => {
+    if (!selectedLocation || selectedLocation.isResolving) return;
+    setAddressInput(selectedLocation.address);
+    setStep("details");
+  };
+
+  const handleBack = () => {
+    if (step === "details") {
+      setStep("map");
+      return;
+    }
     onOpenChange(false);
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-slate-900 border-slate-800 text-slate-100 w-[92vw] max-w-sm p-5 rounded-3xl">
-        <DialogHeader className="text-left pb-2 border-b border-slate-800">
-          <DialogTitle className="text-base font-black text-white flex items-center gap-2">
-            <span className="w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-xs">
-              📍
-            </span>
-            Dirección de Entrega
-          </DialogTitle>
-          <DialogDescription className="text-xs text-slate-400 mt-0.5">
-            Ingresá dónde querés recibir tu pedido o elegí un punto sugerido.
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="space-y-4 pt-2">
-          {/* Input Editable */}
-          <div className="space-y-1.5">
-            <label className="text-[11px] font-bold text-slate-300">
-              Calle y altura / Piso / Depto
-            </label>
-            <div className="relative">
-              <MapPin className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-emerald-400" />
-              <Input
-                value={addressInput}
-                onChange={(e) => setAddressInput(e.target.value)}
-                placeholder="Ej. Tucumán 2130, Piso 4 B, Rosario"
-                className="pl-9 pr-3 h-11 bg-slate-950 border-slate-800 text-slate-100 placeholder:text-slate-500 text-xs rounded-xl focus:border-emerald-500 transition-colors"
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    handleSave(addressInput);
-                  }
-                }}
-              />
-            </div>
-          </div>
-
-          {/* Direcciones Frecuentes / Rápidas */}
-          <div className="space-y-1.5">
-            <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 block">
-              Sugerencias y zonas en Rosario
-            </span>
-            <div className="space-y-1.5 max-h-44 overflow-y-auto pr-1">
-              {quickAddresses.map((item) => (
-                <button
-                  key={item.label}
-                  type="button"
-                  onClick={() => {
-                    setAddressInput(item.label);
-                    handleSave(item.label);
-                  }}
-                  className={`w-full p-2.5 rounded-xl border text-left flex items-center justify-between text-xs transition-all active:scale-[0.99] ${
-                    addressInput === item.label
-                      ? "bg-emerald-500/15 border-emerald-500/50 text-white"
-                      : "bg-slate-950/70 border-slate-800/80 text-slate-300 hover:border-slate-700 hover:text-white"
-                  }`}
-                >
-                  <div className="flex items-center gap-2 truncate">
-                    <MapPin className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                    <div className="truncate">
-                      <span className="font-bold block truncate">{item.label}</span>
-                      <span className="text-[10px] text-slate-500 font-medium">{item.type}</span>
-                    </div>
-                  </div>
-                  {addressInput === item.label && (
-                    <Check className="w-4 h-4 text-emerald-400 shrink-0" />
-                  )}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Botón Guardar */}
-          <Button
-            type="button"
-            onClick={() => handleSave(addressInput)}
-            className="w-full h-11 rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white font-extrabold text-xs shadow-lg shadow-emerald-500/25 active:scale-98 transition-all"
+      <DialogContent
+        showCloseButton={false}
+        overlayClassName="bg-white"
+        className="fixed inset-0 left-0 top-0 h-[100dvh] w-full max-w-none translate-x-0 translate-y-0 gap-0 overflow-hidden rounded-none border-0 bg-slate-100 p-0 text-slate-900 shadow-none sm:rounded-none"
+      >
+        <div className="relative flex h-full w-full flex-col">
+          <header
+            className="z-20 flex shrink-0 items-center justify-between bg-white px-4 pb-3 shadow-sm"
+            style={{ paddingTop: "max(0.75rem, env(safe-area-inset-top, 0px))" }}
           >
-            Confirmar Dirección de Entrega
-          </Button>
+            <button
+              type="button"
+              onClick={handleBack}
+              aria-label={step === "map" ? "Volver" : "Volver al mapa"}
+              className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-900 transition-colors hover:bg-slate-50"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </button>
+            <div className="min-w-0 text-center">
+              <DialogTitle className="text-base font-extrabold text-slate-900">
+                {step === "map" ? "Ubicación actual" : "Detalles de entrega"}
+              </DialogTitle>
+              <DialogDescription className="sr-only">
+                Elegí en el mapa dónde recibir tu pedido y completá los detalles de entrega.
+              </DialogDescription>
+            </div>
+            <span className="h-10 w-10" aria-hidden="true" />
+          </header>
+
+          <div className="relative min-h-0 flex-1">
+            <LocationPickerMap
+              className="absolute inset-0"
+              onSelectionChange={handleLocationChange}
+            />
+
+            {step === "map" ? (
+              <section
+                className="absolute bottom-0 left-0 right-0 z-20 space-y-3 rounded-t-[28px] bg-white px-5 pt-5 shadow-[0_-8px_24px_rgba(15,23,42,0.12)]"
+                style={{ paddingBottom: "max(1.25rem, env(safe-area-inset-bottom, 0px))" }}
+              >
+                <div className="space-y-1">
+                  <h2 className="text-xl font-extrabold text-slate-900">
+                    Indicá dónde recibir tu pedido
+                  </h2>
+                  <p className="text-sm text-slate-600">
+                    Al continuar, podrás editar la calle y el número.
+                  </p>
+                </div>
+
+                {selectedLocation ? (
+                  <div className="flex min-w-0 items-center gap-3 rounded-xl bg-slate-50 p-3">
+                    <MapPin className="h-5 w-5 shrink-0 text-blue-600" />
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-bold text-slate-900">
+                        {selectedLocation.isResolving
+                          ? "Buscando dirección..."
+                          : selectedLocation.neighborhood || "Ubicación seleccionada"}
+                      </p>
+                      <p className="truncate text-xs text-slate-500">
+                        {selectedLocation.address || "Ubicación seleccionada; completá la dirección si hace falta"}
+                      </p>
+                    </div>
+                    {selectedLocation.isResolving && (
+                      <Loader2 className="ml-auto h-4 w-4 shrink-0 animate-spin text-blue-600" />
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-xs text-slate-500">
+                    Buscá una calle o tocá el mapa para marcar el punto de entrega.
+                  </p>
+                )}
+
+                <Button
+                  type="button"
+                  disabled={!selectedLocation || selectedLocation.isResolving}
+                  onClick={handleContinue}
+                  className="h-13 w-full rounded-full bg-blue-600 text-sm font-extrabold text-white shadow-lg shadow-blue-600/20 hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {selectedLocation?.isResolving ? "Buscando ubicación..." : "Continuar"}
+                </Button>
+              </section>
+            ) : (
+              <section
+                className="absolute bottom-0 left-0 right-0 z-20 space-y-4 rounded-t-[28px] bg-white px-5 pt-5 shadow-[0_-8px_24px_rgba(15,23,42,0.12)]"
+                style={{ paddingBottom: "max(1.25rem, env(safe-area-inset-bottom, 0px))" }}
+              >
+                <div className="space-y-1">
+                  <h2 className="text-xl font-extrabold text-slate-900">
+                    Completá la dirección
+                  </h2>
+                  <p className="text-sm text-slate-600">
+                    Confirmá la calle y agregá piso o departamento si hace falta.
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <label htmlFor="delivery-street" className="text-xs font-bold text-slate-700">
+                    Calle y altura
+                  </label>
+                  <Input
+                    id="delivery-street"
+                    autoFocus
+                    value={addressInput}
+                    onChange={(event) => setAddressInput(event.target.value)}
+                    placeholder="Ej. Tucumán 2130, Rosario"
+                    className="h-12 rounded-xl border-slate-200 bg-white text-sm text-slate-900 placeholder:text-slate-400 focus-visible:ring-blue-500"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label htmlFor="delivery-unit" className="text-xs font-bold text-slate-700">
+                    Piso, departamento o referencia (opcional)
+                  </label>
+                  <Input
+                    id="delivery-unit"
+                    value={unitInput}
+                    onChange={(event) => setUnitInput(event.target.value)}
+                    placeholder="Ej. Piso 4, departamento B"
+                    className="h-12 rounded-xl border-slate-200 bg-white text-sm text-slate-900 placeholder:text-slate-400 focus-visible:ring-blue-500"
+                  />
+                </div>
+                <Button
+                  type="button"
+                  disabled={!addressInput.trim()}
+                  onClick={() => handleSave(addressInput)}
+                  className="h-13 w-full rounded-full bg-blue-600 text-sm font-extrabold text-white shadow-lg shadow-blue-600/20 hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Confirmar dirección
+                </Button>
+              </section>
+            )}
+          </div>
         </div>
       </DialogContent>
     </Dialog>

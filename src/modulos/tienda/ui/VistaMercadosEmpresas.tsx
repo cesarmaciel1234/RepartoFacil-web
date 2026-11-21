@@ -1,14 +1,21 @@
 "use client";
 
 import React, { useState } from "react";
-import { MOCK_COMPANIES, CompanyStore } from "@/data/mockCompanies";
-import { INITIAL_PRODUCTS, Product } from "@/data/mockProducts";
+import type { CompanyStore } from "@/data/mockCompanies";
+import { INITIAL_PRODUCTS } from "@/data/mockProducts";
+import type { Product } from "@/data/mockProducts";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import {
+  estimateAddressCoords,
+  haversineKm,
+  MARKET_CENTRAL,
+} from "../motor/tarifaUberService";
 import {
   Search,
   Store,
   Star,
+  MapPin,
   Clock,
   Bike,
   Tag,
@@ -19,31 +26,75 @@ import {
 } from "lucide-react";
 
 interface VistaMercadosEmpresasProps {
+  companies: CompanyStore[];
+  products?: Product[];
   onSelectCompany: (company: CompanyStore, initialSearch?: string) => void;
   searchQuery?: string;
   onSearchChange?: (val: string) => void;
+  promotionsOnly?: boolean;
+  categoryFilter?: string | string[];
+  showCategories?: boolean;
+  emptyTitle?: string;
+  emptyDescription?: string;
+  deliveryAddress?: string;
+  deliveryCoordinates?: { lat: number; lng: number } | null;
+}
+
+function normalizeAddress(address: string) {
+  return address
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^\w\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function getCompanyDistanceKm(
+  company: CompanyStore,
+  deliveryAddress: string,
+  deliveryCoordinates?: { lat: number; lng: number } | null
+) {
+  const buyerLocation = deliveryCoordinates || estimateAddressCoords(deliveryAddress).coords;
+  const companyIdentity = normalizeAddress(`${company.id} ${company.name} ${company.address}`);
+  const companyLocation =
+    companyIdentity.includes("frigorifico maciel") ||
+    companyIdentity.includes("empresa prueba") ||
+    companyIdentity.includes("tucuman 2130")
+      ? MARKET_CENTRAL.coords
+      : estimateAddressCoords(company.address).coords;
+
+  if (
+    !deliveryCoordinates &&
+    normalizeAddress(company.address) === normalizeAddress(deliveryAddress)
+  ) {
+    return 0;
+  }
+
+  return haversineKm(
+    buyerLocation.lat,
+    buyerLocation.lng,
+    companyLocation.lat,
+    companyLocation.lng
+  );
 }
 
 export function VistaMercadosEmpresas({
+  companies,
+  products = INITIAL_PRODUCTS,
   onSelectCompany,
   searchQuery: externalSearch,
   onSearchChange: setExternalSearch,
+  promotionsOnly = false,
+  categoryFilter,
+  showCategories = true,
+  emptyTitle,
+  emptyDescription,
+  deliveryAddress = "Tucumán 2130, Rosario",
+  deliveryCoordinates,
 }: VistaMercadosEmpresasProps) {
   const [internalSearch, setInternalSearch] = useState("");
   const [selectedCat, setSelectedCat] = useState<string>("todos");
-  const [companies, setCompanies] = useState<CompanyStore[]>(MOCK_COMPANIES);
-
-  // Sincronizar dinámicamente las empresas dadas de alta en Cobro Fácil (PostgreSQL)
-  React.useEffect(() => {
-    fetch("/api/cobrofacil/companies")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => {
-        if (data && Array.isArray(data.empresas) && data.empresas.length > 0) {
-          setCompanies(data.empresas);
-        }
-      })
-      .catch((err) => console.warn("Error cargando empresas dinámicas:", err));
-  }, []);
 
   const searchTerm = externalSearch !== undefined ? externalSearch : internalSearch;
   const handleSearchChange = (val: string) => {
@@ -55,18 +106,20 @@ export function VistaMercadosEmpresas({
   };
 
   const categories = [
-    { id: "todos", name: "Supermercados", emoji: "🛒" },
+    { id: "todos", name: "Todas", emoji: "🛒" },
+    { id: "supermercados", name: "Supermercados", emoji: "🏪" },
     { id: "carnes", name: "Carnicerías", emoji: "🥩" },
     { id: "kioscos", name: "Kioscos", emoji: "🍫" },
     { id: "minimercados", name: "Minimercados", emoji: "🧃" },
   ];
 
   const term = searchTerm.toLowerCase().trim();
+  const activeCategory = categoryFilter ?? selectedCat;
 
   const filtered = companies.map((comp) => {
     // Buscar productos de esta empresa que coincidan con la búsqueda
     const matchingProducts = term
-      ? INITIAL_PRODUCTS.filter(
+      ? products.filter(
           (p) =>
             (p.companyId === comp.id || (comp.slug && p.companyId === comp.slug) || (!p.companyId && comp.id === "frigorifico-maciel")) &&
             (p.name.toLowerCase().includes(term) ||
@@ -82,14 +135,30 @@ export function VistaMercadosEmpresas({
       comp.address.toLowerCase().includes(term) ||
       matchingProducts.length > 0;
 
-    const matchesCat = selectedCat === "todos" || comp.categorySlug === selectedCat;
+    const matchesCat =
+      activeCategory === "todos" ||
+      (Array.isArray(activeCategory)
+        ? activeCategory.includes(comp.categorySlug)
+        : comp.categorySlug === activeCategory);
 
     return {
       comp,
       matchingProducts,
-      isVisible: matchesSearch && matchesCat,
+      isVisible:
+        matchesSearch &&
+        matchesCat &&
+        (!promotionsOnly ||
+          comp.badges.some((badge) => /off|promo|descuento|oferta|gratis/i.test(badge))),
     };
   }).filter((item) => item.isVisible);
+  const productResults = filtered.flatMap(({ comp, matchingProducts }) =>
+    matchingProducts.map((product) => ({
+      company: comp,
+      product,
+      distanceKm: getCompanyDistanceKm(comp, deliveryAddress, deliveryCoordinates),
+    }))
+  );
+  const showProductResults = Boolean(term && productResults.length > 0);
 
   return (
     <div className="space-y-4 max-w-3xl mx-auto w-full">
@@ -113,44 +182,99 @@ export function VistaMercadosEmpresas({
         )}
       </div>
 
-      {/* ─── 2. Tarjetas Cuadradas de Categorías con Sombra Suave (Como en la imagen de referencia) ─── */}
-      <div className="grid grid-cols-4 gap-2.5 sm:gap-3 pt-1">
-        {categories.map((cat) => {
-          const isSelected = selectedCat === cat.id;
-          return (
-            <button
-              key={cat.id}
-              type="button"
-              onClick={() => setSelectedCat(cat.id === selectedCat && cat.id !== "todos" ? "todos" : cat.id)}
-              className="group flex flex-col items-center gap-1.5 text-center cursor-pointer"
-            >
-              <div
-                className={`w-full aspect-[4/3] max-h-20 rounded-2xl flex items-center justify-center text-3xl sm:text-4xl transition-all ${
-                  isSelected
-                    ? "bg-blue-50 border-2 border-blue-600 shadow-md shadow-blue-600/10 scale-[1.02]"
-                    : "bg-white border border-slate-200/90 shadow-sm hover:border-blue-300 hover:shadow-md"
-                }`}
-              >
-                <span className="group-hover:scale-110 transition-transform">{cat.emoji}</span>
-              </div>
-              <span
-                className={`text-[11px] sm:text-xs leading-tight truncate w-full ${
-                  isSelected ? "font-black text-blue-600" : "font-semibold text-slate-700"
-                }`}
-              >
-                {cat.name}
-              </span>
-            </button>
-          );
-        })}
-      </div>
+      {showCategories && (
+        <>
+          {/* ─── 2. Tarjetas de categorías ─── */}
+          <div className="flex gap-2.5 overflow-x-auto pt-1 scrollbar-hide sm:gap-3">
+            {categories.map((cat) => {
+              const isSelected = selectedCat === cat.id;
+              return (
+                <button
+                  key={cat.id}
+                  type="button"
+                  onClick={() =>
+                    setSelectedCat(
+                      cat.id === selectedCat && cat.id !== "todos" ? "todos" : cat.id
+                    )
+                  }
+                  className="group flex min-w-[82px] max-w-[120px] flex-1 flex-col items-center gap-1.5 text-center cursor-pointer"
+                >
+                  <div
+                    className={`w-full aspect-[4/3] max-h-20 rounded-2xl flex items-center justify-center text-3xl sm:text-4xl transition-all ${
+                      isSelected
+                        ? "bg-blue-50 border-2 border-blue-600 shadow-md shadow-blue-600/10 scale-[1.02]"
+                        : "bg-white border border-slate-200/90 shadow-sm hover:border-blue-300 hover:shadow-md"
+                    }`}
+                  >
+                    <span className="group-hover:scale-110 transition-transform">{cat.emoji}</span>
+                  </div>
+                  <span
+                    className={`text-[11px] sm:text-xs leading-tight truncate w-full ${
+                      isSelected ? "font-black text-blue-600" : "font-semibold text-slate-700"
+                    }`}
+                  >
+                    {cat.name}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
 
-      {/* Separador visual suave */}
-      <div className="h-2 -mx-3 sm:-mx-4 bg-slate-100/80 border-y border-slate-200/60" />
+          <div className="h-2 -mx-3 sm:-mx-4 bg-slate-100/80 border-y border-slate-200/60" />
+        </>
+      )}
 
       {/* ─── 3. Listado de Locales / Empresas sobre Fondo Blanco Limpio ─── */}
       <div className="divide-y divide-slate-100 bg-white rounded-3xl border border-slate-200/80 shadow-xs overflow-hidden">
-        {filtered.map(({ comp, matchingProducts }) => (
+        {showProductResults ? (
+          <div className="grid grid-cols-2 gap-3 p-3">
+            {productResults.map(({ company, product, distanceKm }) => (
+              <button
+                key={`${company.id}-${product.id}`}
+                type="button"
+                onClick={() => onSelectCompany(company, product.name)}
+                className="group min-w-0 overflow-hidden rounded-2xl border border-slate-200 bg-white text-left shadow-sm transition hover:border-blue-300 hover:shadow-md"
+                title={`Ver ${product.name} en ${company.name}`}
+              >
+                <div className="relative aspect-[4/3] overflow-hidden bg-slate-100">
+                  <img
+                    src={product.image}
+                    alt=""
+                    loading="lazy"
+                    className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                  />
+                </div>
+                <div className="space-y-2 p-2.5">
+                  <div className="flex items-start justify-between gap-2">
+                    <h3 className="line-clamp-2 min-w-0 text-sm font-extrabold text-slate-900">
+                      {product.name}
+                    </h3>
+                    <span className="shrink-0 font-black text-sm text-slate-900">
+                      ${product.price.toLocaleString("es-AR")}
+                    </span>
+                  </div>
+                  <div className="flex min-w-0 items-center justify-between gap-2 text-[10px]">
+                    <span className="flex min-w-0 items-center gap-1 font-bold text-slate-600">
+                      <Store className="h-3 w-3 shrink-0 text-blue-600" />
+                      <span className="truncate">{company.name}</span>
+                    </span>
+                    <span className="flex shrink-0 items-center gap-0.5 font-extrabold text-slate-900">
+                      <Star className="h-3 w-3 fill-slate-900 text-slate-900" />
+                      {company.rating}
+                    </span>
+                  </div>
+                  <div
+                    className="flex items-center gap-1 text-[10px] font-semibold text-slate-500"
+                    title="Distancia aproximada desde tu ubicación"
+                  >
+                    <MapPin className="h-3 w-3 text-blue-600" />
+                    ~{distanceKm.toFixed(1)} km
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
+        ) : filtered.map(({ comp, matchingProducts }) => (
           <div
             key={comp.id}
             onClick={() => onSelectCompany(comp, term)}
@@ -260,10 +384,16 @@ export function VistaMercadosEmpresas({
           <div className="text-center py-14 bg-white p-6 space-y-2">
             <Store className="w-10 h-10 text-slate-300 mx-auto" />
             <p className="text-sm font-bold text-slate-700">
-              No encontramos empresas con &ldquo;{searchTerm}&rdquo;
+              {emptyTitle ||
+                (promotionsOnly
+                  ? "No hay comercios con promociones disponibles."
+                  : `No encontramos empresas con "${searchTerm}"`)}
             </p>
             <p className="text-xs text-slate-500">
-              Probá buscando carnicería, kiosco, bebidas o seleccionando &ldquo;Supermercados&rdquo;.
+              {emptyDescription ||
+                (promotionsOnly
+                  ? "Volvé a Inicio para ver todos los comercios."
+                  : "Probá buscando carnicería, kiosco, bebidas o seleccionando una categoría.")}
             </p>
           </div>
         )}

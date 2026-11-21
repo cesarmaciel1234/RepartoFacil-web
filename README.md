@@ -59,6 +59,7 @@ Para subir este proyecto a tu repositorio de GitHub, ejecuta los siguientes coma
    - `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET`: Tu bucket de storage
    - `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID`: Tu sender ID
    - `NEXT_PUBLIC_FIREBASE_APP_ID`: Tu app ID de Firebase
+   - `DATABASE_URL`: URL de conexión PostgreSQL (cargarla como variable secreta, no en el código)
    - `GOOGLE_GENAI_API_KEY`: Tu API key de Google GenAI
 
 4. **Plan:**

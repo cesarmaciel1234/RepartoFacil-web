@@ -1,12 +1,12 @@
 'use client';
 
-import { MapContainer, TileLayer, Marker, useMapEvents, useMap, Circle } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useEffect, useState, useCallback } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Search, Loader2, MapPin, Check, Building2 } from 'lucide-react';
+import { Search, Loader2, MapPin, LocateFixed } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const fixLeafletIcons = () => {
@@ -19,59 +19,19 @@ const fixLeafletIcons = () => {
   });
 };
 
-interface LocationPickerMapProps {
-  onLocationSelect: (lat: number, lng: number, address: string) => void;
-  initialCenter?: [number, number];
+export interface LocationPickerSelection {
+  lat: number;
+  lng: number;
+  address: string;
+  neighborhood: string;
+  city: string;
+  isResolving: boolean;
 }
 
-function LiveLocationIndicator({ onInitialFound }: { onInitialFound: (lat: number, lng: number) => void }) {
-  const [currentPos, setCurrentPos] = useState<L.LatLng | null>(null);
-  const [hasCentered, setHasCentered] = useState(false);
-  const map = useMap();
-  
-  useEffect(() => {
-    const handleLocationFound = (e: L.LocationEvent) => {
-      setCurrentPos(e.latlng);
-      if (!hasCentered) {
-        map.setView(e.latlng, 16, { animate: true });
-        setHasCentered(true);
-        onInitialFound(e.latlng.lat, e.latlng.lng);
-      }
-    };
-
-    map.on('locationfound', handleLocationFound);
-    map.locate({ watch: true, enableHighAccuracy: true });
-
-    return () => {
-      map.off('locationfound', handleLocationFound);
-      map.stopLocate();
-    };
-  }, [map, hasCentered, onInitialFound]);
-
-  return currentPos === null ? null : (
-    <>
-      <Circle 
-        center={currentPos} 
-        radius={12} 
-        pathOptions={{ 
-          fillColor: '#3b82f6', 
-          color: 'white', 
-          weight: 3, 
-          fillOpacity: 1,
-          className: 'animate-pulse' 
-        }} 
-      />
-      <Circle 
-        center={currentPos} 
-        radius={60} 
-        pathOptions={{ 
-          fillColor: '#3b82f6', 
-          color: 'transparent', 
-          fillOpacity: 0.15 
-        }} 
-      />
-    </>
-  );
+interface LocationPickerMapProps {
+  onSelectionChange: (selection: LocationPickerSelection | null) => void;
+  initialCenter?: [number, number];
+  className?: string;
 }
 
 function MapInteraction({ onSelect }: { onSelect: (lat: number, lng: number) => void }) {
@@ -93,37 +53,57 @@ function MapUpdater({ center }: { center: [number, number] | null }) {
   return null;
 }
 
-export default function LocationPickerMap({ onLocationSelect, initialCenter }: LocationPickerMapProps) {
+export default function LocationPickerMap({
+  onSelectionChange,
+  initialCenter,
+  className,
+}: LocationPickerMapProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const [markerPosition, setMarkerPosition] = useState<[number, number] | null>(null);
   const [mapCenter, setMapCenter] = useState<[number, number] | null>(null);
   const [locationDetails, setLocationDetails] = useState<{address: string, neighborhood: string, city: string} | null>(null);
   const [isGeocoding, setIsGeocoding] = useState(false);
+  const [isLocating, setIsLocating] = useState(false);
+  const [locationError, setLocationError] = useState<string | null>(null);
 
   useEffect(() => {
     fixLeafletIcons();
   }, []);
 
   useEffect(() => {
-    if (markerPosition) {
-      setIsGeocoding(true);
-      fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${markerPosition[0]}&lon=${markerPosition[1]}`)
-        .then(res => res.json())
-        .then(data => {
-          if (data) {
-            const address = data.address;
-            const fullAddress = data.display_name;
-            setLocationDetails({
-              address: fullAddress,
-              neighborhood: address.suburb || address.neighbourhood || address.residential || "Barrio",
-              city: address.city || address.town || address.village || address.state || "Ciudad"
-            });
-          }
-        })
-        .catch(err => console.error("Geocoding error:", err))
-        .finally(() => setIsGeocoding(false));
-    }
+    if (!markerPosition) return;
+
+    const controller = new AbortController();
+    setLocationDetails(null);
+    setIsGeocoding(true);
+    fetch(
+      `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${markerPosition[0]}&lon=${markerPosition[1]}`,
+      { signal: controller.signal }
+    )
+      .then(res => res.json())
+      .then(data => {
+        if (data?.address) {
+          const address = data.address;
+          const neighborhood =
+            address.suburb || address.neighbourhood || address.residential || "Barrio";
+          const city = address.city || address.town || address.village || address.state || "Ciudad";
+          const street = [address.road, address.house_number].filter(Boolean).join(" ");
+          setLocationDetails({
+            address: [street, neighborhood, city].filter(Boolean).join(", ") || data.display_name,
+            neighborhood,
+            city,
+          });
+        }
+      })
+      .catch(err => {
+        if (err.name !== "AbortError") console.error("Geocoding error:", err);
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setIsGeocoding(false);
+      });
+
+    return () => controller.abort();
   }, [markerPosition]);
 
   const handleSearch = async () => {
@@ -136,6 +116,8 @@ export default function LocationPickerMap({ onLocationSelect, initialCenter }: L
         const lat = parseFloat(data[0].lat);
         const lon = parseFloat(data[0].lon);
         const newPos: [number, number] = [lat, lon];
+        setLocationDetails(null);
+        setIsGeocoding(true);
         setMarkerPosition(newPos);
         setMapCenter(newPos);
       }
@@ -146,44 +128,60 @@ export default function LocationPickerMap({ onLocationSelect, initialCenter }: L
     }
   };
 
-  const handleConfirm = useCallback(() => {
-    if (markerPosition) {
-      const addr = locationDetails?.address || `${markerPosition[0].toFixed(4)}, ${markerPosition[1].toFixed(4)}`;
-      onLocationSelect(markerPosition[0], markerPosition[1], addr);
+  useEffect(() => {
+    if (!markerPosition) {
+      onSelectionChange(null);
+      return;
     }
-  }, [markerPosition, onLocationSelect, locationDetails]);
 
-  const handleManualSelect = (lat: number, lng: number) => {
+    onSelectionChange({
+      lat: markerPosition[0],
+      lng: markerPosition[1],
+      address: locationDetails?.address || "",
+      neighborhood: locationDetails?.neighborhood || "",
+      city: locationDetails?.city || "",
+      isResolving: isGeocoding,
+    });
+  }, [isGeocoding, locationDetails, markerPosition, onSelectionChange]);
+
+  const handleManualSelect = useCallback((lat: number, lng: number) => {
+    setLocationDetails(null);
+    setIsGeocoding(true);
     setMarkerPosition([lat, lng]);
+  }, []);
+
+  const handleUseCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      setLocationError("Tu navegador no permite obtener la ubicación actual.");
+      return;
+    }
+
+    setIsLocating(true);
+    setLocationError(null);
+    navigator.geolocation.getCurrentPosition(
+      ({ coords }) => {
+        const position: [number, number] = [coords.latitude, coords.longitude];
+        setMarkerPosition(position);
+        setMapCenter(position);
+        setIsLocating(false);
+      },
+      (error) => {
+        console.error("Error obteniendo ubicación actual:", error);
+        setLocationError("No pudimos acceder a tu ubicación. Podés elegirla en el mapa.");
+        setIsLocating(false);
+      },
+      { enableHighAccuracy: true, timeout: 12000 }
+    );
   };
 
   return (
-    <div className="flex flex-col gap-3 relative">
-      <div className="flex gap-2 p-2 bg-white rounded-2xl shadow-sm border border-slate-100 z-10">
-        <div className="relative flex-1">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-          <Input 
-            placeholder="Buscar calle, barrio o ciudad..." 
-            className="h-11 pl-10 bg-slate-50 border-none rounded-xl font-medium text-sm focus-visible:ring-1 focus-visible:ring-blue-200"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-          />
-        </div>
-        <Button 
-          onClick={handleSearch} 
-          disabled={isSearching}
-          className="h-11 px-6 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs uppercase tracking-widest transition-all active:scale-95"
-        >
-          {isSearching ? <Loader2 className="w-4 h-4 animate-spin" /> : "BUSCAR"}
-        </Button>
-      </div>
-
-      <div className="h-[380px] w-full rounded-2xl overflow-hidden border border-slate-100 shadow-inner relative z-0">
-        <MapContainer 
-          center={initialCenter || [-32.9372, -60.6542]} 
-          zoom={13} 
-          scrollWheelZoom={true} 
+    <div className={cn("relative h-full w-full overflow-hidden", className)}>
+      <div className="absolute inset-0 z-0">
+        <MapContainer
+          center={initialCenter || [-32.9372, -60.6542]}
+          zoom={15}
+          scrollWheelZoom={true}
+          className="h-full w-full"
           style={{ height: '100%', width: '100%' }}
           zoomControl={false}
         >
@@ -191,58 +189,67 @@ export default function LocationPickerMap({ onLocationSelect, initialCenter }: L
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
-          <LiveLocationIndicator onInitialFound={(lat, lng) => setMarkerPosition([lat, lng])} />
           {markerPosition && <Marker position={markerPosition} />}
           <MapInteraction onSelect={handleManualSelect} />
           <MapUpdater center={mapCenter} />
         </MapContainer>
-        
-        {markerPosition && (
-          <div className="absolute bottom-6 left-6 right-6 z-[500] animate-in slide-in-from-bottom-8 duration-500">
-            <div className="bg-white/95 backdrop-blur-md p-4 rounded-[24px] shadow-2xl border border-white mb-3 space-y-2">
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
-                <p className="text-[10px] font-black text-blue-600 uppercase tracking-[0.2em]">Dirección Detectada</p>
-              </div>
-              
-              {isGeocoding ? (
-                <div className="flex items-center gap-2 py-1">
-                  <Loader2 className="w-3 h-3 animate-spin text-slate-300" />
-                  <p className="text-[10px] text-slate-400 font-bold uppercase">Obteniendo detalles...</p>
-                </div>
-              ) : (
-                <div className="space-y-1">
-                  <p className="text-[11px] font-black text-slate-900 line-clamp-1">
-                    {locationDetails?.neighborhood}, {locationDetails?.city}
-                  </p>
-                  <p className="text-[9px] font-bold text-slate-400 line-clamp-1 uppercase tracking-tight">
-                    {locationDetails?.address}
-                  </p>
-                </div>
-              )}
-            </div>
-
-            <Button 
-              onClick={handleConfirm}
-              disabled={isGeocoding}
-              className="w-full h-14 rounded-2xl bg-[#0F172A] text-white font-black text-xs uppercase tracking-[0.2em] shadow-2xl flex items-center justify-center gap-3 active:scale-95 transition-all hover:bg-slate-800 disabled:opacity-50"
-            >
-              <Check className="w-5 h-5 text-emerald-400" />
-              CONFIRMAR UBICACIÓN
-            </Button>
-          </div>
-        )}
-
-        {!markerPosition && (
-          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[500] pointer-events-none">
-            <div className="bg-white/95 backdrop-blur-md px-4 py-2 rounded-full shadow-lg border border-white">
-              <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest text-center">
-                Toca el mapa para marcar el punto
-              </p>
-            </div>
-          </div>
-        )}
       </div>
-    </div>
+
+      <button
+        type="button"
+        onClick={handleUseCurrentLocation}
+        disabled={isLocating}
+        aria-label="Usar mi ubicación actual"
+        className="absolute right-4 top-20 z-20 flex h-11 w-11 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 shadow-lg transition-colors hover:bg-slate-50 disabled:opacity-60"
+      >
+        {isLocating ? (
+          <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
+        ) : (
+          <LocateFixed className="h-5 w-5 text-blue-600" />
+        )}
+      </button>
+
+      {locationError && (
+        <p
+          role="status"
+          className="absolute right-4 top-32 z-20 max-w-64 rounded-xl bg-white px-3 py-2 text-xs font-medium text-red-600 shadow-lg"
+        >
+          {locationError}
+        </p>
+      )}
+
+      <div className="absolute left-3 right-3 top-3 z-20 flex gap-2 rounded-2xl border border-slate-100 bg-white p-2 shadow-lg">
+        <div className="relative flex-1">
+          <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <Input
+            placeholder="Buscar calle, barrio o ciudad..."
+            aria-label="Buscar calle, barrio o ciudad"
+            className="h-11 rounded-xl border-none bg-slate-50 pl-10 text-sm font-medium focus-visible:ring-1 focus-visible:ring-blue-200"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+          />
+        </div>
+        <Button
+          type="button"
+          onClick={handleSearch}
+          disabled={isSearching}
+          className="h-11 rounded-xl bg-blue-600 px-4 text-xs font-bold uppercase tracking-widest text-white transition-all hover:bg-blue-700 active:scale-95"
+        >
+          {isSearching ? <Loader2 className="h-4 w-4 animate-spin" /> : "Buscar"}
+        </Button>
+      </div>
+
+      {!markerPosition && (
+        <div className="pointer-events-none absolute left-1/2 top-20 z-10 -translate-x-1/2">
+          <div className="flex items-center gap-2 whitespace-nowrap rounded-full border border-white bg-white/95 px-4 py-2 shadow-lg backdrop-blur-md">
+            <MapPin className="h-3.5 w-3.5 text-blue-600" />
+            <p className="text-center text-[10px] font-bold text-slate-600">
+              Tocá el mapa para elegir el punto
+            </p>
+          </div>
+        </div>
+      )}
+      </div>
   );
 }
