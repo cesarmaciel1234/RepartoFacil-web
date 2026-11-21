@@ -26,7 +26,7 @@ export function OrderChatMessageList({
     <div
       ref={scrollRef}
       className={`min-h-0 flex-1 space-y-3.5 overflow-y-auto p-4 ${
-        embedded ? "bg-slate-50/60" : ""
+        embedded ? "bg-slate-50/60" : effectiveRole === "driver" ? "bg-white" : ""
       }`}
     >
       {messages.map((message) => {
@@ -38,15 +38,25 @@ export function OrderChatMessageList({
                 className={`flex w-full flex-col gap-1.5 rounded-2xl border p-3 text-center ${
                   embedded
                     ? "border-amber-200 bg-amber-50 shadow-sm"
+                    : effectiveRole === "driver"
+                    ? "border-yellow-200 bg-yellow-50 shadow-sm"
                     : "border-amber-500/50 bg-amber-950/50 shadow-lg"
                 }`}
               >
-                <div className="flex items-center justify-center gap-1.5 text-[10.5px] font-black uppercase tracking-wider text-amber-400">
-                  <ShieldCheck className="h-3.5 w-3.5 text-amber-400" />
+                <div
+                  className={`flex items-center justify-center gap-1.5 text-[10.5px] font-black uppercase tracking-wider ${
+                    embedded || effectiveRole === "driver" ? "text-yellow-900" : "text-amber-400"
+                  }`}
+                >
+                  <ShieldCheck
+                    className={`h-3.5 w-3.5 ${
+                      embedded || effectiveRole === "driver" ? "text-yellow-700" : "text-amber-400"
+                    }`}
+                  />
                   <span>{message.authorName || "Custodio del Sistema"}</span>
                   <span
                     className={`font-normal ${
-                      embedded ? "text-slate-500" : "text-slate-400"
+                      embedded || effectiveRole === "driver" ? "text-slate-500" : "text-slate-400"
                     }`}
                   >
                     · {message.timestamp}
@@ -54,7 +64,7 @@ export function OrderChatMessageList({
                 </div>
                 <p
                   className={`text-[12px] font-medium leading-snug ${
-                    embedded ? "text-amber-900" : "text-amber-100"
+                    embedded || effectiveRole === "driver" ? "text-slate-800" : "text-amber-100"
                   }`}
                 >
                   {message.content}
@@ -78,7 +88,7 @@ export function OrderChatMessageList({
               {isDriver && (
                 <span
                   className={`flex items-center gap-1 font-bold ${
-                    embedded ? "text-emerald-700" : "text-emerald-400"
+                    embedded ? "text-emerald-700" : effectiveRole === "driver" ? "text-yellow-900" : "text-emerald-400"
                   }`}
                 >
                   <Truck className="h-3 w-3" />
@@ -88,7 +98,7 @@ export function OrderChatMessageList({
               {isClient && (
                 <span
                   className={`flex items-center gap-1 font-bold ${
-                    embedded ? "text-blue-700" : "text-blue-400"
+                    embedded ? "text-blue-700" : effectiveRole === "driver" ? "text-blue-700" : "text-blue-400"
                   }`}
                 >
                   <User className="h-3 w-3" />
@@ -98,7 +108,7 @@ export function OrderChatMessageList({
               {isCompany && (
                 <span
                   className={`flex items-center gap-1 font-bold ${
-                    embedded ? "text-amber-700" : "text-amber-400"
+                    embedded ? "text-amber-700" : effectiveRole === "driver" ? "text-yellow-800" : "text-amber-400"
                   }`}
                 >
                   <Store className="h-3 w-3" />
@@ -110,7 +120,15 @@ export function OrderChatMessageList({
 
             <div
               className={`max-w-[85%] rounded-2xl p-3 text-xs leading-relaxed shadow-md ${
-                embedded
+                effectiveRole === "driver" && !embedded
+                  ? isMe
+                    ? "rounded-br-xs bg-[#FFE600] text-[#2D3277]"
+                    : isCompany
+                    ? "rounded-bl-xs border border-yellow-200 bg-yellow-50 text-slate-800"
+                    : isDriver
+                    ? "rounded-bl-xs border border-yellow-200 bg-white text-slate-800"
+                    : "rounded-bl-xs border border-slate-200 bg-white text-slate-800"
+                  : embedded
                   ? isMe
                     ? "rounded-br-xs bg-blue-600 text-white"
                     : isCompany

@@ -6,7 +6,7 @@ import dynamic from "next/dynamic";
 const InteractiveMap = dynamic(() => import("@/components/InteractiveMap"), {
   ssr: false,
   loading: () => (
-    <div className="absolute inset-0 bg-slate-950 flex items-center justify-center text-slate-500 font-mono text-xs">
+    <div className="absolute inset-0 bg-slate-50 flex items-center justify-center text-slate-600 font-mono text-xs">
       Cargando mapa GPS...
     </div>
   ),
@@ -153,7 +153,7 @@ export function RepartidorPiramidal({ onSwitchToStore }: RepartidorPiramidalProp
   };
 
   return (
-    <div className="relative h-screen h-[100dvh] w-full overflow-hidden bg-slate-950 text-slate-100 flex flex-col font-sans select-none">
+    <div className="relative h-screen h-[100dvh] w-full overflow-hidden bg-slate-50 text-slate-900 flex flex-col font-sans select-none">
       {/* ─── 1. Mapa Interactivo de Fondo (Full Screen) ─── */}
       <div className="absolute inset-0 z-0">
         <InteractiveMap
@@ -202,8 +202,10 @@ export function RepartidorPiramidal({ onSwitchToStore }: RepartidorPiramidalProp
           size="icon"
           onClick={() => setIsNavigating(!isNavigating)}
           className={cn(
-            "h-11 w-11 rounded-2xl shadow-xl transition-all border border-slate-700/80 backdrop-blur-md",
-            isNavigating ? "bg-emerald-500 text-white" : "bg-slate-900/90 text-slate-200"
+            "h-11 w-11 rounded-2xl shadow-lg transition-all border backdrop-blur-md",
+            isNavigating
+              ? "bg-[#FFE600] border-yellow-500 text-[#2D3277]"
+              : "bg-white border-slate-200 text-[#2D3277]"
           )}
           title="Modo Navegación"
         >
@@ -212,7 +214,7 @@ export function RepartidorPiramidal({ onSwitchToStore }: RepartidorPiramidalProp
         <Button
           size="icon"
           onClick={() => setMapCenterTrigger((p) => p + 1)}
-          className="h-11 w-11 rounded-2xl shadow-xl bg-slate-900/90 border border-slate-700/80 text-slate-200 active:scale-95 backdrop-blur-md"
+          className="h-11 w-11 rounded-2xl shadow-lg bg-white border border-yellow-300 text-[#2D3277] active:scale-95 backdrop-blur-md"
           title="Centrar en mi ubicación"
         >
           <Target className="w-5 h-5" />
@@ -227,16 +229,16 @@ export function RepartidorPiramidal({ onSwitchToStore }: RepartidorPiramidalProp
         )}
         style={{ transform: `translateY(${sheetY})` }}
       >
-        <div className="h-[80vh] w-full max-w-lg mx-auto bg-slate-950 rounded-t-[36px] shadow-[0_-20px_50px_rgba(0,0,0,0.95)] flex flex-col relative border-t-2 border-slate-700">
+        <div className="h-[80vh] w-full max-w-lg mx-auto bg-white rounded-t-[36px] shadow-[0_-16px_40px_rgba(15,23,42,0.2)] flex flex-col relative border-t-2 border-yellow-400">
           {/* Handle de arrastre y Pestañas */}
           <div
             className="w-full flex flex-col items-center pt-3 pb-2 cursor-grab active:cursor-grabbing touch-none select-none"
             onMouseDown={(e) => handleDragStart(e.clientY)}
             onTouchStart={(e) => handleDragStart(e.touches[0].clientY)}
           >
-            <div className="w-12 h-1.5 rounded-full bg-slate-700 mb-3" />
+            <div className="w-12 h-1.5 rounded-full bg-slate-300 mb-3" />
             <div className="w-full px-4">
-              <div className="flex bg-slate-800/90 rounded-2xl p-1 border border-slate-700/80">
+              <div className="flex bg-slate-50 rounded-2xl p-1 border border-slate-200">
                 <button
                   type="button"
                   onClick={(e) => {
@@ -247,14 +249,14 @@ export function RepartidorPiramidal({ onSwitchToStore }: RepartidorPiramidalProp
                   className={cn(
                     "flex-1 h-10 rounded-xl transition-all flex items-center justify-center gap-1.5 text-xs font-black relative",
                     activeTab === "pedidos"
-                      ? "bg-emerald-500 text-white shadow-md"
-                      : "text-slate-400 hover:text-slate-200"
+                      ? "bg-[#FFE600] text-[#2D3277] shadow-sm"
+                      : "text-slate-500 hover:text-slate-900"
                   )}
                 >
                   <Layers className="w-4 h-4" />
                   <span>Disponibles</span>
                   {availableOrders.length > 0 && (
-                    <span className="bg-slate-950 text-emerald-300 text-[10px] px-1.5 py-0.2 rounded-full font-bold">
+                    <span className="bg-white text-[#2D3277] border border-yellow-300 text-[10px] px-1.5 py-0.2 rounded-full font-bold">
                       {availableOrders.length}
                     </span>
                   )}
@@ -270,14 +272,14 @@ export function RepartidorPiramidal({ onSwitchToStore }: RepartidorPiramidalProp
                   className={cn(
                     "flex-1 h-10 rounded-xl transition-all flex items-center justify-center gap-1.5 text-xs font-black relative",
                     activeTab === "ruta"
-                      ? "bg-emerald-500 text-white shadow-md"
-                      : "text-slate-400 hover:text-slate-200"
+                      ? "bg-[#FFE600] text-[#2D3277] shadow-sm"
+                      : "text-slate-500 hover:text-slate-900"
                   )}
                 >
                   <Truck className="w-4 h-4" />
                   <span>Mi Ruta</span>
                   {myActiveOrders.length > 0 && (
-                    <span className="bg-emerald-400 text-slate-950 text-[10px] px-1.5 py-0.2 rounded-full font-bold">
+                    <span className="bg-yellow-100 text-yellow-900 border border-yellow-200 text-[10px] px-1.5 py-0.2 rounded-full font-bold">
                       {myActiveOrders.length}
                     </span>
                   )}
@@ -293,8 +295,8 @@ export function RepartidorPiramidal({ onSwitchToStore }: RepartidorPiramidalProp
                   className={cn(
                     "flex-1 h-10 rounded-xl transition-all flex items-center justify-center gap-1.5 text-xs font-black relative",
                     activeTab === "alerta"
-                      ? "bg-emerald-500 text-white shadow-md"
-                      : "text-slate-400 hover:text-slate-200"
+                      ? "bg-[#FFE600] text-[#2D3277] shadow-sm"
+                      : "text-slate-500 hover:text-slate-900"
                   )}
                 >
                   <ShieldAlert className="w-4 h-4" />
@@ -326,9 +328,9 @@ export function RepartidorPiramidal({ onSwitchToStore }: RepartidorPiramidalProp
 
             {activeTab === "alerta" && (
               <div className="py-12 text-center space-y-2">
-                <ShieldAlert className="w-10 h-10 text-amber-400 mx-auto" />
-                <h4 className="text-sm font-bold text-white">Sin incidencias en la zona</h4>
-                <p className="text-xs text-slate-400 max-w-[240px] mx-auto">
+                <ShieldAlert className="w-10 h-10 text-yellow-600 mx-auto" />
+                <h4 className="text-sm font-bold text-slate-900">Sin incidencias en la zona</h4>
+                <p className="text-xs text-slate-500 max-w-[240px] mx-auto">
                   Tránsito fluido en el corredor central de Rosario (Tucumán y San Lorenzo).
                 </p>
               </div>

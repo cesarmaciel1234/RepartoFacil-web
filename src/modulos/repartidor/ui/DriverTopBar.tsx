@@ -58,7 +58,7 @@ export function DriverTopBar({
         <button
           type="button"
           onClick={onOpenCopilot}
-          className="h-11 w-11 rounded-full bg-slate-900/95 hover:bg-slate-800 border border-emerald-500/40 text-emerald-400 shadow-2xl shadow-black/80 backdrop-blur-md flex items-center justify-center active:scale-95 transition-all"
+          className="h-11 w-11 rounded-full bg-white hover:bg-yellow-50 border border-yellow-300 text-[#2D3277] shadow-lg shadow-slate-900/10 backdrop-blur-md flex items-center justify-center active:scale-95 transition-all"
           title="Copiloto IA de Reparto"
         >
           <Sparkles className="w-4 h-4" />
@@ -68,12 +68,12 @@ export function DriverTopBar({
         <button
           type="button"
           onClick={onOpenOrderChat}
-          className="relative h-11 w-11 rounded-full bg-slate-900/95 hover:bg-slate-800 border border-slate-700/80 text-amber-400 shadow-2xl shadow-black/80 backdrop-blur-md flex items-center justify-center active:scale-95 transition-all"
+          className="relative h-11 w-11 rounded-full bg-white hover:bg-yellow-50 border border-yellow-300 text-[#2D3277] shadow-lg shadow-slate-900/10 backdrop-blur-md flex items-center justify-center active:scale-95 transition-all"
           title="Chat y Avisos de Entrega (Repartidor · Cliente · Empresa)"
         >
           <Bell className="w-4 h-4" />
           <span className="absolute top-2 right-2 flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-400 opacity-60" />
             <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
           </span>
         </button>
@@ -83,17 +83,17 @@ export function DriverTopBar({
           <button
             type="button"
             onClick={onFocusActiveRoute}
-            className="h-11 px-3 rounded-full bg-emerald-950/90 hover:bg-emerald-900/90 border border-emerald-500 shadow-2xl shadow-emerald-950/60 backdrop-blur-md flex items-center gap-2 active:scale-95 transition-all text-left group"
+            className="h-11 px-3 rounded-full bg-white hover:bg-yellow-50 border border-yellow-400 shadow-lg shadow-slate-900/10 backdrop-blur-md flex items-center gap-2 active:scale-95 transition-all text-left group"
             title="Pedido activo en curso · Toca para centrar la ruta en vivo"
           >
             <div className="relative flex items-center justify-center">
               <span className="animate-ping absolute inline-flex h-3 w-3 rounded-full bg-emerald-400 opacity-75" />
-              <div className="w-6 h-6 rounded-full bg-emerald-500 text-slate-950 flex items-center justify-center text-[10px] font-black">
+              <div className="w-6 h-6 rounded-full bg-[#FFE600] text-[#2D3277] flex items-center justify-center text-[10px] font-black">
                 <Truck className="w-3.5 h-3.5" />
               </div>
             </div>
             <div className="flex flex-col pr-1">
-              <span className="text-[11px] font-black text-emerald-300 leading-tight">
+              <span className="text-[11px] font-black text-[#2D3277] leading-tight">
                 {activeOrder.id}
               </span>
               <span className="text-[9px] font-bold text-emerald-400/90 leading-tight uppercase tracking-wider">
@@ -119,9 +119,9 @@ export function DriverTopBar({
           <button
             type="button"
             onClick={onOpenLoginModal}
-            className="h-11 px-3.5 rounded-full bg-slate-900/95 hover:bg-slate-800 text-slate-200 text-xs font-bold flex items-center gap-1.5 border border-slate-700/80 shadow-2xl shadow-black/80 backdrop-blur-md active:scale-95 transition-all"
+            className="h-11 px-3.5 rounded-full bg-[#FFE600] hover:bg-yellow-300 text-[#2D3277] text-xs font-black flex items-center gap-1.5 border border-yellow-500 shadow-lg shadow-slate-900/10 backdrop-blur-md active:scale-95 transition-all"
           >
-            <User className="w-3.5 h-3.5 text-emerald-400" />
+            <User className="w-3.5 h-3.5 text-[#2D3277]" />
             <span>Ingresar</span>
           </button>
         )}

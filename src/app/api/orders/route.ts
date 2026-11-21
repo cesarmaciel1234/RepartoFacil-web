@@ -102,7 +102,7 @@ export async function GET(request: NextRequest) {
 
     // 3. Aislamiento por Repartidor
     if (viewParam === "driver_active" && driverIdParam) {
-      query += ` AND repartidor_id = $${idx} AND estado IN ('Assigned', 'Picked Up', 'In Transit', 'accepted')`;
+      query += ` AND repartidor_id = $${idx} AND LOWER(estado) IN ('assigned', 'picked up', 'in transit', 'accepted', 'ready', 'embalado')`;
       values.push(driverIdParam);
       idx++;
     } else if (viewParam === "driver_history" && driverIdParam) {
@@ -110,7 +110,7 @@ export async function GET(request: NextRequest) {
       values.push(driverIdParam);
       idx++;
     } else if (viewParam === "driver_available") {
-      query += ` AND (repartidor_id IS NULL OR repartidor_id = '') AND estado IN ('ready', 'confirmed', 'Pending', 'pending')`;
+      query += ` AND (repartidor_id IS NULL OR repartidor_id = '') AND LOWER(estado) IN ('ready', 'confirmed', 'pending', 'accepted', 'embalado')`;
     } else if (driverIdParam && !viewParam) {
       query += ` AND repartidor_id = $${idx}`;
       values.push(driverIdParam);

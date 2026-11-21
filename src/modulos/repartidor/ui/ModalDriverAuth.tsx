@@ -209,15 +209,15 @@ export function ModalDriverAuth({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-slate-900 border-slate-800 text-slate-100 w-[94vw] max-w-sm p-5 rounded-3xl shadow-2xl">
+      <DialogContent className="bg-white border-slate-200 text-slate-900 w-[94vw] max-w-sm p-5 rounded-3xl shadow-xl">
         <DialogHeader className="text-left">
-          <div className="w-11 h-11 rounded-2xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center mb-1 shadow-md">
+          <div className="w-11 h-11 rounded-2xl bg-yellow-100 text-yellow-800 flex items-center justify-center mb-1 shadow-sm">
             <Truck className="w-6 h-6" />
           </div>
-          <DialogTitle className="text-lg font-black text-white">
+          <DialogTitle className="text-lg font-black text-slate-900">
             {tab === "login" ? "Acceso de Repartidor" : "Registrar Repartidor"}
           </DialogTitle>
-          <DialogDescription className="text-xs text-slate-400 mt-0.5">
+          <DialogDescription className="text-xs text-slate-500 mt-0.5">
             {pendingOrder
               ? `Iniciá sesión para tomar el pedido #${pendingOrder.id}. Una vez logueado, tu sesión queda guardada.`
               : "Conectate a la central de repartos. Tu sesión quedará guardada en el dispositivo."}
@@ -225,14 +225,14 @@ export function ModalDriverAuth({
         </DialogHeader>
 
         {/* Pestañas Iniciar Sesión / Registrarse */}
-        <div className="grid grid-cols-2 p-1 bg-slate-950 rounded-2xl border border-slate-800 my-2">
+        <div className="grid grid-cols-2 p-1 bg-slate-50 rounded-2xl border border-slate-200 my-2">
           <button
             type="button"
             onClick={() => { setTab("login"); setErrorMsg(null); }}
             className={`py-2 text-xs font-black rounded-xl transition-all ${
               tab === "login"
-                ? "bg-emerald-500 text-white shadow-md shadow-emerald-500/25"
-                : "text-slate-400 hover:text-white"
+                ? "bg-[#FFE600] text-[#2D3277] shadow-sm"
+                : "text-slate-500 hover:text-slate-900"
             }`}
           >
             Iniciar Sesión
@@ -242,8 +242,8 @@ export function ModalDriverAuth({
             onClick={() => { setTab("register"); setErrorMsg(null); }}
             className={`py-2 text-xs font-black rounded-xl transition-all ${
               tab === "register"
-                ? "bg-emerald-500 text-white shadow-md shadow-emerald-500/25"
-                : "text-slate-400 hover:text-white"
+                ? "bg-[#FFE600] text-[#2D3277] shadow-sm"
+                : "text-slate-500 hover:text-slate-900"
             }`}
           >
             Crear Cuenta
@@ -261,33 +261,33 @@ export function ModalDriverAuth({
         {tab === "login" ? (
           <form onSubmit={handleLogin} className="space-y-3.5 pt-1">
             <div>
-              <label className="text-[11px] font-bold text-slate-300 block mb-1">
+              <label className="text-[11px] font-bold text-slate-700 block mb-1">
                 Usuario o Email
               </label>
               <div className="relative">
-                <User className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <User className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                 <Input
                   placeholder="repartidor o tu email"
                   value={identifier}
                   onChange={(e) => setIdentifier(e.target.value)}
-                  className="bg-slate-950 border-slate-800 text-white rounded-xl pl-9 pr-3 h-10 text-xs focus:ring-emerald-500 focus:border-emerald-500"
+                  className="bg-white border-slate-200 text-slate-900 placeholder:text-slate-400 rounded-xl pl-9 pr-3 h-10 text-xs focus:ring-yellow-400 focus:border-yellow-400"
                   required
                 />
               </div>
             </div>
 
             <div>
-              <label className="text-[11px] font-bold text-slate-300 block mb-1">
+              <label className="text-[11px] font-bold text-slate-700 block mb-1">
                 Contraseña
               </label>
               <div className="relative">
-                <Lock className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                 <Input
                   type="password"
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="bg-slate-950 border-slate-800 text-white rounded-xl pl-9 pr-3 h-10 text-xs focus:ring-emerald-500 focus:border-emerald-500"
+                  className="bg-white border-slate-200 text-slate-900 placeholder:text-slate-400 rounded-xl pl-9 pr-3 h-10 text-xs focus:ring-yellow-400 focus:border-yellow-400"
                   required
                 />
               </div>
@@ -296,7 +296,7 @@ export function ModalDriverAuth({
             <Button
               type="submit"
               disabled={loading}
-              className="w-full h-11 rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white font-extrabold text-xs flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/25 active:scale-98 transition-all"
+              className="w-full h-11 rounded-2xl bg-[#FFE600] hover:bg-yellow-300 text-[#2D3277] font-extrabold text-xs flex items-center justify-center gap-2 shadow-md shadow-yellow-500/20 active:scale-98 transition-all"
             >
               <span>{loading ? "Conectando a la central..." : "INICIAR SESIÓN"}</span>
               <ArrowRight className="w-4 h-4" />
@@ -305,33 +305,33 @@ export function ModalDriverAuth({
         ) : (
           <form onSubmit={handleRegister} className="space-y-3 pt-1">
             <div>
-              <label className="text-[11px] font-bold text-slate-300 block mb-1">
+              <label className="text-[11px] font-bold text-slate-700 block mb-1">
                 Nombre y Apellido *
               </label>
               <Input
                 placeholder="Ej. Lucas Motomensajero"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="bg-slate-950 border-slate-800 text-white rounded-xl px-3 h-10 text-xs focus:ring-emerald-500 focus:border-emerald-500"
+                className="bg-white border-slate-200 text-slate-900 placeholder:text-slate-400 rounded-xl px-3 h-10 text-xs focus:ring-yellow-400 focus:border-yellow-400"
                 required
               />
             </div>
 
             <div>
-              <label className="text-[11px] font-bold text-slate-300 block mb-1">
+              <label className="text-[11px] font-bold text-slate-700 block mb-1">
                 Usuario o Email *
               </label>
               <Input
                 placeholder="lucas@repartofacil.com"
                 value={identifier}
                 onChange={(e) => setIdentifier(e.target.value)}
-                className="bg-slate-950 border-slate-800 text-white rounded-xl px-3 h-10 text-xs focus:ring-emerald-500 focus:border-emerald-500"
+                className="bg-white border-slate-200 text-slate-900 placeholder:text-slate-400 rounded-xl px-3 h-10 text-xs focus:ring-yellow-400 focus:border-yellow-400"
                 required
               />
             </div>
 
             <div>
-              <label className="text-[11px] font-bold text-slate-300 block mb-1">
+              <label className="text-[11px] font-bold text-slate-700 block mb-1">
                 Contraseña (mínimo 6 caracteres) *
               </label>
               <Input
@@ -339,13 +339,13 @@ export function ModalDriverAuth({
                 placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="bg-slate-950 border-slate-800 text-white rounded-xl px-3 h-10 text-xs focus:ring-emerald-500 focus:border-emerald-500"
+                className="bg-white border-slate-200 text-slate-900 placeholder:text-slate-400 rounded-xl px-3 h-10 text-xs focus:ring-yellow-400 focus:border-yellow-400"
                 required
               />
             </div>
 
             <div>
-              <label className="text-[11px] font-bold text-slate-300 block mb-1">
+              <label className="text-[11px] font-bold text-slate-700 block mb-1">
                 Vehículo de Reparto
               </label>
               <div className="grid grid-cols-3 gap-2">
@@ -354,8 +354,8 @@ export function ModalDriverAuth({
                   onClick={() => setVehicle("Motorcycle")}
                   className={`py-2 px-1 rounded-xl border flex flex-col items-center gap-0.5 text-[11px] font-bold transition-all ${
                     vehicle === "Motorcycle"
-                      ? "bg-emerald-500/20 border-emerald-500 text-emerald-400"
-                      : "bg-slate-950 border-slate-800 text-slate-400"
+                      ? "bg-yellow-100 border-yellow-400 text-yellow-900"
+                      : "bg-white border-slate-200 text-slate-500"
                   }`}
                 >
                   <Bike className="w-4 h-4" />
@@ -366,8 +366,8 @@ export function ModalDriverAuth({
                   onClick={() => setVehicle("Bicycle")}
                   className={`py-2 px-1 rounded-xl border flex flex-col items-center gap-0.5 text-[11px] font-bold transition-all ${
                     vehicle === "Bicycle"
-                      ? "bg-emerald-500/20 border-emerald-500 text-emerald-400"
-                      : "bg-slate-950 border-slate-800 text-slate-400"
+                      ? "bg-yellow-100 border-yellow-400 text-yellow-900"
+                      : "bg-white border-slate-200 text-slate-500"
                   }`}
                 >
                   <Bike className="w-4 h-4" />
@@ -378,8 +378,8 @@ export function ModalDriverAuth({
                   onClick={() => setVehicle("Car")}
                   className={`py-2 px-1 rounded-xl border flex flex-col items-center gap-0.5 text-[11px] font-bold transition-all ${
                     vehicle === "Car"
-                      ? "bg-emerald-500/20 border-emerald-500 text-emerald-400"
-                      : "bg-slate-950 border-slate-800 text-slate-400"
+                      ? "bg-yellow-100 border-yellow-400 text-yellow-900"
+                      : "bg-white border-slate-200 text-slate-500"
                   }`}
                 >
                   <Car className="w-4 h-4" />
@@ -391,7 +391,7 @@ export function ModalDriverAuth({
             <Button
               type="submit"
               disabled={loading}
-              className="w-full h-11 rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white font-extrabold text-xs flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/25 active:scale-98 transition-all"
+              className="w-full h-11 rounded-2xl bg-[#FFE600] hover:bg-yellow-300 text-[#2D3277] font-extrabold text-xs flex items-center justify-center gap-2 shadow-md shadow-yellow-500/20 active:scale-98 transition-all"
             >
               <span>{loading ? "Creando cuenta..." : "CREAR CUENTA DE REPARTIDOR"}</span>
               <ArrowRight className="w-4 h-4" />

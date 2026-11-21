@@ -87,6 +87,7 @@ export function OrderChatSheet({
 }: OrderChatSheetProps) {
   // El rol real del usuario que visualiza el chat
   const effectiveRole: "client" | "driver" = viewerRole || defaultRole;
+  const isDriverViewer = effectiveRole === "driver" && !embedded;
   const orderId = activeOrder?.id || "RF-7420";
   const ticketId = activeOrder?.ticketId || activeOrder?.ticket_id;
   const storageKey = `rf_chat_${orderId}`;
@@ -233,7 +234,9 @@ export function OrderChatSheet({
         {/* Header Scoped: Diferenciado según el perfil del usuario */}
         <SheetHeader
           className={`flex flex-row items-center justify-between gap-2 border-b p-4 ${
-            embedded ? "border-slate-100 bg-white" : "border-slate-800"
+            embedded || isDriverViewer
+              ? "border-slate-100 bg-white"
+              : "border-slate-800 bg-slate-900"
           }`}
         >
           <div className="flex items-center gap-2">
@@ -245,17 +248,25 @@ export function OrderChatSheet({
                 className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border transition-all ${
                   embedded
                     ? "border-slate-200 text-slate-600 hover:bg-slate-100"
+                    : isDriverViewer
+                    ? "border-yellow-300 bg-yellow-50 text-yellow-900 hover:bg-yellow-100"
                     : "border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white"
                 }`}
                 title={backButtonLabel}
               >
-                <ArrowLeft className={`h-4 w-4 ${embedded ? "text-blue-600" : "text-emerald-400"}`} />
+                <ArrowLeft
+                  className={`h-4 w-4 ${
+                    embedded ? "text-blue-600" : isDriverViewer ? "text-yellow-800" : "text-emerald-400"
+                  }`}
+                />
               </button>
             )}
             <div
               className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl shadow-md ${
                 embedded
                   ? "bg-blue-50 text-blue-600"
+                  : isDriverViewer
+                  ? "bg-yellow-100 text-yellow-900"
                   : isClientViewer
                   ? "bg-blue-500/20 text-blue-400"
                   : "bg-emerald-500/20 text-emerald-400"
@@ -265,7 +276,11 @@ export function OrderChatSheet({
             </div>
             <div className="text-left">
               <div className="flex items-center gap-1.5">
-                <SheetTitle className={`text-sm font-black ${embedded ? "text-slate-900" : "text-white"}`}>
+                <SheetTitle
+                  className={`text-sm font-black ${
+                    embedded || isDriverViewer ? "text-slate-900" : "text-white"
+                  }`}
+                >
                   {isClientViewer
                     ? `Chat con tu Repartidor`
                     : `Chat con el Cliente`}
@@ -273,14 +288,22 @@ export function OrderChatSheet({
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
               </div>
               <div className="flex items-center gap-2 mt-0.5">
-                <span className="text-[10px] text-slate-400 font-medium">
+                <span
+                  className={`text-[10px] font-medium ${
+                    embedded || isDriverViewer ? "text-slate-500" : "text-slate-400"
+                  }`}
+                >
                   Pedido #{orderId}
                 </span>
                 {!embedded && ticketId && (
                   <button
                     type="button"
                     onClick={() => setIsTicketModalOpen(true)}
-                    className="flex items-center gap-1 rounded-md border border-blue-200 bg-blue-50 px-1.5 py-0.5 text-[9.5px] font-bold text-blue-700 transition-all hover:bg-blue-100"
+                    className={`flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[9.5px] font-bold transition-all ${
+                      isDriverViewer
+                        ? "border-yellow-300 bg-yellow-50 text-yellow-900 hover:bg-yellow-100"
+                        : "border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100"
+                    }`}
                     title="Ver Ticket Digital Cobro Fácil"
                   >
                     🧾 Ticket #{ticketId} ↗
@@ -293,6 +316,8 @@ export function OrderChatSheet({
             className={`border py-0.5 text-[9px] font-black ${
               embedded
                 ? "border-blue-100 bg-blue-50 text-blue-700"
+                : isDriverViewer
+                ? "border-yellow-300 bg-yellow-100 text-yellow-900"
                 : "border-emerald-500/30 bg-emerald-500/20 text-emerald-400"
             }`}
           >
@@ -305,6 +330,8 @@ export function OrderChatSheet({
           className={`flex items-center justify-between border-b px-4 py-2.5 ${
             embedded
               ? "border-blue-100 bg-blue-50/70"
+              : isDriverViewer
+              ? "border-yellow-200 bg-yellow-50"
               : isClientViewer
               ? "border-blue-500/20 bg-blue-950/30"
               : "border-emerald-500/20 bg-emerald-950/30"
@@ -313,34 +340,58 @@ export function OrderChatSheet({
           <div className="flex items-center gap-2.5 min-w-0">
             <div
               className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-sm font-bold shadow-sm ${
-                embedded ? "bg-white text-blue-700" : "bg-slate-800/90 text-white"
+                embedded
+                  ? "bg-white text-blue-700"
+                  : isDriverViewer
+                  ? "bg-white text-yellow-800 border border-yellow-200"
+                  : "bg-slate-800/90 text-white"
               }`}
             >
               {isClientViewer ? "🛵" : "👤"}
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-1.5">
-                <span className={`truncate text-xs font-black ${embedded ? "text-slate-900" : "text-white"}`}>
+                <span
+                  className={`truncate text-xs font-black ${
+                    embedded || isDriverViewer ? "text-slate-900" : "text-white"
+                  }`}
+                >
                   {isClientViewer ? driverName : (clientName || activeOrder?.clientName || "Familia Gómez")}
                 </span>
                 <span
                   className={`shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-bold ${
-                    embedded ? "bg-blue-100 text-blue-700" : "bg-emerald-500/20 text-emerald-300"
+                    embedded
+                      ? "bg-blue-100 text-blue-700"
+                      : isDriverViewer
+                      ? "bg-yellow-100 text-yellow-900"
+                      : "bg-emerald-500/20 text-emerald-300"
                   }`}
                 >
                   {isClientViewer ? "En viaje" : "Esperando entrega"}
                 </span>
               </div>
-              <p className={`truncate text-[10px] font-medium ${embedded ? "text-slate-600" : "text-slate-400"}`}>
+              <p
+                className={`truncate text-[10px] font-medium ${
+                  embedded || isDriverViewer ? "text-slate-600" : "text-slate-400"
+                }`}
+              >
                 {isClientViewer ? `Entrega en: ${displayDestAddress}` : `Destino: ${displayDestAddress}`}
               </p>
             </div>
           </div>
           <div className="text-right shrink-0 pl-2">
-            <span className={`text-xs font-black ${embedded ? "text-blue-700" : "text-emerald-400"}`}>
+            <span
+              className={`text-xs font-black ${
+                embedded ? "text-blue-700" : isDriverViewer ? "text-yellow-900" : "text-emerald-400"
+              }`}
+            >
               12-15 min
             </span>
-            <span className={`block text-[9px] font-medium ${embedded ? "text-slate-500" : "text-slate-400"}`}>
+            <span
+              className={`block text-[9px] font-medium ${
+                embedded || isDriverViewer ? "text-slate-500" : "text-slate-400"
+              }`}
+            >
               GPS activo
             </span>
           </div>
@@ -351,19 +402,31 @@ export function OrderChatSheet({
           className={`flex items-center justify-between border-b px-4 py-1.5 text-[11px] ${
             embedded
               ? "border-slate-100 bg-white text-slate-500"
+              : isDriverViewer
+              ? "border-slate-100 bg-white text-slate-500"
               : "border-slate-800/80 bg-slate-950/80 text-slate-400"
           }`}
         >
           <div className="flex items-center gap-1.5">
-            <ShieldCheck className={`h-3.5 w-3.5 ${embedded ? "text-blue-600" : "text-emerald-400"}`} />
+            <ShieldCheck
+              className={`h-3.5 w-3.5 ${
+                embedded ? "text-blue-600" : isDriverViewer ? "text-yellow-800" : "text-emerald-400"
+              }`}
+            />
             <span>
               Conectado como:{" "}
-              <strong className={embedded ? "text-slate-900" : "text-white"}>
+              <strong className={embedded || isDriverViewer ? "text-slate-900" : "text-white"}>
                 {getMyAuthorName()} ({isClientViewer ? "Comprador" : "Repartidor"})
               </strong>
             </span>
           </div>
-          <span className={`text-[10px] ${embedded ? "text-slate-400" : "text-slate-500"}`}>Cobro Fácil Sync</span>
+          <span
+            className={`text-[10px] ${
+              embedded || isDriverViewer ? "text-slate-400" : "text-slate-500"
+            }`}
+          >
+            Cobro Fácil Sync
+          </span>
         </div>
 
         <OrderChatMessageList
@@ -377,7 +440,9 @@ export function OrderChatSheet({
         <form
           onSubmit={handleSendMessage}
           className={`flex items-center gap-2 border-t p-3 ${
-            embedded ? "border-slate-200 bg-white" : "border-slate-800 bg-slate-950"
+            embedded || isDriverViewer
+              ? "border-slate-200 bg-white"
+              : "border-slate-800 bg-slate-950"
           }`}
         >
           <Input
@@ -391,6 +456,8 @@ export function OrderChatSheet({
             className={
               embedded
                 ? "h-10 rounded-xl border-slate-200 bg-white text-xs text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:ring-blue-500"
+                : isDriverViewer
+                ? "h-10 rounded-xl border-slate-200 bg-white text-xs text-slate-900 placeholder:text-slate-400 focus:border-yellow-400 focus:ring-yellow-400"
                 : "h-10 rounded-xl border-slate-800 bg-slate-900 text-xs text-white placeholder:text-slate-500 focus:border-emerald-500 focus:ring-emerald-500"
             }
           />
@@ -400,6 +467,8 @@ export function OrderChatSheet({
             className={`h-10 w-10 p-0 rounded-xl text-white shrink-0 shadow-lg active:scale-95 transition-all ${
               embedded || isClientViewer
                 ? "bg-blue-600 hover:bg-blue-700 shadow-blue-600/20 disabled:opacity-40"
+                : isDriverViewer
+                ? "bg-[#FFE600] hover:bg-yellow-300 text-[#2D3277] shadow-yellow-500/20 disabled:opacity-40"
                 : "bg-emerald-500 hover:bg-emerald-600 shadow-emerald-500/20 disabled:opacity-40"
             }`}
             title="Enviar mensaje"
@@ -425,7 +494,13 @@ export function OrderChatSheet({
 
   return (
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
-      <SheetContent className="flex h-full w-full flex-col border-l border-slate-800 bg-slate-900 p-0 text-slate-100 sm:max-w-md">
+      <SheetContent
+        className={`flex h-full w-full flex-col p-0 sm:max-w-md ${
+          isDriverViewer
+            ? "border-l border-slate-200 bg-white text-slate-900"
+            : "border-l border-slate-800 bg-slate-900 text-slate-100"
+        }`}
+      >
         {chatContent}
       </SheetContent>
     </Sheet>

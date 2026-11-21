@@ -1,4 +1,14 @@
-export type OrderStatus = "Pending" | "Confirmed" | "Ready" | "Assigned" | "Picked Up" | "In Transit" | "Delivered" | "Cancelled" | "Rejected";
+export type OrderStatus =
+  | "Pending"
+  | "Confirmed"
+  | "Ready"
+  | "Embalado"
+  | "Assigned"
+  | "Picked Up"
+  | "In Transit"
+  | "Delivered"
+  | "Cancelled"
+  | "Rejected";
 
 export interface OrderItemSummary {
   name: string;

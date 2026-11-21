@@ -85,16 +85,14 @@ export function useDriverOrders(currentDriverId?: string | null) {
   }, []);
 
   // Pedidos Disponibles en el radar del repartidor:
-  // SOLO aquellos que fueron ACEPTADOS por el comercio en Cobro Fácil (Confirmed / Ready / Accepted)
+  // Solo pedidos confirmados, listos o embalados por el comercio aparecen en Disponibles.
   // Los pedidos 'pending_store' (esperando al comercio) o 'rejected'/'cancelled' NO salen al chofer.
   const availableOrders = useMemo(() => {
     return localOrders.filter(
       (o) =>
-        (o.status === "Confirmed" ||
-          (o.status as any) === "confirmed" ||
-          o.status === "Ready" ||
-          (o.status as any) === "ready" ||
-          (o.status as any) === "accepted") &&
+        ["confirmed", "ready", "accepted", "embalado"].includes(
+          String(o.status).trim().toLowerCase()
+        ) &&
         !o.driverId
     );
   }, [localOrders]);
@@ -104,9 +102,9 @@ export function useDriverOrders(currentDriverId?: string | null) {
   const myActiveOrders = useMemo(() => {
     return localOrders.filter(
       (o) =>
-        (o.status === "Assigned" ||
-          o.status === "Picked Up" ||
-          o.status === "In Transit") &&
+        ["assigned", "picked up", "in transit", "ready", "embalado"].includes(
+          String(o.status).trim().toLowerCase()
+        ) &&
         o.driverId &&
         (!currentDriverId || o.driverId === currentDriverId)
     );

@@ -51,14 +51,14 @@ export function DriverCopilotSheet({
 
   return (
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
-      <SheetContent className="w-full sm:max-w-md bg-slate-900 border-l border-slate-800 text-slate-100 p-0 flex flex-col h-full">
-        <SheetHeader className="p-4 border-b border-slate-800 flex flex-row items-center gap-2">
-          <div className="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
+      <SheetContent className="w-full sm:max-w-md bg-white border-l border-slate-200 text-slate-900 p-0 flex flex-col h-full">
+        <SheetHeader className="p-4 border-b border-slate-100 flex flex-row items-center gap-2">
+          <div className="w-8 h-8 rounded-xl bg-yellow-100 text-yellow-800 flex items-center justify-center">
             <Sparkles className="w-4 h-4" />
           </div>
           <div>
-            <SheetTitle className="text-base font-black text-white">Copiloto IA · Copo</SheetTitle>
-            <p className="text-[11px] text-slate-400 font-medium">Asistente de ruta para repartidores</p>
+            <SheetTitle className="text-base font-black text-slate-900">Copiloto IA · Copo</SheetTitle>
+            <p className="text-[11px] text-slate-500 font-medium">Asistente de ruta para repartidores</p>
           </div>
         </SheetHeader>
 
@@ -70,21 +70,21 @@ export function DriverCopilotSheet({
               className={`flex gap-2 ${m.role === "user" ? "justify-end" : "justify-start"}`}
             >
               {m.role === "model" && (
-                <div className="w-6 h-6 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0 mt-0.5">
+                <div className="w-6 h-6 rounded-lg bg-yellow-100 text-yellow-800 flex items-center justify-center shrink-0 mt-0.5">
                   <Bot className="w-3.5 h-3.5" />
                 </div>
               )}
               <div
                 className={`p-3 rounded-2xl text-xs max-w-[80%] leading-relaxed ${
                   m.role === "user"
-                    ? "bg-emerald-500 text-white rounded-br-xs"
-                    : "bg-slate-800 text-slate-200 border border-slate-700/60 rounded-bl-xs"
+                    ? "bg-[#FFE600] text-[#2D3277] rounded-br-xs"
+                    : "bg-slate-50 text-slate-700 border border-slate-200 rounded-bl-xs"
                 }`}
               >
                 {m.content}
               </div>
               {m.role === "user" && (
-                <div className="w-6 h-6 rounded-lg bg-slate-700 text-slate-300 flex items-center justify-center shrink-0 mt-0.5">
+                <div className="w-6 h-6 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center shrink-0 mt-0.5">
                   <User className="w-3.5 h-3.5" />
                 </div>
               )}
@@ -92,21 +92,21 @@ export function DriverCopilotSheet({
           ))}
 
           {isThinking && (
-            <div className="flex gap-2 items-center text-xs text-slate-400 italic">
-              <Bot className="w-3.5 h-3.5 text-emerald-400 animate-spin" />
+            <div className="flex gap-2 items-center text-xs text-slate-500 italic">
+              <Bot className="w-3.5 h-3.5 text-yellow-700 animate-spin" />
               <span>Copo está pensando...</span>
             </div>
           )}
         </div>
 
         {/* Input */}
-        <div className="p-3 border-t border-slate-800 bg-slate-900/90 space-y-2">
+        <div className="p-3 border-t border-slate-200 bg-white space-y-2">
           <div className="flex gap-1.5 overflow-x-auto pb-1">
             {["¿Cuál es la más cercana?", "Optimizar mi ruta", "Ver estado de entrega"].map((chip) => (
               <button
                 key={chip}
                 onClick={() => handleSend(chip)}
-                className="text-[10px] bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 px-2.5 py-1 rounded-full whitespace-nowrap shrink-0 transition-colors"
+                className="text-[10px] bg-slate-50 hover:bg-yellow-50 border border-slate-200 text-slate-700 px-2.5 py-1 rounded-full whitespace-nowrap shrink-0 transition-colors"
               >
                 {chip}
               </button>
@@ -119,11 +119,11 @@ export function DriverCopilotSheet({
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSend(input)}
-              className="bg-slate-800 border-slate-700 text-white text-xs h-10 rounded-xl"
+              className="bg-white border-slate-200 text-slate-900 placeholder:text-slate-400 text-xs h-10 rounded-xl focus-visible:ring-yellow-400"
             />
             <Button
               onClick={() => handleSend(input)}
-              className="h-10 px-3 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white shrink-0"
+              className="h-10 px-3 rounded-xl bg-[#FFE600] hover:bg-yellow-300 text-[#2D3277] shrink-0"
             >
               <Send className="w-4 h-4" />
             </Button>
