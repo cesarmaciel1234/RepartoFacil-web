@@ -54,6 +54,7 @@ test("asignación concurrente y entrega idempotente en PostgreSQL", {
       await safeQuery(admin, `CREATE TABLE ${quotedSchema}.repartofacil_pedidos (
         id text PRIMARY KEY, estado text, repartidor_id text, repartidor_usuario_id text,
         repartidor_nombre text, updated_at timestamptz, driver_last_ping timestamptz,
+        driver_lat numeric, driver_lng numeric,
         custodio_estado text, custodio_advertencia_at timestamptz, ticket_id text,
         created_at timestamptz, cliente_nombre text, cliente_id text, cliente_usuario_id text, direccion_entrega text,
         items jsonb, total numeric, ganancia_repartidor numeric, metodo_pago text
@@ -168,6 +169,101 @@ test("asignación concurrente y entrega idempotente en PostgreSQL", {
     assert.equal((await chatExports.GET(chatRequest("test-driver-2", "Driver"), chatParams)).body.messages.length, 1);
     await queryDb("UPDATE repartofacil_pedidos SET repartidor_id = $1 WHERE id = $2", ["test-driver-3", "TEST-OTHER"]);
     assert.equal((await chatExports.GET(chatRequest("test-driver-2", "Driver"), chatParams)).status, 404);
+
+    await queryDb(`INSERT INTO repartofacil_pedidos
+      (id, estado, repartidor_id, repartidor_usuario_id, driver_last_ping, custodio_estado, custodio_advertencia_at, created_at)
+      VALUES
+      ('CUSTODIO-FRESH', 'Assigned', 'custodio-driver', 'custodio-driver', NOW() - INTERVAL '9 minutes', 'normal', NULL, NOW()),
+      ('CUSTODIO-WARN', 'Assigned', 'custodio-driver', 'custodio-driver', NOW() - INTERVAL '11 minutes', 'normal', NULL, NOW()),
+      ('CUSTODIO-OLD', 'ready', 'custodio-driver', 'custodio-driver', NOW() - INTERVAL '31 minutes', 'advertencia', NOW() - INTERVAL '29 minutes', NOW()),
+      ('CUSTODIO-TRANSIT', 'in transit', 'custodio-driver', 'custodio-driver', NOW() - INTERVAL '50 minutes', 'normal', NULL, NOW()),
+      ('CUSTODIO-NO-PING', 'Assigned', 'custodio-driver', 'custodio-driver', NULL, 'normal', NULL, NOW()),
+      ('CUSTODIO-TIMEOUT', 'pending_store', NULL, NULL, NULL, NULL, NULL, NOW() - INTERVAL '61 minutes'),
+      ('CUSTODIO-CONFIRMED', 'confirmed', NULL, NULL, NULL, NULL, NULL, NOW() - INTERVAL '61 minutes')`);
+
+    const custodioSource = fs.readFileSync(path.join(process.cwd(), "src/lib/custodio.ts"), "utf8");
+    const custodioExports = {};
+    vm.runInNewContext(ts.transpileModule(custodioSource, {
+      compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 },
+    }).outputText, {
+      exports: custodioExports, process: { env: {} }, Date,
+      require(name) {
+        if (name === "@/lib/db") return { queryDb };
+        if (name === "node:crypto") return require("node:crypto");
+        throw new Error(`Dependencia inesperada: ${name}`);
+      },
+    });
+    const firstAudit = await custodioExports.ejecutarAuditoriaCustodio();
+    assert.equal(firstAudit.liberados, 0);
+    assert.equal(firstAudit.advertencias, 2);
+    assert.equal(firstAudit.canceladosTimeout, 1);
+    const warningStates = await queryDb(`SELECT id, estado, repartidor_id, custodio_estado
+      FROM repartofacil_pedidos WHERE id LIKE 'CUSTODIO-%' ORDER BY id`);
+    const find = (rows, id) => rows.find((row) => row.id === id);
+    assert.equal(find(warningStates, "CUSTODIO-FRESH").custodio_estado, "normal");
+    assert.equal(find(warningStates, "CUSTODIO-OLD").custodio_estado, "advertencia_desconexion_30m_v1");
+    assert.equal(find(warningStates, "CUSTODIO-TRANSIT").custodio_estado, "normal");
+    assert.equal(find(warningStates, "CUSTODIO-NO-PING").custodio_estado, "normal");
+    assert.equal(find(warningStates, "CUSTODIO-TIMEOUT").estado, "cancelled_timeout");
+    assert.equal(find(warningStates, "CUSTODIO-CONFIRMED").estado, "confirmed");
+
+    await queryDb(`UPDATE repartofacil_pedidos SET custodio_advertencia_at = NOW() - INTERVAL '21 minutes'
+      WHERE id IN ('CUSTODIO-WARN', 'CUSTODIO-OLD')`);
+    const concurrentAudits = await Promise.all([
+      custodioExports.ejecutarAuditoriaCustodio(),
+      custodioExports.ejecutarAuditoriaCustodio(),
+    ]);
+    assert.equal(concurrentAudits.reduce((sum, result) => sum + result.liberados, 0), 1);
+    const afterRelease = await queryDb(`SELECT id, estado, repartidor_id, repartidor_usuario_id
+      FROM repartofacil_pedidos WHERE id IN ('CUSTODIO-WARN', 'CUSTODIO-OLD', 'CUSTODIO-TRANSIT')`);
+    assert.equal(find(afterRelease, "CUSTODIO-OLD").repartidor_id, null);
+    assert.equal(find(afterRelease, "CUSTODIO-OLD").repartidor_usuario_id, null);
+    assert.equal(find(afterRelease, "CUSTODIO-OLD").estado, "ready");
+    assert.equal(find(afterRelease, "CUSTODIO-WARN").repartidor_id, "custodio-driver");
+    assert.equal(find(afterRelease, "CUSTODIO-TRANSIT").repartidor_id, "custodio-driver");
+    const releaseMessages = await queryDb(`SELECT COUNT(*)::integer AS count FROM repartofacil_chat_mensajes
+      WHERE order_id = 'CUSTODIO-OLD' AND content LIKE 'El pedido volvió%'`);
+    assert.equal(releaseMessages[0].count, 1);
+
+    const routeSource = fs.readFileSync(path.join(process.cwd(), "src/app/api/orders/custodio/route.ts"), "utf8");
+    const custodioRoute = {};
+    vm.runInNewContext(ts.transpileModule(routeSource, {
+      compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 },
+    }).outputText, {
+      exports: custodioRoute, console,
+      require(name) {
+        if (name === "next/server") return { NextResponse: { json: (body, options) => ({ body, status: options?.status ?? 200 }) } };
+        if (name === "@/lib/db") return { queryDb };
+        if (name === "@/lib/orderAuth") return { authenticateOrderUser: async (req) => ({ user: req.user }) };
+        if (name === "@/lib/custodio") return { ...custodioExports, isCustodioAutomaticEnabled: () => true };
+        throw new Error(`Dependencia inesperada: ${name}`);
+      },
+    });
+    const driverRequest = (action) => ({
+      user: { id: "custodio-driver", role: "Driver", displayName: "Prueba" },
+      json: async () => ({ action }),
+    });
+    const disconnected = await custodioRoute.POST(driverRequest("driver_disconnected"));
+    assert.equal(disconnected.body.action, "disconnection_recorded");
+    const afterDisconnect = await queryDb(`SELECT repartidor_id, custodio_estado, driver_last_ping > NOW() - INTERVAL '1 minute' AS fresh
+      FROM repartofacil_pedidos WHERE id = 'CUSTODIO-WARN'`);
+    assert.equal(afterDisconnect[0].repartidor_id, "custodio-driver");
+    assert.equal(afterDisconnect[0].custodio_estado, "normal");
+    assert.equal(afterDisconnect[0].fresh, true);
+
+    await queryDb(`UPDATE repartofacil_pedidos
+      SET driver_last_ping = NOW() - INTERVAL '31 minutes',
+          custodio_advertencia_at = NOW() - INTERVAL '21 minutes',
+          custodio_estado = 'advertencia_desconexion_30m_v1'
+      WHERE id = 'CUSTODIO-WARN'`);
+    assert.equal((await custodioRoute.POST(driverRequest("ping"))).body.action, "ping_recorded");
+    const afterPing = await queryDb(`SELECT custodio_estado, custodio_advertencia_at,
+      driver_last_ping > NOW() - INTERVAL '1 minute' AS fresh
+      FROM repartofacil_pedidos WHERE id = 'CUSTODIO-WARN'`);
+    assert.equal(afterPing[0].custodio_estado, "normal");
+    assert.equal(afterPing[0].custodio_advertencia_at, null);
+    assert.equal(afterPing[0].fresh, true);
+    assert.equal((await custodioExports.ejecutarAuditoriaCustodio()).liberados, 0);
   } finally {
     if (created) {
       const admin = await pool.connect();

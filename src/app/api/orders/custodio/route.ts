@@ -14,8 +14,13 @@ export async function GET(request: NextRequest) {
   if (!isCustodioAutomaticEnabled()) {
     return NextResponse.json({ error: "La auditoría automática de Custodio está pausada." }, { status: 503 });
   }
-  const resultado = await ejecutarAuditoriaCustodio();
-  return NextResponse.json({ success: true, ...resultado });
+  try {
+    const resultado = await ejecutarAuditoriaCustodio();
+    return NextResponse.json({ success: true, ...resultado });
+  } catch (error) {
+    console.error("[Custodio] Error en auditoría:", error);
+    return NextResponse.json({ error: "No se pudo ejecutar la auditoría." }, { status: 500 });
+  }
 }
 
 // POST /api/orders/custodio: Pings de telemetría, desconexión forzada o liberación manual
@@ -26,7 +31,6 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { action, orderId, lat, lng, reason } = body;
     const driverId = auth.user.id;
-    const driverName = auth.user.displayName;
     const driverAction = action === "ping" || action === "driver_disconnected";
     const clientAction = action === "force_release" || action === "retry_order";
     if ((driverAction && auth.user.role !== "Driver") ||
@@ -50,50 +54,23 @@ export async function POST(request: NextRequest) {
              custodio_advertencia_at = NULL,
              custodio_estado = 'normal'
          WHERE repartidor_id = $3
-           AND estado NOT IN ('Delivered', 'delivered', 'cancelled', 'rejected')`,
+           AND LOWER(TRIM(estado)) IN ('assigned', 'picked up', 'in transit', 'ready', 'embalado')`,
         [lat, lng, driverId]
       );
       return NextResponse.json({ success: true, action: "ping_recorded" });
     }
 
-    // 2. Desconexión explícita del chofer (Cierra sesión o apaga turno con pedidos activos)
+    // 2. La desconexión inicia el plazo de espera; no libera pedidos inmediatamente.
     if (action === "driver_disconnected" && driverId) {
       const pedidosChofer = await queryDb(
-        `SELECT id, estado, repartidor_nombre FROM repartofacil_pedidos 
-         WHERE repartidor_id = $1 AND estado NOT IN ('Delivered', 'delivered', 'cancelled', 'rejected')`,
+        `UPDATE repartofacil_pedidos
+         SET driver_last_ping = NOW(), custodio_advertencia_at = NULL, custodio_estado = 'normal'
+         WHERE repartidor_id = $1
+           AND LOWER(TRIM(estado)) IN ('assigned', 'ready', 'embalado')
+         RETURNING id`,
         [driverId]
       );
-
-      for (const p of pedidosChofer) {
-        const nuevoEstado = p.estado === "ready" || p.estado === "Ready" ? "ready" : "confirmed";
-        const released = await queryDb(
-          `UPDATE repartofacil_pedidos 
-           SET repartidor_id = NULL,
-               repartidor_nombre = NULL,
-               estado = $1,
-               custodio_estado = 'reingresado',
-               custodio_advertencia_at = NULL,
-               updated_at = NOW()
-           WHERE id = $2 AND repartidor_id = $3
-             AND LOWER(TRIM(estado)) NOT IN ('delivered', 'cancelled', 'cancelled_by_client', 'rejected')
-           RETURNING id`,
-          [nuevoEstado, p.id, driverId]
-        );
-        if (released.length === 0) continue;
-
-        const msgId = `msg-custodio-${Date.now()}`;
-        const horaStr = new Date().toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" });
-        const content = `🚨 [Custodio del Sistema]: El repartidor asignado (${driverName || p.repartidor_nombre || "Lucas"}) se desconectó. El pedido #${p.id} vuelve automáticamente a la bandeja pública disponible para que otro chofer cercano lo tome.`;
-
-        await queryDb(
-          `INSERT INTO repartofacil_chat_mensajes 
-           (id, order_id, author_role, author_name, content, timestamp_str, created_at)
-           VALUES ($1, $2, 'system', 'Sistema Reparto Fácil (Custodio)', $3, $4, NOW())`,
-          [msgId, p.id, content, horaStr]
-        ).catch(() => {});
-      }
-
-      return NextResponse.json({ success: true, action: "disconnected_unassigned", count: pedidosChofer.length });
+      return NextResponse.json({ success: true, action: "disconnection_recorded", count: pedidosChofer.length });
     }
 
     // 3. Liberación manual forzada desde Cobro Fácil o Cliente ("Chofer no responde / No se mueve")

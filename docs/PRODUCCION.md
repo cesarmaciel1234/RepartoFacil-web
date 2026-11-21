@@ -97,6 +97,19 @@ manual del comprador sigue disponible. Antes de reactivarla, corregir y probar
 las carreras y la gestión de sesiones inactivas, y revisar las advertencias
 antiguas para evitar liberaciones inmediatas.
 
+La nueva auditoría advierte en el chat tras 10 minutos sin ping y solo libera
+tras 30 minutos sin ping y 20 minutos desde el aviso. Una desconexión explícita
+inicia el plazo, no libera inmediatamente. Los pedidos en estados `picked up`
+o `in transit` no se liberan automáticamente. Solo se consideran pedidos con
+un ping registrado; las advertencias del mecanismo anterior no habilitan una
+liberación. Actualización y mensaje de chat se guardan en una misma consulta.
+El proceso depende de consultas a la API, no de un trabajador permanente: los
+avisos y liberaciones pueden llegar tarde si nadie consulta. Además, el ping
+depende de la pantalla del repartidor, que el navegador puede suspender; no
+demuestra por sí solo que el repartidor abandonó el pedido. La aplicación no
+registra explícitamente el retiro físico en todas las rutas. Mantener la pausa
+hasta resolver estas limitaciones y revisar las advertencias antes de activarla.
+
 ## 3. Contrato de tienda y tarifa
 
 - Mantener el acceso abierto al catálogo y al carrito; el login se solicita al

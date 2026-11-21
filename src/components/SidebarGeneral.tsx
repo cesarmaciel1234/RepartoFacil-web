@@ -127,7 +127,7 @@ export function SidebarGeneral({
   const handleCloseSession = () => {
     onOpenChange(false);
     if (currentMode === "driver") {
-      // Notificar al Custodio del Sistema para liberar pedidos si el chofer se desconecta con órdenes activas
+      // Notificar la desconexión sin liberar inmediatamente los pedidos activos.
       if (driverProfileLocal?.id) {
         fetch("/api/orders/custodio", {
           method: "POST",
@@ -138,7 +138,7 @@ export function SidebarGeneral({
             driverName: driverProfileLocal.firstName || "Repartidor",
           }),
         }).then((response) => {
-          if (!response.ok) console.warn("No se liberaron automáticamente los pedidos al cerrar sesión:", response.status);
+          if (!response.ok) console.warn("No se pudo registrar la desconexión del repartidor:", response.status);
         }).catch((error) => console.warn("No se pudo notificar la desconexión:", error));
       }
       clearDriverProfile();
