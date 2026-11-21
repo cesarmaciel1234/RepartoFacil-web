@@ -70,6 +70,48 @@ function setup(queryDb = async () => []) {
   return { api, auth, catalog };
 }
 
+test("el acceso tolera el arranque lento y reporta errores del backend", async () => {
+  let timeoutMs;
+  let expire;
+  let markStarted;
+  const started = new Promise((resolve) => { markStarted = resolve; });
+  const api = load("src/app/api/auth/[...path]/route.ts", { "next/server": next }, {
+    setTimeout: (callback, ms) => { expire = callback; timeoutMs = ms; return 1; },
+    clearTimeout: () => {},
+    console: { error() {} },
+    fetch: async (_url, options) => {
+      if (options.method === "GET") {
+        return new Promise((_resolve, reject) => {
+          options.signal.addEventListener("abort", () => reject(new Error("timeout")));
+          markStarted();
+        });
+      }
+      return { status: 401, json: async () => ({ detail: "Incorrect email or password" }) };
+    },
+  });
+  const params = { params: Promise.resolve({ path: ["login"] }) };
+  const req = { headers: new Headers(), text: async () => "{}" };
+  const result = await api.POST(req, params);
+  assert.equal(timeoutMs, 60_000);
+  assert.equal(result.status, 401);
+  const waiting = api.GET(req, params);
+  await started;
+  expire();
+  assert.equal((await waiting).status, 503);
+});
+
+test("una sesión de comprador que no se puede guardar no se confirma", () => {
+  const service = load("src/modulos/repartidor/motor/driverService.ts", {}, {
+    window: {},
+    localStorage: { setItem() { throw new Error("almacenamiento no disponible"); } },
+    console: { warn() {} },
+  });
+  assert.throws(
+    () => service.saveClientProfile({ id: "buyer", role: "Client" }, "token"),
+    /No se pudo guardar la sesión/
+  );
+});
+
 const validOrder = {
   id: "order-1", companyId: "frigorifico-maciel", deliveryType: "delivery", deliveryAddress: "Prueba",
   items: [{ id: "p1", price: 100, quantity: 2 }], subtotal: 200, deliveryFee: 50, total: 250,

@@ -12,6 +12,7 @@ checkout y seguimiento de pedidos.
 - Muestra el panel del camioncito para consultar pedidos activos y abrir su chat.
 - Deja el historial completo en `pantallas/HistorialPedidosTienda.tsx`, como módulo
   de navegación independiente.
+- El perfil del comprador muestra la versión instalada y si coincide con la publicada.
 
 ---
 

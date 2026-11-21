@@ -62,7 +62,9 @@ export function ModalClientAuth({
       });
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.detail || "Usuario o contraseña incorrectos");
+        throw new Error(res.status === 401
+          ? "Usuario o contraseña incorrectos."
+          : data.detail || "No se pudo iniciar sesión.");
       }
       if (!data.user || !data.access_token) {
         throw new Error("El servicio de autenticación devolvió una respuesta incompleta");
@@ -308,6 +310,11 @@ export function ModalClientAuth({
               <span>{loading ? "Iniciando sesión..." : "INICIAR SESIÓN COMO CLIENTE"}</span>
               <ArrowRight className="w-4 h-4" />
             </Button>
+            {loading && (
+              <p role="status" className="text-center text-xs text-slate-400">
+                El servidor puede tardar hasta un minuto en iniciar.
+              </p>
+            )}
           </form>
         ) : (
           <form onSubmit={handleRegister} className="space-y-3 pt-1">

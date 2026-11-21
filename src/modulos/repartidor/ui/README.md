@@ -10,6 +10,7 @@
 - Muestra el listado de pedidos disponibles con métricas de conveniencia (ganancia neta, distancias, cobro en efectivo).
 - Presenta las órdenes en ruta con velocímetro, simulación en marcha y botón de entrega con candado de geocerca (desbloqueo a <= 100m).
 - Despliega el diálogo modal de identificación (`ModalDriverAuth`) y el modal de la cartera (`ModalCarteraRepartidor`).
+- El menú lateral muestra la versión instalada y si coincide con la publicada.
 
 ---
 

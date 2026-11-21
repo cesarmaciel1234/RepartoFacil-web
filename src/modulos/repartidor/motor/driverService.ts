@@ -305,6 +305,7 @@ export function saveClientProfile(profile: ClientProfile, token?: string) {
     window.dispatchEvent(new Event("rf-orders-updated"));
   } catch (e) {
     console.warn("Error guardando perfil cliente:", e);
+    throw new Error("No se pudo guardar la sesión en este dispositivo.");
   }
 }
 

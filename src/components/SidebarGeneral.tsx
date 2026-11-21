@@ -41,6 +41,7 @@ import {
   clearClientProfile,
 } from "@/modulos/repartidor/motor/driverService";
 import { ModalClientAuth } from "@/modulos/tienda/ui/ModalClientAuth";
+import { AppVersion } from "@/components/AppVersion";
 import { useState, useEffect } from "react";
 import { authHeaders } from "@/lib/clientAuth";
 
@@ -573,6 +574,7 @@ export function SidebarGeneral({
                 : "border-slate-800 bg-slate-900/60"
             }`}
           >
+            <AppVersion dark={!isDriverMode} />
             <Button
               type="button"
               variant="outline"
@@ -586,7 +588,10 @@ export function SidebarGeneral({
                     const regs = await navigator.serviceWorker.getRegistrations();
                     await Promise.all(regs.map((r) => r.unregister()));
                   }
-                  window.location.href = window.location.origin + "/?v=" + Date.now();
+                  const url = new URL(window.location.href);
+                  url.searchParams.set("mode", currentMode);
+                  url.searchParams.set("v", String(Date.now()));
+                  window.location.href = url.toString();
                 }
               }}
               className={`w-full h-10 rounded-2xl font-bold text-xs flex items-center justify-center gap-2 transition-all border ${
@@ -594,14 +599,14 @@ export function SidebarGeneral({
                   ? "bg-yellow-100 hover:bg-yellow-200 text-[#2D3277] border-yellow-300"
                   : "bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 hover:text-emerald-200 border-emerald-500/30"
               }`}
-              title="Borrar caché guardada offline y recargar última versión v5.12"
+              title="Borrar caché guardada offline y recargar la aplicación"
             >
               <RefreshCw
                 className={`w-3.5 h-3.5 ${
                   isDriverMode ? "text-yellow-800" : "text-emerald-400"
                 }`}
               />
-              <span>Actualizar a v5.12 (Limpiar Caché)</span>
+              <span>Buscar actualización (Limpiar Caché)</span>
             </Button>
 
             <Button

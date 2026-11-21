@@ -83,6 +83,13 @@ sin revisar las demás rutas heredadas del backend y resolver la reserva de stoc
 Los pedidos antiguos creados con identidades invitadas no pueden
 asociarse automáticamente de forma segura a una cuenta.
 
+El proxy de autenticación espera hasta 60 segundos para permitir el arranque en
+frío del backend; no reintenta registros automáticamente. Esto no evita la pérdida
+de cuentas en SQLite efímero. En el perfil del comprador y el menú del repartidor,
+la versión instalada se compara con `/api/version`; si la consulta falla se
+indica que no pudo comprobarse. Actualizar `src/lib/appVersion.ts` y el identificador
+`RELEASE` del service worker en cada publicación de código cliente.
+
 Al recibir un pedido, el servidor consulta el catálogo de PostgreSQL y verifica
 comercio, artículos, cantidades, precios y tarifa antes de guardarlo. Si cambió
 el importe o falta el catálogo, rechaza la compra sin confirmarla. El stock

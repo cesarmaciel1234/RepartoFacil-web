@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
+import { APP_RELEASE, APP_VERSION } from "@/lib/appVersion";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
   return NextResponse.json({
     app: "Reparto Fácil",
-    version: "5.12",
-    release: "v5.12-seguridad-pedidos",
+    version: APP_VERSION,
+    release: APP_RELEASE,
     status: "online",
     timestamp: new Date().toISOString(),
     features: [

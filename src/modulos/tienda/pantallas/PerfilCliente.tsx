@@ -14,6 +14,7 @@ import {
   UserRound,
 } from "lucide-react";
 import type { ClientProfile } from "@/modulos/repartidor/motor/driverService";
+import { AppVersion } from "@/components/AppVersion";
 
 interface PerfilClienteProps {
   clientProfile: ClientProfile | null;
@@ -137,6 +138,7 @@ export function PerfilCliente({
           Cerrar sesión
         </button>
       )}
+      <AppVersion />
     </section>
   );
 }
