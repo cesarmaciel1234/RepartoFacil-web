@@ -10,7 +10,8 @@ La tienda Next.js, la API FastAPI y Cobro Fácil son servicios separados. La
 tienda y Cobro Fácil comparten PostgreSQL para los pedidos, pero cada servicio
 debe recibir su propia variable `DATABASE_URL` en Render. La API de pedidos de
 la tienda consulta PostgreSQL desde `src/lib/db.ts`; no depende de la SQLite
-local que FastAPI puede usar en desarrollo.
+local que FastAPI puede usar en desarrollo. Para el estado operativo, las
+limitaciones y las mejoras prioritarias, consultar [PRODUCCION.md](./PRODUCCION.md).
 
 ```mermaid
 flowchart TD
@@ -98,7 +99,8 @@ flowchart TD
 ### Fase 1: Consolidación Local y PWA 100% (Completada ✅)
 - [x] Motor de telemetría y orientación con brújula física del móvil.
 - [x] Service Worker, Web App Manifest y assets táctiles PWA.
-- [x] Separación de tablas/colecciones entre Clientes y Repartidores con autenticación persistente.
+- [x] Separación de perfiles y roles de Clientes y Repartidores.
+- [ ] Persistencia y recuperación confiables de cuentas y sesiones del backend.
 - [x] Catálogo multi-empresa con búsqueda global cruzada y visualización de distancias.
 - [x] Chat tripartito y píldora de pedido en curso en el mapa.
 

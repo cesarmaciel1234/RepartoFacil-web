@@ -47,8 +47,8 @@ Invariantes:
 3. El historial local es complementario; no reemplaza el registro central.
 4. Mantener los filtros de aislamiento por cliente, empresa y repartidor en
    `src/app/api/orders/route.ts`.
-5. Mantener los métodos de pago seleccionados (`cash`, `transfer`, `card`) desde
-   checkout hasta la fila almacenada y la confirmación.
+5. Conservar el método de pago elegido (`cash`, `transfer`, `card`) y distinguirlo
+   del origen de la venta y de la confirmación efectiva del cobro.
 6. No cambiar estados, columnas o reglas de conflicto de pedidos sin comprobar
    compatibilidad con el CRM y la bandeja del repartidor.
 
@@ -89,6 +89,28 @@ el importe o falta el catálogo, rechaza la compra sin confirmarla. El stock
 refleja la última instantánea del TPV: esta verificación no reserva ni descuenta
 inventario, por lo que ventas simultáneas pueden agotarlo antes de preparar el
 pedido. La tarifa y la ganancia se recalculan en servidor.
+
+### Ventas Web, cobros y cartera
+
+En Cobro Fácil, `Web` identifica las ventas originadas en la tienda para
+separarlas de las demás ventas del TPV. No significa por sí solo que el pedido
+esté pagado ni indica si el cliente eligió efectivo, transferencia o tarjeta.
+Por ahora se mantiene esa clasificación; no cambiar el reporte del TPV sin
+acordar la integración con Cobro Fácil.
+
+En una prueba real controlada, la tienda envió efectivo y, al aceptar el pedido,
+Cobro Fácil lo guardó como `Web`. El repartidor vio «Pagado Online» y la entrega
+registró efectivo cobrado igual a cero, aunque no hubo pago real. Esta prueba
+demuestra un riesgo de interpretación y liquidación, no un cobro confirmado.
+La cartera mostrada en la prueba es local al dispositivo, no dinero transferido.
+Hasta resolverlo, verificar el cobro y la liquidación con el comercio; no usar
+la categoría `Web` como comprobante.
+
+Mejora pendiente: conservar por separado el origen (`Web`), el medio elegido y
+el estado de cobro confirmado. Diseñar y coordinar con Cobro Fácil categorías
+como Web efectivo y Web tarjeta, sin mezclar ventas ni inferir pagos. Actualizar
+checkout, recepción, bandeja, entrega, cartera y reportes juntos, con pruebas
+para efectivo, transferencia, tarjeta, pago pendiente y pago confirmado.
 
 La auditoría automática de Custodio y la liberación al desconectarse están
 pausadas por defecto (`RF_CUSTODIO_AUTOMATIC_ENABLED` distinto de `1`). No se
@@ -192,6 +214,34 @@ en este orden:
 
 No enviar pedidos de prueba mientras la API devuelve 500. No borrar pedidos,
 vaciar carritos preexistentes ni alterar datos del CRM durante una prueba.
+
+## Mejoras pendientes antes de operar a mayor escala
+
+- **Cuentas y sesiones:** migrar la autenticación del backend a almacenamiento
+  persistente y respaldado, coordinar la migración de cuentas existentes y
+  configurar una clave JWT estable. En la configuración actual SQLite puede
+  perder cuentas al reiniciar; una clave generada al arrancar también puede
+  invalidar sesiones. No asumir que la base de pedidos persiste la autenticación.
+  Revisar recuperación de cuenta, verificación de identidad y aprobación de
+  repartidores; actualmente el registro de repartidores es libre.
+- **Disponibilidad:** el plan gratuito puede suspender el backend y demorar su
+  arranque. El proxy de autenticación y la verificación de sesión esperan hasta
+  10 segundos; evaluar una solución que contemple arranques lentos sin presentar
+  como exitosa una operación no confirmada.
+- **Pagos y cartera:** separar origen, medio y confirmación de cobro; reemplazar
+  el saldo solo local por una liquidación persistente, verificable e idempotente.
+- **Inventario:** reservar o descontar stock de forma atómica en coordinación
+  con el TPV y manejar productos agotados antes de confirmar la compra.
+- **Custodio:** incorporar un trabajador y presencia confiables, confirmar
+  explícitamente el retiro físico y resolver alertas antiguas antes de activar la
+  liberación automática. Mantener la pausa hasta validar estos requisitos.
+- **Modo sin conexión:** el catálogo guardado es informativo; la compra exige
+  validación actual. Las acciones de reparto pendientes se sincronizan con la
+  aplicación abierta y la misma sesión, sin acreditar hasta recibir confirmación.
+  Los navegadores pueden suspender tareas en segundo plano.
+- **Pruebas integrales:** comprobar con datos ficticios autorizados compra,
+  recepción, embalado, asignación, mensajes, entrega y cartera; verificar tanto
+  el resultado en Cobro Fácil como los efectos reales de stock y cobro.
 
 ## 7. Diagnóstico y recuperación
 
