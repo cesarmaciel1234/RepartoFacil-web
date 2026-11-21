@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { CheckoutFormData, OrderData } from "../motor/tipos";
 import { loadSavedCustomer, buildWhatsAppLink } from "../motor/pedidoService";
+import { loadClientProfile } from "@/modulos/repartidor/motor/driverService";
 import { calcularTarifaEnvio } from "../motor/tarifaUberService";
 import {
   Dialog,
@@ -39,7 +40,7 @@ interface ModalCheckoutProps {
   profileAddress?: string;
   selectedDeliveryAddress?: string;
   isSubmitting: boolean;
-  onConfirmOrder: (formData: CheckoutFormData) => Promise<void>;
+  onConfirmOrder: (formData: CheckoutFormData, clientId: string) => Promise<void>;
   orderConfirmed: OrderData | null;
   onCloseConfirmed: () => void;
 }
@@ -59,6 +60,11 @@ export function ModalCheckout({
   onCloseConfirmed,
 }: ModalCheckoutProps) {
   const formatMoney = (val: number) => "$" + val.toLocaleString("es-AR");
+  const initializedForOpen = useRef(false);
+  const checkoutClientId = useRef<string | null>(null);
+  const [missingName, setMissingName] = useState(true);
+  const [missingPhone, setMissingPhone] = useState(true);
+  const [formError, setFormError] = useState("");
 
   const [form, setForm] = useState<CheckoutFormData>({
     customerName: "",
@@ -70,25 +76,29 @@ export function ModalCheckout({
     orderNotes: "",
   });
 
-  // Cargar datos previos si existen
   useEffect(() => {
-    if (!isOpen) return;
-
-    const saved = loadSavedCustomer();
-    if (saved) {
-      setForm((prev) => ({
-        ...prev,
-        customerName: saved.customerName || prev.customerName,
-        customerPhone: saved.customerPhone || prev.customerPhone,
-        deliveryAddress:
-          profileAddress ||
-          selectedDeliveryAddress ||
-          saved.deliveryAddress ||
-          prev.deliveryAddress,
-        deliveryType: saved.deliveryType || prev.deliveryType,
-        selectedBranch: saved.selectedBranch || prev.selectedBranch,
-      }));
+    if (!isOpen) {
+      initializedForOpen.current = false;
+      return;
     }
+    if (initializedForOpen.current) return;
+    initializedForOpen.current = true;
+
+    checkoutClientId.current = loadClientProfile()?.id || null;
+    const saved = loadSavedCustomer();
+    const customerName = saved.customerName?.trim() || "";
+    const customerPhone = saved.customerPhone?.trim() || "";
+    setMissingName(!customerName);
+    setMissingPhone(!customerPhone);
+    setFormError("");
+    setForm((prev) => ({
+      ...prev,
+      customerName,
+      customerPhone,
+      deliveryAddress: profileAddress || selectedDeliveryAddress || saved.deliveryAddress || "",
+      deliveryType: saved.deliveryType || "delivery",
+      selectedBranch: saved.selectedBranch || "Sucursal Central - Tucumán 2130",
+    }));
   }, [isOpen, profileAddress, selectedDeliveryAddress]);
 
   // Cálculo de tarifa estándar Uber / PedidosYa
@@ -108,7 +118,17 @@ export function ModalCheckout({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    await onConfirmOrder(form);
+    if (!checkoutClientId.current || loadClientProfile()?.id !== checkoutClientId.current) {
+      setFormError("La sesión cambió. Cerrá el formulario y volvé a abrirlo.");
+      return;
+    }
+    if (!form.customerName.trim() || !form.customerPhone.trim() ||
+        (form.deliveryType === "delivery" && !form.deliveryAddress.trim())) {
+      setFormError("Completá los datos de contacto y la dirección de entrega.");
+      return;
+    }
+    setFormError("");
+    await onConfirmOrder(form, checkoutClientId.current);
   };
 
   return (
@@ -171,13 +191,14 @@ export function ModalCheckout({
 
             {/* Datos Personales */}
             <div className="space-y-2.5">
-              <div>
+              {missingName && <div>
                 <label className="mb-1 block text-xs font-bold text-slate-700">
                   Nombre y Apellido *
                 </label>
                 <div className="relative">
                   <User className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                   <Input
+                    autoComplete="name"
                     placeholder="Ej. Juan Pérez"
                     value={form.customerName}
                     onChange={(e) => setForm((p) => ({ ...p, customerName: e.target.value }))}
@@ -185,15 +206,17 @@ export function ModalCheckout({
                     required
                   />
                 </div>
-              </div>
+              </div>}
 
-              <div>
+              {missingPhone && <div>
                 <label className="mb-1 block text-xs font-bold text-slate-700">
                   WhatsApp / Celular de Contacto *
                 </label>
                 <div className="relative">
                   <Phone className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                   <Input
+                    type="tel"
+                    autoComplete="tel"
                     placeholder="Ej. 11 5566-7788"
                     value={form.customerPhone}
                     onChange={(e) => setForm((p) => ({ ...p, customerPhone: e.target.value }))}
@@ -201,7 +224,7 @@ export function ModalCheckout({
                     required
                   />
                 </div>
-              </div>
+              </div>}
 
               {form.deliveryType === "delivery" ? (
                 <div className="space-y-1.5">
@@ -211,6 +234,7 @@ export function ModalCheckout({
                   <div className="relative">
                     <MapPin className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                     <Input
+                      autoComplete="street-address"
                       placeholder="Ej. San Lorenzo 2040, Rosario"
                       value={form.deliveryAddress}
                       onChange={(e) => setForm((p) => ({ ...p, deliveryAddress: e.target.value }))}
@@ -304,6 +328,7 @@ export function ModalCheckout({
 
             {/* Total y Botón Confirmar */}
             <div className="space-y-2.5 border-t border-slate-100 pt-2">
+              {formError && <p role="alert" className="text-xs font-medium text-red-600">{formError}</p>}
               <div className="flex items-center justify-between text-xs font-bold">
                 <span className="text-slate-500">Total a abonar:</span>
                 <span className="text-base font-black text-blue-700">{formatMoney(finalTotal)}</span>

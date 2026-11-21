@@ -45,3 +45,7 @@ checkout y seguimiento de pedidos.
 - **Cero bloqueo:** No exigir login para explorar o agregar al carrito.
 - **Responsividad móvil:** No generar scroll horizontal en pantallas de 390px.
 - **Separación de pantallas:** El historial no se vuelve a incrustar en el panel de pedidos activos.
+- **Checkout:** Usa el nombre y teléfono registrados sin mostrarlos; pide solo los
+  que faltan y los guarda en el perfil antes de confirmar. La dirección de envío
+  sigue editable para cada pedido. Al iniciar sesión se recupera el perfil privado
+  sin reemplazar sus datos de contacto por valores vacíos.

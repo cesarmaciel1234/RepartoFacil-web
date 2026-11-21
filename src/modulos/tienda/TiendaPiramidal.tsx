@@ -7,7 +7,7 @@ import {
   isProductPurchasable,
   productAvailabilityMessage,
 } from "./motor/productoDisponibilidad";
-import { createOrder } from "./motor/pedidoService";
+import { createOrder, refreshMissingCustomerProfile, saveMissingCustomerProfile } from "./motor/pedidoService";
 import type { CheckoutFormData, DeliveryCoordinates, OrderData } from "./motor/tipos";
 import { useCatalogoTienda } from "./catalogo/hooks/useCatalogoTienda";
 import { usePedidosCliente } from "./pedidos/hooks/usePedidosCliente";
@@ -307,7 +307,7 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
   };
 
   // Manejo de checkout: libre navegación en tienda, solo se pide login al pagar (y luego no vuelve a pedir)
-  const handleProceedToPayment = (companyId: string) => {
+  const handleProceedToPayment = async (companyId: string) => {
     if (catalogProductsStatus !== "ready") {
       toast({
         title: "Inventario no disponible",
@@ -323,10 +323,21 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
       setIsClientAuthOpen(true);
       return;
     }
-    setIsCheckoutOpen(true);
+    try {
+      await refreshMissingCustomerProfile();
+      setIsCheckoutOpen(true);
+    } catch (error) {
+      console.error("No se pudo cargar el perfil del comprador:", error);
+      setIsCartOpen(true);
+      toast({
+        title: "No se pudieron cargar tus datos",
+        description: error instanceof Error ? error.message : "Intentá nuevamente.",
+        variant: "destructive",
+      });
+    }
   };
 
-  const handleConfirmOrder = async (formData: CheckoutFormData) => {
+  const handleConfirmOrder = async (formData: CheckoutFormData, expectedClientId: string) => {
     setIsSubmittingOrder(true);
     try {
       if (!checkoutCompanyId || checkoutCart.length === 0) {
@@ -374,6 +385,10 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
         deliveryFeeOverride: orderCompany?.deliveryFee,
         freeDeliveryThreshold: orderCompany?.freeDeliveryThreshold,
       };
+      await saveMissingCustomerProfile(orderForm, expectedClientId);
+      if (loadClientProfile()?.id !== expectedClientId) {
+        throw new Error("La sesión cambió. Cerrá el formulario y volvé a abrirlo.");
+      }
       const newOrder = await createOrder(checkoutCart, orderForm);
       setIsCheckoutOpen(false);
       setOrderConfirmed(newOrder);

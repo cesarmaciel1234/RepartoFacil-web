@@ -15,6 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useFirestore } from "@/firebase";
 import { doc, setDoc } from "@/firebase/local-firestore";
 import { saveClientProfile, generateUniqueEntityId } from "@/modulos/repartidor/motor/driverService";
+import { readRegisteredCustomer } from "../motor/pedidoService";
 
 interface ModalClientAuthProps {
   isOpen: boolean;
@@ -77,42 +78,31 @@ export function ModalClientAuth({
 
       const userAccountId = user.userId || user.uid || generateUniqueEntityId("usr_cli");
       const clientProfileId = user.id || generateUniqueEntityId("cli");
+      const registered = await readRegisteredCustomer(clientProfileId, `Bearer ${token}`);
+      const registeredName = typeof registered?.displayName === "string" ? registered.displayName.trim() : "";
+      const authName = typeof user.displayName === "string" ? user.displayName.trim() : "";
+      const customerName = authName && !["cliente", "cliente frecuente"].includes(authName.toLocaleLowerCase("es-AR"))
+        ? authName
+        : registeredName || authName || "Cliente Frecuente";
 
       const clientProfile = {
         id: clientProfileId,
         uid: userAccountId,
         userId: userAccountId,
-        displayName: user.displayName || user.firstName || "Cliente Frecuente",
+        displayName: customerName,
         email: user.email,
         role: "Client" as const,
-        phone: user.phone || phone.trim(),
-        address: user.address || address.trim(),
+        phone: user.phone || (typeof registered?.phone === "string" ? registered.phone.trim() : ""),
+        address: user.address || (typeof registered?.address === "string" ? registered.address.trim() : ""),
         createdAt: new Date().toISOString(),
       };
 
       // Guardar sesión persistente de comprador (separada de repartidores)
       saveClientProfile(clientProfile, token);
 
-      // Sincronizar en la colección clients de la base de datos
-      if (firestore) {
-        try {
-          await setDoc(doc(firestore, "clients", clientProfileId), {
-            id: clientProfileId,
-            displayName: clientProfile.displayName,
-            email: user.email,
-            role: "Client",
-            phone: clientProfile.phone,
-            address: clientProfile.address,
-            updatedAt: new Date().toISOString(),
-          }, { merge: true });
-        } catch (dbErr) {
-          console.warn("Aviso guardando en clients:", dbErr);
-        }
-      }
-
       toast({
         title: "¡Sesión iniciada!",
-        description: "Completá o confirmá tus datos de contacto antes de enviar el pedido.",
+        description: "Ya podés continuar con tu compra.",
       });
 
       if (onSuccess) onSuccess();
@@ -186,9 +176,10 @@ export function ModalClientAuth({
       // Guardar sesión persistente de comprador (separada de repartidores)
       saveClientProfile(clientProfile, token);
 
+      let contactSaved = false;
       if (firestore) {
         try {
-          await setDoc(doc(firestore, "clients", clientProfileId), {
+          const result = await setDoc(doc(firestore, "clients", clientProfileId), {
             id: clientProfileId,
             displayName: name.trim(),
             email,
@@ -198,6 +189,7 @@ export function ModalClientAuth({
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
           });
+          contactSaved = result !== null;
         } catch (dbErr) {
           console.warn("Aviso guardando en clients:", dbErr);
         }
@@ -205,7 +197,10 @@ export function ModalClientAuth({
 
       toast({
         title: "¡Cuenta creada con éxito!",
-        description: `Bienvenido a Reparto Fácil, ${name.trim()}.`,
+        description: contactSaved
+          ? `Bienvenido a Reparto Fácil, ${name.trim()}.`
+          : "La cuenta se creó, pero no se pudieron guardar tus datos de contacto en el servidor.",
+        variant: contactSaved ? "default" : "destructive",
       });
 
       if (onSuccess) onSuccess();

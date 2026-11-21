@@ -3,6 +3,7 @@ import { calcularTarifaEnvio, estimateAddressCoords, MARKET_CENTRAL } from "./ta
 import { authHeaders } from "@/lib/clientAuth";
 import {
   loadClientProfile,
+  saveClientProfile,
   getOrCreateActiveClientIdentity,
   ORDERS_STORAGE_KEY,
 } from "@/modulos/repartidor/motor/driverService";
@@ -92,6 +93,100 @@ export function saveCustomerData(form: CheckoutFormData) {
   } catch (e) {
     console.warn("No se pudo guardar datos del cliente:", e);
   }
+}
+
+export async function readRegisteredCustomer(profileId: string, authorization: string): Promise<{
+  displayName?: string;
+  phone?: string;
+  address?: string;
+} | null> {
+  let response: Response;
+  try {
+    response = await fetch(`/api/db/clients/${encodeURIComponent(profileId)}`, {
+      headers: { Authorization: authorization },
+      cache: "no-store",
+    });
+  } catch (error) {
+    console.warn("No se pudo consultar el perfil del comprador:", error);
+    throw new Error("No se pudieron cargar tus datos de contacto. Revisá tu conexión e intentá nuevamente.");
+  }
+  if (response.status === 404) return null;
+  if (!response.ok) {
+    throw new Error("No se pudieron cargar tus datos de contacto. Intentá nuevamente.");
+  }
+  const data: unknown = await response.json();
+  if (!data || typeof data !== "object" || Array.isArray(data)) {
+    throw new Error("El perfil recibido no es válido. Intentá nuevamente.");
+  }
+  const profile = data as Record<string, unknown>;
+  if (["displayName", "phone", "address"].some(
+    (key) => profile[key] != null && typeof profile[key] !== "string"
+  )) {
+    throw new Error("El perfil recibido no es válido. Intentá nuevamente.");
+  }
+  return {
+    displayName: typeof profile.displayName === "string" ? profile.displayName : undefined,
+    phone: typeof profile.phone === "string" ? profile.phone : undefined,
+    address: typeof profile.address === "string" ? profile.address : undefined,
+  };
+}
+
+export async function refreshMissingCustomerProfile(): Promise<void> {
+  const profile = loadClientProfile();
+  const authorization = authHeaders("Client").Authorization;
+  if (!profile || !authorization) throw new Error("Iniciá sesión como comprador para continuar.");
+  const saved = loadSavedCustomer();
+  if (saved.customerName?.trim() && saved.customerPhone?.trim()) return;
+
+  const registered = await readRegisteredCustomer(profile.id, authorization);
+  if (loadClientProfile()?.id !== profile.id || authHeaders("Client").Authorization !== authorization) {
+    throw new Error("La sesión cambió. Volvé a abrir el carrito.");
+  }
+  if (!registered) return;
+  const name = typeof registered.displayName === "string" ? registered.displayName.trim() : "";
+  const phone = typeof registered.phone === "string" ? registered.phone.trim() : "";
+  const address = typeof registered.address === "string" ? registered.address.trim() : "";
+  const updates = {
+    ...(!saved.customerName?.trim() && name && !PLACEHOLDER_CUSTOMER_NAMES.has(name.toLocaleLowerCase("es-AR")) ? { displayName: name } : {}),
+    ...(!saved.customerPhone?.trim() && phone && phone !== PLACEHOLDER_CUSTOMER_PHONE ? { phone } : {}),
+    ...(!saved.deliveryAddress?.trim() && address && !PLACEHOLDER_CUSTOMER_ADDRESSES.has(address.toLocaleLowerCase("es-AR")) ? { address } : {}),
+  };
+  if (Object.keys(updates).length) saveClientProfile({ ...profile, ...updates });
+}
+
+export async function saveMissingCustomerProfile(form: CheckoutFormData, expectedClientId: string): Promise<void> {
+  const profile = loadClientProfile();
+  const headers = authHeaders("Client");
+  if (!profile || !headers.Authorization || profile.id !== expectedClientId) {
+    throw new Error("La sesión cambió. Cerrá el formulario y volvé a abrirlo.");
+  }
+  const saved = loadSavedCustomer();
+  const updates: { displayName?: string; phone?: string } = {};
+  if (!saved.customerName?.trim()) updates.displayName = form.customerName.trim();
+  if (!saved.customerPhone?.trim()) updates.phone = form.customerPhone.trim();
+  if (!Object.keys(updates).length) return;
+  if (("displayName" in updates && !updates.displayName) || ("phone" in updates && !updates.phone)) {
+    throw new Error("Completá tu nombre y teléfono de contacto.");
+  }
+
+  let response: Response;
+  try {
+    response = await fetch(`/api/db/clients/${encodeURIComponent(profile.id)}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", ...headers },
+      body: JSON.stringify(updates),
+    });
+  } catch (error) {
+    console.warn("No se pudieron guardar los datos del comprador:", error);
+    throw new Error("No se pudieron guardar tus datos de contacto. Revisá tu conexión e intentá nuevamente.");
+  }
+  if (!response.ok) {
+    throw new Error("No se pudieron guardar tus datos de contacto. Intentá nuevamente.");
+  }
+  if (loadClientProfile()?.id !== expectedClientId || authHeaders("Client").Authorization !== headers.Authorization) {
+    throw new Error("La sesión cambió. Cerrá el formulario y volvé a abrirlo.");
+  }
+  saveClientProfile({ ...profile, ...updates });
 }
 
 export async function createOrder(
