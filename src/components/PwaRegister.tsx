@@ -5,11 +5,11 @@ import { useEffect } from "react";
 export function PwaRegister() {
   useEffect(() => {
     if (typeof window !== "undefined") {
-      // 1. Purgar proactivamente cualquier caché vieja anterior a v5.8
+      // 1. Purgar proactivamente cualquier caché vieja anterior a v5.9
       if ("caches" in window) {
         caches.keys().then((keys) => {
           keys.forEach((key) => {
-            if (key !== "repartofacil-v5.8") {
+            if (key !== "repartofacil-v5.9") {
               console.log("[PWA] Purgando caché obsoleta:", key);
               caches.delete(key);
             }
@@ -39,7 +39,7 @@ export function PwaRegister() {
                       installingWorker.state === "installed" &&
                       navigator.serviceWorker.controller
                     ) {
-                      console.log("[PWA] Nueva versión v5.0 detectada. Activando...");
+                      console.log("[PWA] Nueva versión v5.9 detectada. Activando...");
                       if (registration.waiting) {
                         registration.waiting.postMessage({ type: "SKIP_WAITING" });
                       }

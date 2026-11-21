@@ -1,4 +1,4 @@
-const CACHE_NAME = "repartofacil-v5.8";
+const CACHE_NAME = "repartofacil-v5.9";
 
 const STATIC_PRECACHE = [
   "/manifest.webmanifest",

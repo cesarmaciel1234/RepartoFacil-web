@@ -5,8 +5,8 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   return NextResponse.json({
     app: "Reparto Fácil",
-    version: "5.8",
-    release: "v5.8-white-blue-marketplace-ui",
+    version: "5.9",
+    release: "v5.9-white-blue-order-chat",
     status: "online",
     timestamp: new Date().toISOString(),
     features: [
@@ -15,6 +15,7 @@ export async function GET() {
       "Búsqueda cruzada de productos entre comercios",
       "Sincronización automática de inventario TPV Cobro Fácil",
       "Chat tripartito y telemetría de repartidor",
+      "Chat de pedidos activos integrado y carrito blanco/azul",
     ],
   });
 }
