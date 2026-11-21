@@ -108,8 +108,8 @@ export function ModalClientAuth({
       // Sincronizar en la colección clients de la base de datos
       if (firestore) {
         try {
-          await setDoc(doc(firestore, "clients", clientId), {
-            id: clientId,
+          await setDoc(doc(firestore, "clients", clientProfileId), {
+            id: clientProfileId,
             displayName: clientProfile.displayName,
             email: user.email,
             role: "Client",
@@ -209,8 +209,8 @@ export function ModalClientAuth({
 
       if (firestore) {
         try {
-          await setDoc(doc(firestore, "clients", clientId), {
-            id: clientId,
+          await setDoc(doc(firestore, "clients", clientProfileId), {
+            id: clientProfileId,
             displayName: name.trim(),
             email,
             role: "Client",

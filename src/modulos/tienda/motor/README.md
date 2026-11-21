@@ -31,7 +31,7 @@
 
 ## 3. Cómo funciona (Flujo paso a paso)
 1. `useCart` gestiona el array de `CartItem` y calcula subtotales.
-2. Durante el checkout, `calcularTarifaEnvio` calcula el flete en función del domicilio y la hora. Si el subtotal >= $35.000, el envío es gratis para el cliente.
+2. El carrito y el checkout calculan el flete con `calcularTarifaEnvio`, según el domicilio y la hora. Si el subtotal >= $35.000, el envío es gratis para el cliente.
 3. Al confirmar, `createOrder` genera el pedido `#RF-XXXX` y lo guarda primero en `/api/orders`. Si el servidor falla, el checkout muestra un error y conserva el carrito; si se guarda, lo agrega a `rf_orders_history`, emite `rf-orders-updated` y lo envía a Firestore si está conectado.
 
 ---

@@ -6,6 +6,11 @@ import { loadClientProfile, getOrCreateActiveClientIdentity } from "@/modulos/re
 
 const ORDERS_STORAGE_KEY = "rf_orders_history";
 const CUSTOMER_STORAGE_KEY = "rf_customer_data";
+const PAYMENT_METHOD_MAP: Record<CheckoutFormData["paymentMethod"], OrderData["paymentMethod"]> = {
+  efectivo: "cash",
+  transferencia: "transfer",
+  tarjeta: "card",
+};
 
 export function loadSavedCustomer(): Partial<CheckoutFormData> {
   if (typeof window === "undefined") return {};
@@ -101,7 +106,7 @@ export async function createOrder(
     deliveryType: form.deliveryType,
     deliveryAddress:
       form.deliveryType === "delivery" ? form.deliveryAddress.trim() : companyBranchName,
-    paymentMethod: form.paymentMethod === "efectivo" ? "cash" : form.paymentMethod,
+    paymentMethod: PAYMENT_METHOD_MAP[form.paymentMethod],
     notes: form.orderNotes.trim() || undefined,
     items: cart.map((i) => ({
       id: i.product.id,
@@ -168,7 +173,13 @@ export async function createOrder(
   return newOrder;
 }
 
-export function buildWhatsAppLink(order: any, phoneNumber = "5491100000000"): string {
+export function buildWhatsAppLink(order: OrderData, phoneNumber = "5491100000000"): string {
+  const paymentLabels: Record<OrderData["paymentMethod"], string> = {
+    cash: "Efectivo",
+    transfer: "Transferencia",
+    card: "Tarjeta",
+    web: "Pago web",
+  };
   const itemsText = order.items
     .map(
       (i: any) =>
@@ -183,7 +194,7 @@ export function buildWhatsAppLink(order: any, phoneNumber = "5491100000000"): st
     `📍 *Destino:* ${order.deliveryAddress} (${
       order.deliveryType === "delivery" ? "Envío a domicilio" : "Retiro en sucursal"
     })\n` +
-    `💳 *Pago:* ${order.paymentMethod.toUpperCase()}\n\n` +
+    `💳 *Pago:* ${paymentLabels[order.paymentMethod]}\n\n` +
     `🛒 *Detalle de compra:*\n${itemsText}\n\n` +
     (order.deliveryFee > 0
       ? `🛵 *Costo de envío:* $${order.deliveryFee.toLocaleString("es-AR")}\n`

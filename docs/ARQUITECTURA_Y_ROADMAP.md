@@ -6,7 +6,11 @@
 
 ## 🏗️ 1. Arquitectura del Sistema y Separación de Roles
 
-La arquitectura sigue una separación estricta tanto en frontend como en base de datos (`backend/repartofacil.db` en SQLite / FastAPI con proxy inverso en Next.js):
+La tienda Next.js, la API FastAPI y Cobro Fácil son servicios separados. La
+tienda y Cobro Fácil comparten PostgreSQL para los pedidos, pero cada servicio
+debe recibir su propia variable `DATABASE_URL` en Render. La API de pedidos de
+la tienda consulta PostgreSQL desde `src/lib/db.ts`; no depende de la SQLite
+local que FastAPI puede usar en desarrollo.
 
 ```mermaid
 flowchart TD
@@ -16,36 +20,48 @@ flowchart TD
         UI_Chat["💬 Chat Tripartito (Campana)\n- Canal en vivo Cliente ⇄ Repartidor ⇄ Empresa\n- Persistente y preparado para CobroFácil"]
     end
 
-    subgraph BackendProxy["Proxy Inverso Next.js"]
+    subgraph NextAPI["API Routes Next.js"]
+        OrdersAPI["/api/orders\nPostgreSQL compartido"]
+        ChatAPI["/api/chat/*\nPostgreSQL compartido"]
+        CustodioAPI["/api/orders/custodio\nPostgreSQL compartido"]
         ProxyAuth["/api/auth/*"]
+        ProxyCF["/api/cobrofacil/*"]
         ProxyDB["/api/db/*"]
     end
 
-    subgraph BackendAPI["Backend FastAPI (Puerto 8000)"]
+    subgraph BackendAPI["Backend FastAPI"]
         AuthEngine["Motor Auth & Roles"]
         DBEngine["Motor de Colecciones"]
     end
 
-    subgraph BaseDeDatos["Base de Datos (repartofacil.db)"]
-        Col_Clients[("clients\n- ID, Teléfono, Direcciones\n- Historial de Compras")]
-        Col_Drivers[("driverProfiles\n- ID, Vehículo, Calificación\n- Lat/Lng, Billetera")]
-        Col_Orders[("orders\n- Estados: Pending, In Transit...\n- Chat IDs, Ruta")]
-        Col_Companies[("companies / CobroFácil\n- Sucursales, Catálogo, Stock")]
+    subgraph BaseDeDatos["PostgreSQL compartido por tienda y CRM"]
+        Col_Orders[("repartofacil_pedidos\n- Pedidos de la tienda\n- Bandeja de Cobro Fácil")]
+        Col_Chat[("repartofacil_chat_mensajes")]
+        Col_Companies[("Empresas, sucursales,\ncatálogo y stock")]
+    end
+
+    subgraph BackendDB["Persistencia configurada para FastAPI"]
+        Col_Auth[("Autenticación y colecciones\nsegún DATABASE_URL del backend")]
     end
 
     subgraph CloudExt["Ecosistema en la Nube"]
-        CobroFacil["🏢 CobroFácil en Render\nhttps://cobrofacil.onrender.com\n- Facturación, AFIP, Inventario"]
+        CobroFacil["🏢 Cobro Fácil CRM en Render\nRecepción de pedidos e inventario"]
     end
 
     UI_Cliente --> ProxyAuth
     UI_Repartidor --> ProxyAuth
-    UI_Chat --> ProxyDB
+    UI_Chat --> ChatAPI
+    OrdersAPI --> Col_Orders
+    ChatAPI --> Col_Chat
+    ChatAPI --> Col_Orders
+    CustodioAPI --> Col_Orders
+    ProxyCF --> BackendAPI
     ProxyAuth --> AuthEngine
     ProxyDB --> DBEngine
-    AuthEngine --> Col_Clients
-    AuthEngine --> Col_Drivers
-    DBEngine --> Col_Orders
-    CobroFacil <--> BackendAPI
+    AuthEngine --> Col_Auth
+    DBEngine --> Col_Auth
+    CobroFacil <--> Col_Orders
+    CobroFacil <--> Col_Companies
 ```
 
 ---
@@ -56,7 +72,7 @@ flowchart TD
 - **Problema resuelto**: Anteriormente, la tienda solo mostraba el catálogo del local seleccionado (ej. carnicería).
 - **Solución implementada**:
   - Al escribir un término de búsqueda (ej. `"coca"`, `"fernet"`, `"asado"`), el motor busca a lo largo de **todas** las empresas activas del ecosistema.
-  - Cada tarjeta de producto (`TarjetaProducto.tsx`) muestra la **Empresa Proveedora** (ej. `🏪 Kiosco Al Toque - 24hs` o `🏪 Frigorífico Maciel`) y la **Distancia real** calculada (ej. `0.8 km`, `1.2 km`).
+  - Cada tarjeta de producto (`TarjetaProducto.tsx`) muestra la **Empresa Proveedora** (ej. `🏪 Kiosco Al Toque - 24hs` o `🏪 Frigorífico Maciel`) y una **Distancia aproximada** (ej. `0.8 km`, `1.2 km`).
   - El modal de comercios (`ModalMercados.tsx`) clasifica por categorías (Carnicerías, Kioscos 24hs, Almacén) y filtra en tiempo real qué comercio tiene disponibilidad de los productos consultados.
 
 ### Pilar B: Telemetría y Seguimiento en Vivo del Repartidor
@@ -102,11 +118,8 @@ flowchart TD
 
 ---
 
-## 🔒 4. Cuentas de Acceso de Prueba Rápidas
+## 🔒 4. Accesos de Prueba
 
-| Rol | Usuario / Email | Contraseña | Colección DB |
-| :--- | :--- | :--- | :--- |
-| **Repartidor** | `repartidor` / `repartidor@repartofacil.com` | `12345678` | `driverProfiles` |
-| **Cliente** | `cliente` / `cliente@repartofacil.com` | `12345678` | `clients` |
-
-Ambas cuentas están preconfiguradas en `backend/repartofacil.db` con persistencia en `localStorage` (`rf_token`, `rf_user_id`, `rf_driver_profile`, `rf_client_profile`).
+No guardar contraseñas ni tokens en el repositorio. Consultar las cuentas de
+prueba desde el entorno autorizado y no utilizar credenciales reales para
+verificar cambios de interfaz.

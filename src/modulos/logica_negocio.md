@@ -64,7 +64,7 @@ El cálculo del costo de envío y la ganancia del repartidor se rige por un moto
 $$\text{Costo de Envío} = (\text{Tarifa Base} + (\text{Distancia en KM} \times \text{Precio por KM})) \times \text{Multiplicador Horario Pico}$$
 
 * **Tarifa Base:** `$1.200` (cubre costos operativos fijos de despacho y preparación).
-* **Precio por KM:** `$450 / km` (calculado mediante fórmula trigonométrica de Haversine desde el local central en `Tucumán 2130, Rosario`, coordenadas `-32.9372, -60.6542`).
+* **Precio por KM:** `$450 / km`. La tarifa actual obtiene una distancia aproximada mediante coincidencias de direcciones conocidas en `estimateAddressCoords()`; para direcciones no reconocidas usa una distancia predeterminada. `haversineKm()` es una utilidad disponible, pero el cálculo de tarifa no geocodifica cada domicilio en tiempo real.
 * **Multiplicador Horario Pico:**
   * **Horario Normal:** `1.00x` (sin recargo).
   * **Horario Pico:** `1.35x` (+35% de recargo dinámico). Se activa automáticamente en los turnos de alta demanda:

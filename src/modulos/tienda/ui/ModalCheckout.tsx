@@ -349,7 +349,12 @@ export function ModalCheckout({
               <div className="flex justify-between">
                 <span className="text-slate-400">Pago:</span>
                 <span className="font-bold text-emerald-300 uppercase text-[11px]">
-                  {orderConfirmed.paymentMethod}
+                  {{
+                    cash: "Efectivo",
+                    transfer: "Transferencia",
+                    card: "Tarjeta",
+                    web: "Pago web",
+                  }[orderConfirmed.paymentMethod]}
                 </span>
               </div>
             </div>

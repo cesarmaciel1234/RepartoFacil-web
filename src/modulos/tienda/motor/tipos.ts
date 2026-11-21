@@ -32,13 +32,15 @@ export interface OrderItem {
   quantity: number;
 }
 
+export type OrderPaymentMethod = "cash" | "transfer" | "card" | "web";
+
 export interface OrderData {
   id: string;
   customerName: string;
   customerPhone: string;
   deliveryType: "delivery" | "pickup";
   deliveryAddress: string;
-  paymentMethod: "efectivo" | "transferencia" | "tarjeta";
+  paymentMethod: OrderPaymentMethod;
   notes?: string;
   items: OrderItem[];
   subtotal: number;

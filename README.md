@@ -1,72 +1,57 @@
+# Reparto Fácil Web
 
-# # ruta-optima-idx
+Aplicación Next.js para el marketplace multitienda de Reparto Fácil, el checkout
+de clientes y la experiencia móvil de repartidores. Se integra con Cobro Fácil
+para recibir pedidos e inventario; Reparto Fácil y Cobro Fácil comparten la
+misma base de datos PostgreSQL.
 
-Este es un proyecto de gestión de logística optimizado con IA (Genkit) y Firebase.
+## Arquitectura
 
-## Configuración de Git y Subida al Repositorio
+- `src/app/`: páginas Next.js y API routes.
+- `src/app/api/orders/`, `src/app/api/chat/` y `src/app/api/orders/custodio/`:
+  rutas operativas que consultan PostgreSQL mediante `src/lib/db.ts`.
+- `src/app/api/auth/` y `src/app/api/cobrofacil/`: proxies al servicio FastAPI
+  configurado mediante `BACKEND_URL`.
+- `src/modulos/tienda/`: marketplace, catálogo, carrito, checkout, historial y
+  seguimiento del cliente.
+- `src/modulos/repartidor/`: radar, rutas, telemetría y billetera del repartidor.
+- `src/firebase/`, `src/lib/` y `src/components/`: integraciones e infraestructura
+  compartida.
+- `backend/`: servicio FastAPI independiente; sus variables de entorno no se
+  heredan del servicio Next.js.
 
-Para subir este proyecto a tu repositorio de GitHub, ejecuta los siguientes comandos en tu terminal:
+La tienda y Cobro Fácil son servicios web separados aunque usen la misma base.
+Cada servicio debe recibir su propia variable `DATABASE_URL` en Render. El
+valor es secreto: no se incluye en el repositorio ni se expone con prefijo
+`NEXT_PUBLIC_`.
 
-1. **Configura tu identidad:**
-   ```bash
-   git config --global user.email "tu-email@ejemplo.com"
-   git config --global user.name "Tu Nombre"
-   ```
+## Flujos que deben preservarse
 
-2. **Inicializa y vincula el repositorio:**
-   ```bash
-   git init
-   git remote remove origin 2>/dev/null
-   git remote add origin https://github.com/cesarmaciel1234/ruta-optima-idx.git
-   ```
+- Se puede explorar el catálogo y armar el carrito sin iniciar sesión; el acceso
+  se solicita al pagar.
+- La confirmación del checkout requiere una respuesta exitosa de `POST
+  /api/orders`. Si el servidor falla, se conserva el carrito y no se muestra una
+  compra confirmada.
+- El carrito y el checkout deben mostrar la misma tarifa para la misma dirección
+  y modalidad.
+- Los pedidos conservan el aislamiento por cliente y comercio en la API.
+- Los detalles de cada dominio y sus invariantes están en los README de
+  `src/modulos/tienda/` y `src/modulos/repartidor/`.
 
-3. **Primer Commit y Push:**
-   ```bash
-   git add .
-   git commit -m "🚀 Initial Commit: RutaRápida Pro"
-   git branch -M RUTA-OPTIMA
-   git push -u origin RUTA-OPTIMA
-   ```
+## Desarrollo
 
-## Características Principales
+```bash
+npm run dev
+npm run build
+npm run typecheck
+```
 
-- **Rastreo GPS en tiempo real** de la flota de conductores.
-- **Optimización de Rutas con IA** mediante Google Genkit.
-- **Copiloto IA (Copo)** para asistencia interactiva del conductor.
-- **Comunidad Live** con sistema de "bumping" para incidencias críticas.
-- **Interfaz Pro** enfocada exclusivamente en la experiencia del repartidor.
+La compilación de producción no reemplaza `npm run typecheck`. El typecheck
+puede señalar errores existentes en módulos ajenos a la tienda; revisar cada
+resultado antes de atribuirlo a un cambio.
 
-## Despliegue en Render
+## Producción
 
-1. **Conecta el repositorio a Render:**
-   - Ve a [render.com](https://render.com)
-   - Crea una cuenta e inicia sesión con GitHub
-   - Haz clic en "New +" y selecciona "Web Service"
-   - Conecta el repositorio `cesarmaciel1234/RepartoFacil-web`
-
-2. **Configura el servicio:**
-   - Name: `repartofacil-web` (o el nombre que prefieras)
-   - Environment: `Node`
-   - Build Command: `npm install && npm run build`
-   - Start Command: `npm start`
-
-3. **Variables de entorno:**
-   Agrega las siguientes variables de entorno en Render (sección Environment):
-   - `NODE_ENV`: `production`
-   - `NEXT_PUBLIC_FIREBASE_API_KEY`: Tu API key de Firebase
-   - `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`: Tu dominio de Firebase
-   - `NEXT_PUBLIC_FIREBASE_PROJECT_ID`: Tu ID de proyecto Firebase
-   - `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET`: Tu bucket de storage
-   - `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID`: Tu sender ID
-   - `NEXT_PUBLIC_FIREBASE_APP_ID`: Tu app ID de Firebase
-   - `DATABASE_URL`: URL de conexión PostgreSQL (cargarla como variable secreta, no en el código)
-   - `GOOGLE_GENAI_API_KEY`: Tu API key de Google GenAI
-
-4. **Plan:**
-   - Puedes usar el plan gratuito para desarrollo
-
-5. **Despliega:**
-   - Haz clic en "Create Web Service"
-   - Render detectará automáticamente el archivo `render.yaml` y usará esa configuración
-
-**Nota:** El archivo `render.yaml` ya está configurado en el repositorio. Solo necesitas agregar las variables de entorno en el panel de Render.
+Antes de publicar, seguir [`docs/PRODUCCION.md`](./docs/PRODUCCION.md). Incluye
+los servicios de Render, variables requeridas, invariantes de persistencia y
+pruebas de humo para evitar publicar una tienda que no pueda recibir pedidos.

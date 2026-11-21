@@ -4,6 +4,22 @@ import { ejecutarAuditoriaCustodio } from "./custodio/route";
 
 export const dynamic = "force-dynamic";
 
+function normalizePaymentMethod(value: unknown): "cash" | "transfer" | "card" | "web" {
+  switch (String(value || "").toLowerCase()) {
+    case "cash":
+    case "efectivo":
+      return "cash";
+    case "transfer":
+    case "transferencia":
+      return "transfer";
+    case "card":
+    case "tarjeta":
+      return "card";
+    default:
+      return "web";
+  }
+}
+
 function mapDbRowToOrder(row: any) {
   let items = [];
   try {
@@ -24,7 +40,7 @@ function mapDbRowToOrder(row: any) {
     customerPhone: row.cliente_telefono || "+54 9 341 555-1234",
     deliveryAddress: row.direccion_entrega || "Tucumán 2130, Rosario",
     deliveryType: row.tipo_entrega || "delivery",
-    paymentMethod: "Web",
+    paymentMethod: normalizePaymentMethod(row.metodo_pago),
     status: row.estado || "Pending",
     driverId: row.repartidor_id || null,
     driverName: row.repartidor_nombre || null,
@@ -193,7 +209,7 @@ export async function POST(request: NextRequest) {
       data.customerPhone || "+54 9 341 555-1234",
       data.deliveryAddress || "Tucumán 2130, Rosario",
       data.deliveryType || "delivery",
-      "Web",
+      normalizePaymentMethod(data.paymentMethod || data.metodo_pago),
       data.status || "pending_store",
       empresaId,
       empresaSlug,

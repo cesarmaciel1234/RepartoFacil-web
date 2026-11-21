@@ -5,6 +5,7 @@ import type { CartItem } from "../motor/tipos";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { ShoppingBag, Plus, Minus, Trash2, ArrowRight, ShieldCheck, Truck } from "lucide-react";
+import { calcularTarifaEnvio } from "../motor/tarifaUberService";
 
 const FREE_DELIVERY_THRESHOLD = 35000;
 
@@ -14,6 +15,7 @@ interface DrawerCarritoProps {
   cart: CartItem[];
   cartTotal: number;
   deliveryType: "delivery" | "pickup";
+  deliveryAddress: string;
   onUpdateQuantity: (productId: string, delta: number) => void;
   onRemoveItem: (productId: string) => void;
   onClearCart: () => void;
@@ -26,6 +28,7 @@ export function DrawerCarrito({
   cart,
   cartTotal,
   deliveryType,
+  deliveryAddress,
   onUpdateQuantity,
   onRemoveItem,
   onClearCart,
@@ -37,7 +40,7 @@ export function DrawerCarrito({
     deliveryType === "delivery" && cartTotal > 0
       ? cartTotal >= FREE_DELIVERY_THRESHOLD
         ? 0
-        : 2100
+        : calcularTarifaEnvio(deliveryAddress).totalDeliveryFee
       : 0;
   const finalTotal = cartTotal + deliveryFee;
 

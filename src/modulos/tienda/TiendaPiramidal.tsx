@@ -319,6 +319,7 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
         cart={cart}
         cartTotal={cartTotal}
         deliveryType="delivery"
+        deliveryAddress={deliveryAddress}
         onUpdateQuantity={updateQuantity}
         onRemoveItem={removeFromCart}
         onClearCart={clearCart}
