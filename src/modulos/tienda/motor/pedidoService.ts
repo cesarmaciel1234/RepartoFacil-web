@@ -7,6 +7,10 @@ import {
   getOrCreateActiveClientIdentity,
   ORDERS_STORAGE_KEY,
 } from "@/modulos/repartidor/motor/driverService";
+import {
+  isProductPurchasable,
+  productAvailabilityMessage,
+} from "./productoDisponibilidad";
 
 const CUSTOMER_STORAGE_KEY = "rf_customer_data";
 const PLACEHOLDER_CUSTOMER_NAMES = new Set(["cliente", "cliente frecuente"]);
@@ -96,7 +100,28 @@ export async function createOrder(
   form: CheckoutFormData,
   firestoreInstance: any = null
 ): Promise<OrderData> {
-  const subtotal = cart.reduce((acc, item) => acc + item.product.price * item.quantity, 0);
+  const verifiedCart = cart.map((item) => {
+    if (!isProductPurchasable(item.product)) {
+      throw new Error(
+        `${item.product.name}: ${
+          productAvailabilityMessage(item.product) || "producto no disponible"
+        }.`
+      );
+    }
+    if (!Number.isFinite(item.quantity) || item.quantity <= 0) {
+      throw new Error(`${item.product.name}: la cantidad del carrito no es válida.`);
+    }
+    if (item.quantity > item.product.stockKg) {
+      throw new Error(
+        `${item.product.name}: la cantidad supera el stock informado por el TPV.`
+      );
+    }
+    return { ...item, product: item.product };
+  });
+  const subtotal = verifiedCart.reduce(
+    (acc, item) => acc + item.product.price * item.quantity,
+    0
+  );
 
   // Cálculo de tarifa estándar Uber / PedidosYa
   const tarifa = calcularTarifaEnvio(form.deliveryAddress || "");
@@ -163,7 +188,7 @@ export async function createOrder(
       form.deliveryType === "delivery" ? form.deliveryAddress.trim() : companyBranchName,
     paymentMethod: PAYMENT_METHOD_MAP[form.paymentMethod],
     notes: form.orderNotes.trim() || undefined,
-    items: cart.map((i) => ({
+    items: verifiedCart.map((i) => ({
       id: i.product.id,
       name: i.product.name,
       price: i.product.price,

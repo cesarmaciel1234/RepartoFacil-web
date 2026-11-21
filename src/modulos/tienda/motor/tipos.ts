@@ -1,4 +1,4 @@
-import { Product } from "@/data/mockProducts";
+import type { Product } from "@/data/mockProducts";
 
 export interface DeliveryCoordinates {
   address: string;

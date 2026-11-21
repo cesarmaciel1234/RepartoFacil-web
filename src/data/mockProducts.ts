@@ -2,10 +2,11 @@ export interface Product {
   id: string;
   name: string;
   category: string;
-  price: number;
+  price?: number;
   unit: string;
   description: string;
-  image: string;
+  image?: string;
+  priceSource?: "tpv";
   isPopular?: boolean;
   discountBadge?: string;
   badge?: string;

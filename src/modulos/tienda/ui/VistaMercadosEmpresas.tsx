@@ -4,8 +4,10 @@ import React, { useEffect, useState } from "react";
 import type { CompanyStore } from "@/data/mockCompanies";
 import { productBelongsToCompany } from "../catalogo/hooks/useCatalogoTienda";
 import type { Product } from "@/data/mockProducts";
+import { hasValidPrice } from "../motor/productoDisponibilidad";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { ImagenProducto } from "./ImagenProducto";
 import { haversineKm } from "../motor/tarifaUberService";
 import {
   isCompanyCoordinates,
@@ -339,10 +341,9 @@ export function VistaMercadosEmpresas({
                 title={`Ver ${product.name} en ${company.name}`}
               >
                 <div className="relative aspect-[4/3] overflow-hidden bg-slate-100">
-                  <img
+                  <ImagenProducto
                     src={product.image}
                     alt=""
-                    loading="lazy"
                     className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                   />
                 </div>
@@ -351,8 +352,10 @@ export function VistaMercadosEmpresas({
                     <h3 className="line-clamp-2 min-w-0 text-sm font-extrabold text-slate-900">
                       {product.name}
                     </h3>
-                    <span className="shrink-0 font-black text-sm text-slate-900">
-                      ${product.price.toLocaleString("es-AR")}
+                    <span className="shrink-0 font-black text-xs text-slate-900">
+                      {product.priceSource === "tpv" && hasValidPrice(product)
+                        ? `$${product.price.toLocaleString("es-AR")}`
+                        : "Precio pendiente"}
                     </span>
                   </div>
                   <div className="flex min-w-0 items-center justify-between gap-2 text-[10px]">
@@ -497,7 +500,10 @@ export function VistaMercadosEmpresas({
                     >
                       <span>{p.name}</span>
                       <span className="text-blue-900 font-black">
-                        · ${p.price.toLocaleString("es-AR")}
+                        ·{" "}
+                        {p.priceSource === "tpv" && hasValidPrice(p)
+                          ? `$${p.price.toLocaleString("es-AR")}`
+                          : "Precio pendiente"}
                       </span>
                     </button>
                   ))}

@@ -3,6 +3,10 @@
 import React, { useEffect, useMemo, useState } from "react";
 import type { CompanyStore } from "@/data/mockCompanies";
 import { useCart } from "./motor/useCart";
+import {
+  isProductPurchasable,
+  productAvailabilityMessage,
+} from "./motor/productoDisponibilidad";
 import { createOrder } from "./motor/pedidoService";
 import type { CheckoutFormData, DeliveryCoordinates, OrderData } from "./motor/tipos";
 import { useCatalogoTienda } from "./catalogo/hooks/useCatalogoTienda";
@@ -83,6 +87,8 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
   const { toast } = useToast();
   const {
     cart,
+    isLoaded: isCartLoaded,
+    reconcileCatalogProducts,
     addToCart,
     updateQuantity,
     removeFromCart,
@@ -114,6 +120,7 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
     companies,
     status: catalogStatus,
     productsStatus: catalogProductsStatus,
+    productsWarnings,
     reload: reloadCatalog,
     productCountByCompany,
     companyCatalogSize,
@@ -124,6 +131,19 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
     selectedCategory,
     searchQuery,
   });
+
+  useEffect(() => {
+    if (!isCartLoaded) return;
+    reconcileCatalogProducts(
+      catalogProductsStatus === "ready" ? products : []
+    );
+  }, [
+    catalogProductsStatus,
+    isCartLoaded,
+    products,
+    reconcileCatalogProducts,
+  ]);
+
   const companyCarts = useMemo<CompanyCartSummary[]>(() => {
     const groups = new Map<string, typeof cart>();
     cart.forEach((item) => {
@@ -146,15 +166,22 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
           companyName: company?.name || items[0]?.product.companyName || companyId,
           company,
           items,
-          total: items.reduce(
-            (total, item) => total + item.product.price * item.quantity,
-            0
-          ),
+          total:
+            catalogProductsStatus === "ready"
+              ? items.reduce(
+                  (total, item) =>
+                    isProductPurchasable(item.product) &&
+                    item.quantity <= item.product.stockKg
+                      ? total + item.product.price * item.quantity
+                      : total,
+                  0
+                )
+              : 0,
           itemCount: items.reduce((total, item) => total + item.quantity, 0),
         };
       })
       .sort((a, b) => a.companyName.localeCompare(b.companyName, "es"));
-  }, [cart, companies]);
+  }, [cart, companies, catalogProductsStatus]);
   const selectedCompanyCart = selectedCompany
     ? companyCarts.find(
         (companyCart) =>
@@ -181,10 +208,17 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
         : [],
     [cart, checkoutCompanyId]
   );
-  const checkoutCartTotal = checkoutCart.reduce(
-    (total, item) => total + item.product.price * item.quantity,
-    0
-  );
+  const checkoutCartTotal =
+    catalogProductsStatus === "ready"
+      ? checkoutCart.reduce(
+          (total, item) =>
+            isProductPurchasable(item.product) &&
+            item.quantity <= item.product.stockKg
+              ? total + item.product.price * item.quantity
+              : total,
+          0
+        )
+      : 0;
   const { clientOrdersList, activeOrdersCount } = usePedidosCliente({
     selectedChatOrder,
     setSelectedChatOrder,
@@ -267,6 +301,14 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
 
   // Manejo de checkout: libre navegación en tienda, solo se pide login al pagar (y luego no vuelve a pedir)
   const handleProceedToPayment = (companyId: string) => {
+    if (catalogProductsStatus !== "ready") {
+      toast({
+        title: "Inventario no disponible",
+        description: "Espera a que Cobro Fácil confirme precio y stock.",
+        variant: "destructive",
+      });
+      return;
+    }
     setCheckoutCompanyId(companyId);
     setIsCartOpen(false);
     const client = loadClientProfile();
@@ -282,6 +324,22 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
     try {
       if (!checkoutCompanyId || checkoutCart.length === 0) {
         throw new Error("El carrito de este comercio está vacío.");
+      }
+      if (catalogProductsStatus !== "ready") {
+        throw new Error("No se pudo validar el inventario actual. Intenta nuevamente.");
+      }
+      const unavailableItem = checkoutCart.find(
+        (item) =>
+          !isProductPurchasable(item.product) ||
+          item.quantity > item.product.stockKg
+      );
+      if (unavailableItem) {
+        const reason =
+          productAvailabilityMessage(unavailableItem.product) ||
+          "la cantidad supera el stock informado por el TPV";
+        throw new Error(
+          `${unavailableItem.product.name}: ${reason}. Ajusta el carrito antes de continuar.`
+        );
       }
       const orderCompany = companies.find(
         (company) =>
@@ -317,8 +375,9 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
       console.error("No se pudo confirmar el pedido:", error);
       toast({
         title: "No se pudo registrar el pedido",
-        description:
-          "Tu carrito sigue guardado. Estamos teniendo un problema al registrar pedidos; intentá nuevamente más tarde.",
+        description: error instanceof Error
+          ? error.message
+          : "Tu carrito sigue guardado. Intentá nuevamente más tarde.",
         variant: "destructive",
       });
     } finally {
@@ -403,7 +462,7 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
       {/* ─── Encabezado Superior (Blanco y Azul con el camioncito y el carrito arriba) ─── */}
       <HeaderTienda
         cartCount={companyCarts.length}
-        cartTotal={cartTotal}
+        cartTotal={catalogProductsStatus === "ready" ? cartTotal : 0}
         deliveryType="delivery"
         deliveryAddress={deliveryAddress}
         selectedCompanyName={selectedCompany ? selectedCompany.name : null}
@@ -421,6 +480,27 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
 
       {/* ─── Contenido Principal ─── */}
       <main className="flex-1 max-w-6xl w-full mx-auto px-3 sm:px-4 py-4 space-y-4">
+        {(catalogProductsStatus === "error" || productsWarnings.length > 0) && (
+          <div
+            role={catalogProductsStatus === "error" ? "alert" : "status"}
+            className="flex items-center justify-between gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-950"
+          >
+            <p>
+              {catalogProductsStatus === "error"
+                ? "No se pudo validar el inventario de Cobro Fácil. Se conserva el carrito, pero no se pueden finalizar compras."
+                : `Catálogo parcial: ${productsWarnings.length} problema(s) al leer el inventario. Los datos faltantes quedan pendientes.`}
+            </p>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={reloadCatalog}
+              className="shrink-0 border-amber-300 bg-white text-amber-900"
+            >
+              Reintentar
+            </Button>
+          </div>
+        )}
         {activeBottomTab === "profile" ? (
           <PerfilCliente
             clientProfile={clientProfile}
@@ -544,6 +624,7 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
         onOpenChange={setIsCartOpen}
         companyCarts={companyCarts}
         activeCompanyCartId={activeCartCompanyId}
+        inventoryReady={catalogProductsStatus === "ready"}
         deliveryType="delivery"
         deliveryAddress={deliveryAddress}
         deliveryCoordinates={deliveryCoordinates}

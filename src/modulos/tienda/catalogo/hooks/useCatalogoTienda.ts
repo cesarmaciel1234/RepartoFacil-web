@@ -60,6 +60,7 @@ export function useCatalogoTienda({
   const [companies, setCompanies] = useState<CompanyStore[]>([]);
   const [status, setStatus] = useState<CatalogStatus>("loading");
   const [productsStatus, setProductsStatus] = useState<CatalogStatus>("loading");
+  const [productsWarnings, setProductsWarnings] = useState<string[]>([]);
   const [reloadKey, setReloadKey] = useState(0);
 
   const reload = useCallback(() => setReloadKey((key) => key + 1), []);
@@ -68,6 +69,10 @@ export function useCatalogoTienda({
     let cancelled = false;
     setStatus("loading");
     setProductsStatus("loading");
+    setProductsWarnings([]);
+    setProducts((current) =>
+      current.map((product) => ({ ...product, priceSource: undefined }))
+    );
 
     const loadCompanies = async (): Promise<CompanyStore[]> => {
       const response = await fetch("/api/cobrofacil/companies", { cache: "no-store" });
@@ -79,14 +84,20 @@ export function useCatalogoTienda({
       return companiesData.empresas;
     };
 
-    const loadProducts = async (): Promise<CatalogProduct[]> => {
+    const loadProducts = async (): Promise<{
+      products: CatalogProduct[];
+      warnings: string[];
+    }> => {
       const response = await fetch("/api/cobrofacil/products", { cache: "no-store" });
       if (!response.ok) throw new Error(`Error cargando productos: ${response.status}`);
       const productsData = await response.json();
       if (!Array.isArray(productsData?.products)) {
         throw new Error("Cobro Fácil no devolvió el catálogo de productos");
       }
-      return productsData.products;
+      const warnings = Array.isArray(productsData.warnings)
+        ? productsData.warnings.map(String)
+        : [];
+      return { products: productsData.products, warnings };
     };
 
     const load = async () => {
@@ -105,10 +116,22 @@ export function useCatalogoTienda({
       }
 
       if (productsResult.status === "fulfilled") {
-        setProducts(productsResult.value);
+        setProducts(productsResult.value.products);
+        setProductsWarnings(productsResult.value.warnings);
+        if (productsResult.value.warnings.length > 0) {
+          console.warn(
+            "El catálogo se cargó parcialmente desde Cobro Fácil:",
+            productsResult.value.warnings
+          );
+        }
         setProductsStatus("ready");
       } else {
         console.error("No se pudieron cargar los productos de Cobro Fácil:", productsResult.reason);
+        setProductsWarnings([
+          productsResult.reason instanceof Error
+            ? productsResult.reason.message
+            : "No se pudo leer el inventario de Cobro Fácil.",
+        ]);
         setProductsStatus("error");
       }
     };
@@ -184,6 +207,7 @@ export function useCatalogoTienda({
     companies,
     status,
     productsStatus,
+    productsWarnings,
     reload,
     productCountByCompany,
     companyCatalogSize: activeCompanyCatalog.length,

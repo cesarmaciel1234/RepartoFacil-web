@@ -31,6 +31,12 @@ import {
   normalizeCompanyAddress,
   readCompanyCoordinatesCache,
 } from "../motor/ubicacionComercio";
+import { ImagenProducto } from "./ImagenProducto";
+import {
+  hasValidPrice,
+  isProductPurchasable,
+  productAvailabilityMessage,
+} from "../motor/productoDisponibilidad";
 
 const FREE_DELIVERY_THRESHOLD = 35000;
 
@@ -48,6 +54,7 @@ interface DrawerCarritoProps {
   onOpenChange: (open: boolean) => void;
   companyCarts: CompanyCartSummary[];
   activeCompanyCartId: string | null;
+  inventoryReady: boolean;
   deliveryType: "delivery" | "pickup";
   deliveryAddress: string;
   deliveryCoordinates: { lat: number; lng: number } | null;
@@ -65,6 +72,7 @@ export function DrawerCarrito({
   onOpenChange,
   companyCarts,
   activeCompanyCartId,
+  inventoryReady,
   deliveryType,
   deliveryAddress,
   deliveryCoordinates,
@@ -82,7 +90,13 @@ export function DrawerCarrito({
     (companyCart) => companyCart.companyId === activeCompanyCartId
   );
   const activeItems = activeCart?.items || [];
-  const activeTotal = activeCart?.total || 0;
+  const unavailableItem = activeItems.find(
+    (item) =>
+      !isProductPurchasable(item.product) ||
+      item.quantity > item.product.stockKg
+  );
+  const hasUnavailableItems = !inventoryReady || Boolean(unavailableItem);
+  const activeTotal = inventoryReady ? activeCart?.total || 0 : 0;
   const freeDeliveryThreshold =
     activeCart?.company?.freeDeliveryThreshold || FREE_DELIVERY_THRESHOLD;
   const calculatedDeliveryFee = calcularTarifaEnvio(deliveryAddress || "").totalDeliveryFee;
@@ -330,19 +344,40 @@ export function DrawerCarrito({
                   key={`${activeCart.companyId}:${item.product.id}`}
                   className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-2.5 shadow-sm"
                 >
-                  <img
+                  <ImagenProducto
                     src={item.product.image}
                     alt={item.product.name}
                     className="h-16 w-16 shrink-0 rounded-xl bg-slate-100 object-cover"
                   />
                   <div className="min-w-0 flex-1">
                     <h4 className="text-xs font-bold text-slate-900">{item.product.name}</h4>
-                    <p className="mt-0.5 text-xs font-extrabold text-slate-900">
-                      {formatMoney(item.product.price * item.quantity)}
-                    </p>
-                    <p className="text-[10px] text-slate-500">
-                      {formatMoney(item.product.price)} / {item.product.unit}
-                    </p>
+                    {inventoryReady &&
+                    item.product.priceSource === "tpv" &&
+                    hasValidPrice(item.product) ? (
+                      <>
+                        <p className="mt-0.5 text-xs font-extrabold text-slate-900">
+                          {formatMoney(item.product.price * item.quantity)}
+                        </p>
+                        <p className="text-[10px] text-slate-500">
+                          {formatMoney(item.product.price)}
+                          {item.product.unit ? ` / ${item.product.unit}` : ""}
+                        </p>
+                      </>
+                    ) : (
+                      <p className="mt-0.5 text-xs font-bold text-amber-800">
+                        Precio pendiente
+                      </p>
+                    )}
+                    {(!inventoryReady ||
+                      !isProductPurchasable(item.product) ||
+                      item.quantity > item.product.stockKg) && (
+                      <p className="mt-1 text-[10px] font-semibold text-amber-800">
+                        {!inventoryReady
+                          ? "Inventario pendiente de validar."
+                          : productAvailabilityMessage(item.product) ||
+                            "La cantidad supera el stock vigente."}
+                      </p>
+                    )}
                   </div>
                   <div className="flex shrink-0 items-center rounded-full bg-slate-100 p-1">
                     <button
@@ -364,11 +399,16 @@ export function DrawerCarrito({
                     </span>
                     <button
                       type="button"
+                      disabled={
+                        !inventoryReady ||
+                        !isProductPurchasable(item.product) ||
+                        item.quantity >= item.product.stockKg
+                      }
                       onClick={() =>
                         onUpdateQuantity(item.product.id, 1, activeCart.companyId)
                       }
                       aria-label={`Agregar una unidad de ${item.product.name}`}
-                      className="flex h-7 w-7 items-center justify-center rounded-full text-slate-900"
+                      className="flex h-7 w-7 items-center justify-center rounded-full text-slate-900 disabled:text-slate-300"
                     >
                       <Plus className="h-4 w-4" />
                     </button>
@@ -423,9 +463,30 @@ export function DrawerCarrito({
               </div>
             </div>
 
+            {hasUnavailableItems && (
+              <p
+                role="alert"
+                className="rounded-xl border border-amber-200 bg-amber-50 p-2.5 text-[11px] font-semibold text-amber-900"
+              >
+                {unavailableItem ? (
+                  <>
+                    {unavailableItem.product.name}:{" "}
+                    {!inventoryReady
+                      ? "inventario pendiente de validar"
+                      : productAvailabilityMessage(unavailableItem.product) ||
+                        "la cantidad supera el stock vigente"}
+                  </>
+                ) : (
+                  "No se puede validar el inventario de Cobro Fácil."
+                )}
+                . Revisa el producto antes de pagar.
+              </p>
+            )}
+
             <Button
+              disabled={hasUnavailableItems}
               onClick={() => onProceedToPayment(activeCart.companyId)}
-              className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 text-xs font-black uppercase tracking-wider text-white shadow-lg shadow-blue-600/20 transition-all hover:bg-blue-700 active:scale-98"
+              className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 text-xs font-black uppercase tracking-wider text-white shadow-lg shadow-blue-600/20 transition-all hover:bg-blue-700 disabled:bg-slate-300 disabled:text-slate-600 active:scale-98"
             >
               <span>Ir a pagar</span>
               <ArrowRight className="h-4 w-4" />

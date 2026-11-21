@@ -25,6 +25,7 @@ import {
 import type { CompanyStore } from "@/data/mockCompanies";
 import type { Product } from "@/data/mockProducts";
 import { productBelongsToCompany } from "@/modulos/tienda/catalogo/hooks/useCatalogoTienda";
+import { hasValidPrice } from "@/modulos/tienda/motor/productoDisponibilidad";
 
 interface ModalMercadosProps {
   isOpen: boolean;
@@ -218,7 +219,10 @@ export function ModalMercados({
                             key={p.id}
                             className="text-[9px] font-bold px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
                           >
-                            {p.name} · ${p.price.toLocaleString("es-AR")}
+                            {p.name} ·{" "}
+                            {p.priceSource === "tpv" && hasValidPrice(p)
+                              ? `$${p.price.toLocaleString("es-AR")}`
+                              : "Precio pendiente"}
                           </span>
                         ))}
                       </div>

@@ -73,7 +73,30 @@ Invariantes:
   GPS precisa.
 - Mantener la moneda y el formato visible en `es-AR`.
 
-## 4. Límites de módulos
+## 4. Catálogo e inventario del TPV
+
+- Los productos se leen de Cobro Fácil; no completar precios, stock o fotos con
+  valores de ejemplo. El stock se conserva en la unidad y escala recibidas.
+- Los registros de la sucursal MACIEL y de `empresa_2` (PRUEBA) se muestran en
+  MACIEL por confirmación del comercio. Se mantienen como registros separados:
+  no sumar stock ni fusionar productos solo porque compartan nombre.
+- Un producto solo se puede comprar si tiene precio positivo y stock numérico
+  suficiente para una unidad. Los faltantes se muestran como pendientes; la
+  falta de foto no bloquea la compra.
+- Los carritos guardados se conservan y se actualizan con el catálogo vigente
+  cuando está disponible. Si falta precio o stock, o la cantidad supera el
+  stock actual, se bloquea el pago hasta corregir el artículo; no se borra el
+  carrito ni se usa su precio antiguo.
+- Las fotos exactas se sirven desde `public/productos/`. Para importar imágenes
+  nuevas, ejecutar `node scripts/import-product-images.mjs
+  "<carpeta-png_productos>"`. El importador copia coincidencias exactas por
+  nombre, prefiere el archivo base ante variantes y deja pendientes los faltantes
+  o nombres ambiguos. El manifiesto de rutas se genera en
+  `src/data/productImageManifest.json`.
+- No se escriben inventario ni imágenes de vuelta a Cobro Fácil desde esta ruta.
+  Los POST no configurados responden error, nunca una confirmación simulada.
+
+## 5. Límites de módulos
 
 - `TiendaPiramidal.tsx` compone pantallas y conecta callbacks; catálogo, pedidos
   y reglas reutilizables se mantienen en sus dominios.
@@ -88,7 +111,7 @@ Antes de mover una pieza, comprobar sus importadores, eventos (`rf-orders-update
 y `rf-wallet-updated`), persistencia local y rutas API. Leer el README del
 dominio afectado y modificar el menor número de niveles posible.
 
-## 5. Puerta de publicación
+## 6. Puerta de publicación
 
 No considerar producción lista solo porque abre la página principal. Verificar
 en este orden:
@@ -112,7 +135,7 @@ en este orden:
 No enviar pedidos de prueba mientras la API devuelve 500. No borrar pedidos,
 vaciar carritos preexistentes ni alterar datos del CRM durante una prueba.
 
-## 6. Diagnóstico y recuperación
+## 7. Diagnóstico y recuperación
 
 - `GET /api/orders` con `DATABASE_URL debe configurarse`: revisar la variable en
   el servicio **Next.js `repartofacil`**, no asumir que por existir en Cobro Fácil
@@ -127,7 +150,7 @@ vaciar carritos preexistentes ni alterar datos del CRM durante una prueba.
 - Registrar en el PR o commit qué flujo se verificó, versión desplegada y
   resultado de `/api/orders`; nunca incluir el valor de las variables.
 
-## 7. Estado de referencia
+## 8. Estado de referencia
 
 En la comprobación más reciente, Render desplegó la versión `v5.9` después de
 configurar `DATABASE_URL` en el servicio Next.js. `GET /api/orders` respondió

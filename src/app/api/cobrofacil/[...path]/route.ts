@@ -1,30 +1,135 @@
 import { NextRequest, NextResponse } from "next/server";
 import { queryDb } from "@/lib/db";
+import productImageManifest from "@/data/productImageManifest.json";
 
 export const dynamic = "force-dynamic";
 
 const BACKEND_URL = process.env.BACKEND_URL || "http://127.0.0.1:8000";
+const PRODUCT_IMAGE_BY_NAME = productImageManifest as Record<string, string>;
 
-// Fallback de imágenes de calidad para los cortes reales de TPV
-const PRODUCT_IMAGES: Record<string, string> = {
-  "asado": "https://images.unsplash.com/photo-1544025162-d76694265947?w=600&auto=format&fit=crop&q=80",
-  "vacio": "https://images.unsplash.com/photo-1558030006-450675393462?w=600&auto=format&fit=crop&q=80",
-  "matambre": "https://images.unsplash.com/photo-1603048588665-791ca8aea617?w=600&auto=format&fit=crop&q=80",
-  "entraña": "https://images.unsplash.com/photo-1551024709-8f23befc6f87?w=600&auto=format&fit=crop&q=80",
-  "lomo": "https://images.unsplash.com/photo-1558030006-450675393462?w=600&auto=format&fit=crop&q=80",
-  "suprema": "https://images.unsplash.com/photo-1587593810167-a84920ea0781?w=600&auto=format&fit=crop&q=80",
-  "paleta": "https://images.unsplash.com/photo-1603048588665-791ca8aea617?w=600&auto=format&fit=crop&q=80",
-  "roast beef": "https://images.unsplash.com/photo-1544025162-d76694265947?w=600&auto=format&fit=crop&q=80",
-  "falda": "https://images.unsplash.com/photo-1544025162-d76694265947?w=600&auto=format&fit=crop&q=80",
-  "osobuco": "https://images.unsplash.com/photo-1544025162-d76694265947?w=600&auto=format&fit=crop&q=80",
+type PosBaseRow = {
+  columnas: unknown;
+  filas: unknown;
+  sucursal_nombre?: string;
 };
 
-function getProductImage(name: string): string {
-  const lower = name.toLowerCase();
-  for (const [key, img] of Object.entries(PRODUCT_IMAGES)) {
-    if (lower.includes(key)) return img;
+function normalizeProductName(value: unknown) {
+  return String(value || "")
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
+function getProductImage(name: string) {
+  return PRODUCT_IMAGE_BY_NAME[normalizeProductName(name)];
+}
+
+function parseArray(value: unknown, label: string): unknown[] {
+  const parsed = typeof value === "string" ? JSON.parse(value) : value;
+  if (!Array.isArray(parsed)) {
+    throw new Error(`${label} no contiene una lista válida`);
   }
-  return "https://images.unsplash.com/photo-1544025162-d76694265947?w=600&auto=format&fit=crop&q=80";
+  return parsed;
+}
+
+function mapStoredRows(
+  rows: PosBaseRow[],
+  source: string,
+  warnings: string[]
+): Record<string, unknown>[] {
+  const records = new Map<string, Record<string, unknown>>();
+
+  rows.forEach((row, rowIndex) => {
+    try {
+      const columns = parseArray(row.columnas, `${source}.columnas`).map(String);
+      const storedRows = parseArray(row.filas, `${source}.filas`);
+      storedRows.forEach((storedRow, itemIndex) => {
+        let item: Record<string, unknown>;
+        if (Array.isArray(storedRow)) {
+          item = {};
+          columns.forEach((column, columnIndex) => {
+            item[column] = storedRow[columnIndex];
+          });
+        } else if (storedRow && typeof storedRow === "object") {
+          item = storedRow as Record<string, unknown>;
+        } else {
+          warnings.push(`${source}: se omitió una fila con formato inválido.`);
+          return;
+        }
+
+        const key = item.id ?? item.codigo ?? `${rowIndex}-${itemIndex}`;
+        records.set(String(key), item);
+      });
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : String(error);
+      const warning = `${source}: no se pudo leer un lote (${detail}).`;
+      warnings.push(warning);
+      console.warn(`[CobroFacil inventory] ${warning}`);
+    }
+  });
+
+  return [...records.values()];
+}
+
+function finiteNumber(value: unknown): number | undefined {
+  if (
+    value === null ||
+    value === undefined ||
+    (typeof value !== "number" && typeof value !== "string") ||
+    (typeof value === "string" && !value.trim())
+  ) {
+    return undefined;
+  }
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+function mapProduct(
+  item: Record<string, unknown>,
+  options: {
+    idPrefix: string;
+    companyId: string;
+    companyName: string;
+    source: string;
+    categoryMap?: Record<string, string>;
+  },
+  warnings: string[]
+) {
+  const name = String(item.nombre || "").trim();
+  const productId = item.id ?? item.codigo;
+  if (!name || productId === undefined || productId === null || String(productId).trim() === "") {
+    warnings.push(`${options.source}: se omitió un producto sin nombre o identificador.`);
+    return null;
+  }
+
+  const rawDepartment = String(item.departamento || "").trim();
+  const categoryId = String(item.categoria ?? "");
+  const rawCategory = String(options.categoryMap?.[categoryId] || item.categoria || "").trim();
+  const department = (rawDepartment || rawCategory || "GENERAL").toUpperCase();
+  const price = finiteNumber(item.precio);
+  const stockKg = finiteNumber(item.stock);
+  const image = getProductImage(name);
+  const code = String(item.codigo || productId);
+
+  return {
+    id: `${options.idPrefix}${productId}`,
+    name,
+    category: department.toLowerCase(),
+    categoryName: department,
+    department,
+    ...(price !== undefined && price > 0 ? { price } : {}),
+    unit: String(item.unidad || "").trim(),
+    description: `${department} · Inventario ${options.companyName}. Código TPV: ${code}.`,
+    ...(image ? { image } : {}),
+    ...(stockKg !== undefined ? { stockKg } : {}),
+    priceSource: "tpv" as const,
+    badge: department,
+    companyId: options.companyId,
+    companyName: options.companyName,
+    source: options.source,
+  };
 }
 
 function getCompanyLocation(row: Record<string, any>) {
@@ -72,60 +177,45 @@ export async function GET(
   // 1. Obtener productos directamente desde la base de datos PostgreSQL de Cobro Fácil (crm-libro-local)
   if (pathStr === "products" || pathStr === "sync-inventory") {
     try {
-      // Categorías reales de TPV
-      const catRows = await queryDb(
-        "SELECT columnas, filas FROM pos_base WHERE tabla = 'categorias' AND sucursal_id = 2 LIMIT 1"
-      );
-      const categoryMap: Record<number, string> = {};
-      if (catRows.length > 0) {
-        const cCols = typeof catRows[0].columnas === "string" ? JSON.parse(catRows[0].columnas) : catRows[0].columnas;
-        const cRows = typeof catRows[0].filas === "string" ? JSON.parse(catRows[0].filas) : catRows[0].filas;
-        cRows.forEach((cr: any[]) => {
-          const cd: any = {};
-          cCols.forEach((col: string, idx: number) => { cd[col] = cr[idx]; });
-          if (cd.id) categoryMap[cd.id] = cd.nombre;
-        });
+      const warnings: string[] = [];
+      const categoryMap: Record<string, string> = {};
+      try {
+        const catRows = await queryDb<PosBaseRow>(
+          "SELECT columnas, filas FROM pos_base WHERE tabla = 'categorias' AND sucursal_id = 2 ORDER BY id ASC"
+        );
+        for (const category of mapStoredRows(catRows, "pos_base.categorias", warnings)) {
+          if (category.id !== undefined && category.nombre) {
+            categoryMap[String(category.id)] = String(category.nombre);
+          }
+        }
+      } catch (error) {
+        console.warn("[CobroFacil inventory] No se pudieron cargar categorías:", error);
       }
 
-      // Productos reales de TPV
-      const prodRows = await queryDb(
-        "SELECT columnas, filas, sucursal_nombre FROM pos_base WHERE tabla = 'productos' AND sucursal_id = 2 LIMIT 1"
+      const prodRows = await queryDb<PosBaseRow>(
+        "SELECT columnas, filas, sucursal_nombre FROM pos_base WHERE tabla = 'productos' AND sucursal_id = 2 ORDER BY id ASC"
       );
 
       if (prodRows.length > 0) {
-        const pCols = typeof prodRows[0].columnas === "string" ? JSON.parse(prodRows[0].columnas) : prodRows[0].columnas;
-        const pRows = typeof prodRows[0].filas === "string" ? JSON.parse(prodRows[0].filas) : prodRows[0].filas;
+        const macielCompanyId = "frigorifico-maciel";
+        const macielCompanyName = "Frigorífico Maciel";
+        const products = mapStoredRows(prodRows, "pos_base.productos", warnings)
+          .map((item) =>
+            mapProduct(
+              item,
+              {
+                idPrefix: "tpv-",
+                companyId: macielCompanyId,
+                companyName: macielCompanyName,
+                source: "pos_base (sucursal 2)",
+                categoryMap,
+              },
+              warnings
+            )
+          )
+          .filter((item): item is NonNullable<typeof item> => item !== null);
 
-        const products = pRows.map((pr: any[]) => {
-          const item: any = {};
-          pCols.forEach((col: string, idx: number) => { item[col] = pr[idx]; });
-          const rawDepto = String(item.departamento || "").trim();
-          const rawCat = String(item.categoria || categoryMap[item.categoria] || "").trim();
-          const deptoUpper = (rawDepto || rawCat || "GENERAL").toUpperCase();
-
-          return {
-            id: `tpv-${item.id}`,
-            name: item.nombre,
-            category: deptoUpper.toLowerCase(),
-            categoryName: deptoUpper,
-            department: deptoUpper,
-            price: Number(item.precio) || 12000,
-            unit: item.unidad || "kg",
-            description: `${deptoUpper} · Inventario Frigorífico Maciel. Código TPV: ${item.codigo || item.id}.`,
-            image: getProductImage(item.nombre),
-            stockKg: item.stock !== null ? Number(item.stock) : 50,
-            badge: deptoUpper,
-            isPopular: ["Asado", "Vacio", "Matambre", "Entraña", "Suprema"].some((popular) =>
-              String(item.nombre || "").toLowerCase().includes(popular.toLowerCase())
-            ),
-            companyId: "frigorifico-maciel",
-            companyName: "Frigorífico Maciel - Central",
-            source: "crm-libro-local (PostgreSQL)",
-          };
-        });
-
-        // Cargar dinámicamente el inventario real de TODAS las demás empresas registradas en Cobro Fácil (empresa_2, empresa_3, etc.)
-        let otherCompaniesProducts: any[] = [];
+        const otherCompaniesProducts: NonNullable<ReturnType<typeof mapProduct>>[] = [];
         try {
           const allEmpresas = await queryDb(
             "SELECT id, nombre, slug FROM public.empresas WHERE activo = 1 AND id > 1 ORDER BY id ASC"
@@ -133,51 +223,60 @@ export async function GET(
           for (const emp of allEmpresas) {
             const eid = Number(emp.id);
             const slug = String(emp.slug || "").toLowerCase().trim();
-            const compId = slug === "prueba" || eid === 2 ? "empresa-prueba" : slug ? `empresa-${slug}` : `empresa-${eid}`;
-            const compName = slug === "prueba" || eid === 2 ? "Cobro Fácil - Empresa Prueba" : emp.nombre || `Empresa ${eid}`;
+            const belongsToMaciel = slug === "prueba" || eid === 2;
+            const compId = belongsToMaciel
+              ? macielCompanyId
+              : slug
+                ? `empresa-${slug}`
+                : `empresa-${eid}`;
+            const compName = belongsToMaciel
+              ? macielCompanyName
+              : String(emp.nombre || `Empresa ${eid}`);
             try {
-              const empProdRows = await queryDb(
-                `SELECT columnas, filas FROM empresa_${eid}.pos_base WHERE tabla = 'productos' ORDER BY id DESC LIMIT 1`
+              const empProdRows = await queryDb<PosBaseRow>(
+                `SELECT columnas, filas FROM empresa_${eid}.pos_base WHERE tabla = 'productos' ORDER BY id ASC`
               );
-              if (empProdRows.length > 0) {
-                const prCols = typeof empProdRows[0].columnas === "string" ? JSON.parse(empProdRows[0].columnas) : empProdRows[0].columnas;
-                const prFilas = typeof empProdRows[0].filas === "string" ? JSON.parse(empProdRows[0].filas) : empProdRows[0].filas;
-                const mapped = prFilas.map((pr: any[]) => {
-                  const item: any = {};
-                  prCols.forEach((col: string, idx: number) => { item[col] = pr[idx]; });
-                  const rawDepto = String(item.departamento || item.categoria || "GENERAL").trim();
-                  const deptoUpper = (rawDepto || "GENERAL").toUpperCase();
-                  return {
-                    id: `emp-${eid}-tpv-${item.id}`,
-                    name: item.nombre,
-                    category: deptoUpper.toLowerCase(),
-                    categoryName: deptoUpper,
-                    department: deptoUpper,
-                    price: Number(item.precio) || 12000,
-                    unit: item.unidad || "kg",
-                    description: `${deptoUpper} · Inventario ${compName}. Código: ${item.codigo || item.id}.`,
-                    image: getProductImage(item.nombre),
-                    stockKg: item.stock !== null ? Number(item.stock) : 50,
-                    badge: deptoUpper,
-                    isPopular: false,
-                    companyId: compId,
-                    companyName: compName,
-                    source: `empresa_${eid}.pos_base`,
-                  };
-                });
-                otherCompaniesProducts.push(...mapped);
-              }
-            } catch {}
+              const mapped = mapStoredRows(
+                empProdRows,
+                `empresa_${eid}.pos_base.productos`,
+                warnings
+              )
+                .map((item) =>
+                  mapProduct(
+                    item,
+                    {
+                      idPrefix: `emp-${eid}-tpv-`,
+                      companyId: compId,
+                      companyName: compName,
+                      source: `empresa_${eid}.pos_base`,
+                    },
+                    warnings
+                  )
+                )
+                .filter((item): item is NonNullable<typeof item> => item !== null);
+              otherCompaniesProducts.push(...mapped);
+            } catch (error) {
+              const warning = `No se pudo cargar el inventario de empresa_${eid}.`;
+              warnings.push(warning);
+              console.warn(`[CobroFacil inventory] ${warning}`, error);
+            }
           }
-        } catch {}
+        } catch (error) {
+          const warning = "No se pudo leer el listado de empresas; se devuelve el inventario de MACIEL disponible.";
+          warnings.push(warning);
+          console.warn(`[CobroFacil inventory] ${warning}`, error);
+        }
+
+        const allProducts = [...products, ...otherCompaniesProducts];
 
         return NextResponse.json({
           success: true,
           source: "crm-libro-local (PostgreSQL Render)",
           terminal: "MACIEL - DESKTOP-7Q2Q4VD",
-          sucursal: prodRows[0].sucursal_nombre,
-          total: products.length + otherCompaniesProducts.length,
-          products: [...products, ...otherCompaniesProducts],
+          sucursal: prodRows.find((row) => row.sucursal_nombre)?.sucursal_nombre,
+          total: allProducts.length,
+          products: allProducts,
+          warnings,
         });
       }
     } catch (dbErr: any) {
@@ -188,21 +287,18 @@ export async function GET(
   // 2. Empresas reales directamente desde crm-libro-local (PostgreSQL)
   if (pathStr === "companies") {
     try {
-      let dbEmpresas: any[] = [];
-      try {
-        dbEmpresas = await queryDb(
-          "SELECT id, nombre, slug, cuit, to_jsonb(e) AS company_data FROM empresas e WHERE activo = 1 ORDER BY id ASC"
-        );
-      } catch (err: any) {
-        console.warn("[CobroFacil query empresas warning]:", err.message);
-      }
+      const dbEmpresas = await queryDb(
+        "SELECT id, nombre, slug, cuit, to_jsonb(e) AS company_data FROM empresas e WHERE activo = 1 ORDER BY id ASC"
+      );
 
       let sucursales: any[] = [];
       try {
         sucursales = await queryDb(
           "SELECT DISTINCT sucursal_id, sucursal_nombre FROM pos_base ORDER BY sucursal_id"
         );
-      } catch {}
+      } catch (error) {
+        console.warn("[CobroFacil companies] No se pudieron cargar sucursales:", error);
+      }
 
       const pick = (details: Record<string, any>, keys: string[]) =>
         keys.map((key) => details[key]).find((value) => value !== undefined && value !== null && value !== "");
@@ -220,68 +316,70 @@ export async function GET(
         return "minimercados";
       };
 
-      const dynamicCompanies = (dbEmpresas || []).map((row: any) => {
-        const details: Record<string, any> =
-          row.company_data && typeof row.company_data === "object" ? row.company_data : {};
-        const slug = (row.slug || "").toLowerCase().trim();
-        const isMaciel = slug === "maciel" || row.id === 1;
-        const isPrueba = slug === "prueba" || row.id === 2;
-        const companyLocation = getCompanyLocation(row);
+      const dynamicCompanies = (dbEmpresas || [])
+        .filter((row: any) => {
+          const slug = String(row.slug || "").toLowerCase().trim();
+          return Number(row.id) !== 2 && slug !== "prueba";
+        })
+        .map((row: any) => {
+          const details: Record<string, any> =
+            row.company_data && typeof row.company_data === "object" ? row.company_data : {};
+          const slug = (row.slug || "").toLowerCase().trim();
+          const isMaciel = slug === "maciel" || Number(row.id) === 1;
+          const companyLocation = getCompanyLocation(row);
 
-        // Los ids históricos se conservan porque los pedidos ya guardados los referencian
-        const id = isMaciel
-          ? "frigorifico-maciel"
-          : isPrueba
-            ? "empresa-prueba"
+          // Los ids históricos se conservan porque los pedidos ya guardados los referencian
+          const id = isMaciel
+            ? "frigorifico-maciel"
             : slug
               ? `empresa-${slug}`
               : `empresa-${row.id}`;
 
-        const category = String(
-          pick(details, ["rubro", "categoria", "category", "actividad"]) ||
-            (isMaciel ? "Carnes y Pescados" : "Comercio")
-        );
-        const rawSlug = String(pick(details, ["categoria_slug", "category_slug"]) || "").toLowerCase();
-        const categorySlug = (CATEGORY_SLUGS as readonly string[]).includes(rawSlug)
-          ? rawSlug
-          : inferCategorySlug(`${category} ${row.nombre || ""}`);
-        const rating = Number(pick(details, ["rating", "calificacion", "puntuacion"]));
-        const badges = pick(details, ["badges", "etiquetas", "promociones"]);
-        const isOpenValue = pick(details, ["abierto", "is_open", "isOpen"]);
+          const category = String(
+            pick(details, ["rubro", "categoria", "category", "actividad"]) ||
+              (isMaciel ? "Carnes y Pescados" : "Comercio")
+          );
+          const rawSlug = String(pick(details, ["categoria_slug", "category_slug"]) || "").toLowerCase();
+          const categorySlug = (CATEGORY_SLUGS as readonly string[]).includes(rawSlug)
+            ? rawSlug
+            : inferCategorySlug(`${category} ${row.nombre || ""}`);
+          const rating = Number(pick(details, ["rating", "calificacion", "puntuacion"]));
+          const badges = pick(details, ["badges", "etiquetas", "promociones"]);
+          const isOpenValue = pick(details, ["abierto", "is_open", "isOpen"]);
 
-        return {
-          id,
-          name: String(pick(details, ["nombre_fantasia", "nombre_comercial"]) || row.nombre || `Empresa ${row.id}`),
-          slug: slug || String(row.id),
-          empresa_id: row.id,
-          category,
-          categorySlug,
-          rating: Number.isFinite(rating) && rating > 0 ? rating : 0,
-          ratingCount: toNumber(pick(details, ["rating_count", "cantidad_calificaciones"]), 0),
-          deliveryTimeMin: toNumber(pick(details, ["tiempo_entrega_min", "delivery_time_min"]), 20),
-          deliveryTimeMax: toNumber(pick(details, ["tiempo_entrega_max", "delivery_time_max"]), 40),
-          deliveryFee: toNumber(pick(details, ["costo_envio", "delivery_fee"]), 1500),
-          freeDeliveryThreshold:
-            toNumber(pick(details, ["envio_gratis_desde", "free_delivery_threshold"]), 0) || undefined,
-          badges: Array.isArray(badges)
-            ? badges.map(String)
-            : typeof badges === "string" && badges.trim()
-              ? badges.split(",").map((badge) => badge.trim()).filter(Boolean)
-              : [],
-          logoUrl: pick(details, ["logo_url", "logo", "logoUrl", "imagen"]) || undefined,
-          address: companyLocation.address,
-          ...(companyLocation.coordinates ? { coordinates: companyLocation.coordinates } : {}),
-          phone: String(pick(details, ["telefono", "celular", "whatsapp", "phone"]) || ""),
-          cobroFacilApiEndpoint: "https://cobrofacil.onrender.com",
-          isOpen:
-            isOpenValue === undefined
-              ? true
-              : !["0", "false", "no", "cerrado"].includes(String(isOpenValue).toLowerCase()),
-          ...(isMaciel
-            ? { sucursales: sucursales.map((s) => ({ id: s.sucursal_id, nombre: s.sucursal_nombre })) }
-            : {}),
-        };
-      });
+          return {
+            id,
+            name: String(pick(details, ["nombre_fantasia", "nombre_comercial"]) || row.nombre || `Empresa ${row.id}`),
+            slug: slug || String(row.id),
+            empresa_id: row.id,
+            category,
+            categorySlug,
+            rating: Number.isFinite(rating) && rating > 0 ? rating : 0,
+            ratingCount: toNumber(pick(details, ["rating_count", "cantidad_calificaciones"]), 0),
+            deliveryTimeMin: toNumber(pick(details, ["tiempo_entrega_min", "delivery_time_min"]), 20),
+            deliveryTimeMax: toNumber(pick(details, ["tiempo_entrega_max", "delivery_time_max"]), 40),
+            deliveryFee: toNumber(pick(details, ["costo_envio", "delivery_fee"]), 1500),
+            freeDeliveryThreshold:
+              toNumber(pick(details, ["envio_gratis_desde", "free_delivery_threshold"]), 0) || undefined,
+            badges: Array.isArray(badges)
+              ? badges.map(String)
+              : typeof badges === "string" && badges.trim()
+                ? badges.split(",").map((badge) => badge.trim()).filter(Boolean)
+                : [],
+            logoUrl: pick(details, ["logo_url", "logo", "logoUrl", "imagen"]) || undefined,
+            address: companyLocation.address,
+            ...(companyLocation.coordinates ? { coordinates: companyLocation.coordinates } : {}),
+            phone: String(pick(details, ["telefono", "celular", "whatsapp", "phone"]) || ""),
+            cobroFacilApiEndpoint: "https://cobrofacil.onrender.com",
+            isOpen:
+              isOpenValue === undefined
+                ? true
+                : !["0", "false", "no", "cerrado"].includes(String(isOpenValue).toLowerCase()),
+            ...(isMaciel
+              ? { sucursales: sucursales.map((s) => ({ id: s.sucursal_id, nombre: s.sucursal_nombre })) }
+              : {}),
+          };
+        });
 
       const companyList = dynamicCompanies;
 
@@ -309,40 +407,24 @@ export async function GET(
 
     const data = await res.json();
     return NextResponse.json(data, { status: res.status });
-  } catch {
-    return NextResponse.json({
-      status: "online",
-      database: "crm-libro-local (PostgreSQL)",
-      source: "Cobro Fácil Render Cloud Service",
-      timestamp: new Date().toISOString(),
-    });
+  } catch (error) {
+    console.error(`[CobroFacil API] No se pudo consultar ${pathStr}:`, error);
+    return NextResponse.json(
+      { error: "No se pudo consultar Cobro Fácil. Intenta nuevamente más tarde." },
+      { status: 503 }
+    );
   }
 }
 
 export async function POST(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ path: string[] }> }
 ) {
-  let bodyText = "";
-  try {
-    bodyText = await request.text();
-    const payload = JSON.parse(bodyText || "{}");
-
-    return NextResponse.json({
-      success: true,
-      message: `Auditoría de inventario sincronizada con la base de datos de Cobro Fácil para '${payload.companyName || "Frigorífico Maciel"}'`,
-      companyId: payload.companyId || "frigorifico-maciel",
-      terminalId: payload.terminalId || "MACIEL - DESKTOP-7Q2Q4VD",
-      database: "crm-libro-local",
-      syncedProductsCount: Array.isArray(payload.items) ? payload.items.length : 98,
-      timestamp: new Date().toISOString(),
-    });
-  } catch {
-    return NextResponse.json({
-      success: true,
-      message: "Auditoría de inventario sincronizada correctamente",
-      database: "crm-libro-local",
-      timestamp: new Date().toISOString(),
-    });
-  }
+  const { path } = await params;
+  const endpoint = path.join("/");
+  console.warn(`[CobroFacil API] POST no configurado para ${endpoint}.`);
+  return NextResponse.json(
+    { error: `La sincronización POST de '${endpoint}' no está configurada.` },
+    { status: 501 }
+  );
 }

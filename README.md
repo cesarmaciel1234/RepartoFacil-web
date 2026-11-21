@@ -10,8 +10,10 @@ misma base de datos PostgreSQL.
 - `src/app/`: páginas Next.js y API routes.
 - `src/app/api/orders/`, `src/app/api/chat/` y `src/app/api/orders/custodio/`:
   rutas operativas que consultan PostgreSQL mediante `src/lib/db.ts`.
-- `src/app/api/auth/` y `src/app/api/cobrofacil/`: proxies al servicio FastAPI
-  configurado mediante `BACKEND_URL`.
+- `src/app/api/auth/`: proxy al servicio FastAPI configurado mediante
+  `BACKEND_URL`.
+- `src/app/api/cobrofacil/`: lectura del inventario desde PostgreSQL y proxy de
+  respaldo para rutas no resueltas.
 - `src/modulos/tienda/`: marketplace, catálogo, carrito, checkout, historial y
   seguimiento del cliente.
 - `src/modulos/repartidor/`: radar, rutas, telemetría y billetera del repartidor.
