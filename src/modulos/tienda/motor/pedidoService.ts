@@ -2,9 +2,12 @@ import { CartItem, CheckoutFormData, OrderData } from "./tipos";
 import { calcularTarifaEnvio, estimateAddressCoords, MARKET_CENTRAL } from "./tarifaUberService";
 import { addDocumentNonBlocking } from "@/firebase";
 import { collection } from "@/firebase/local-firestore";
-import { loadClientProfile, getOrCreateActiveClientIdentity } from "@/modulos/repartidor/motor/driverService";
+import {
+  loadClientProfile,
+  getOrCreateActiveClientIdentity,
+  ORDERS_STORAGE_KEY,
+} from "@/modulos/repartidor/motor/driverService";
 
-const ORDERS_STORAGE_KEY = "rf_orders_history";
 const CUSTOMER_STORAGE_KEY = "rf_customer_data";
 const PLACEHOLDER_CUSTOMER_NAMES = new Set(["cliente", "cliente frecuente"]);
 const PLACEHOLDER_CUSTOMER_PHONE = "+54 9 341 555-1234";

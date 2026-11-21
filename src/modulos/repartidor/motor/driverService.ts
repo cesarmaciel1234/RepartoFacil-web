@@ -6,6 +6,7 @@ export const DRIVER_USER_KEY = "repartofacil_driver_user";
 export const DRIVER_TOKEN_KEY = "repartofacil_driver_token";
 export const CLIENT_USER_KEY = "repartofacil_client_user";
 export const CLIENT_TOKEN_KEY = "repartofacil_client_token";
+export const ORDERS_STORAGE_KEY = "rf_orders_history";
 
 export const DEFAULT_AVAILABLE_ORDERS: DriverOrder[] = [
   {
