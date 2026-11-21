@@ -59,6 +59,7 @@ function setupQueue(fetch) {
   const queue = loadModule("src/modulos/repartidor/motor/driverPendingActions.ts", {
     "./driverService": { ORDERS_STORAGE_KEY: "rf_orders_history", loadDriverProfile: () => profile },
     "./walletService": wallet,
+    "@/lib/clientAuth": { authHeaders: () => ({ Authorization: "Bearer test-token" }) },
   }, {
     ...globals,
     navigator: { locks: { request: async (_name, _options, callback) => callback({}) } },
@@ -155,6 +156,13 @@ test("la API admite una sola asignación y el reintento del mismo repartidor", a
     "next/server": { NextResponse: { json: (body, options) => ({ body, status: options?.status ?? 200 }) } },
     "@/lib/db": { queryDb },
     "@/lib/custodio": { ejecutarAuditoriaCustodio: async () => {} },
+    "@/lib/validateOrder": {},
+    "@/app/api/cobrofacil/[...path]/route": {},
+    "@/lib/orderAuth": { authenticateOrderUser: async (req) => {
+      const { driverId } = await req.json();
+      return driverId ? { user: { id: driverId, role: "Driver", displayName: "Prueba" } }
+        : { response: { status: 401 } };
+    } },
   });
   const request = (driverId) => ({ json: async () => ({ id: row.id, status: "Assigned", driverId }) });
   const [first, second] = await Promise.all([api.PATCH(request("driver-1")), api.PATCH(request("driver-2"))]);
@@ -164,7 +172,7 @@ test("la API admite una sola asignación y el reintento del mismo repartidor", a
   assert.equal((await api.PATCH(request("driver-1"))).status, 200);
   assert.equal(messages, 1);
   const missingDriver = await api.PATCH({ json: async () => ({ id: row.id, status: "Delivered" }) });
-  assert.equal(missingDriver.status, 400);
+  assert.equal(missingDriver.status, 401);
 });
 
 test("la API rechaza la entrega de otro repartidor y acepta un reintento sin duplicar eventos", async () => {
@@ -190,6 +198,12 @@ test("la API rechaza la entrega de otro repartidor y acepta un reintento sin dup
     "next/server": { NextResponse: { json: (body, options) => ({ body, status: options?.status ?? 200 }) } },
     "@/lib/db": { queryDb },
     "@/lib/custodio": { ejecutarAuditoriaCustodio: async () => {} },
+    "@/lib/validateOrder": {},
+    "@/app/api/cobrofacil/[...path]/route": {},
+    "@/lib/orderAuth": { authenticateOrderUser: async (req) => {
+      const { driverId } = await req.json();
+      return { user: { id: driverId, role: "Driver", displayName: "Prueba" } };
+    } },
   });
   const request = (driverId) => ({ json: async () => ({ id: row.id, status: "Delivered", driverId }) });
   assert.equal((await api.PATCH(request("driver-2"))).status, 409);

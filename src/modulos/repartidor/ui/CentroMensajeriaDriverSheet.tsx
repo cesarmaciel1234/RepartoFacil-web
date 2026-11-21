@@ -11,6 +11,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { DriverOrder } from "../motor/tipos";
+import { authHeaders } from "@/lib/clientAuth";
 
 interface CentroMensajeriaDriverSheetProps {
   isOpen: boolean;
@@ -92,7 +93,7 @@ export function CentroMensajeriaDriverSheet({
       await Promise.all(
         orders.map(async (order) => {
           try {
-            const resp = await fetch(`/api/chat/${order.id}`);
+            const resp = await fetch(`/api/chat/${order.id}`, { headers: authHeaders("Driver") });
             const data = await resp.json();
             if (data && data.success && Array.isArray(data.messages) && data.messages.length > 0) {
               const currentRaw = localStorage.getItem(`rf_chat_${order.id}`);
@@ -148,22 +149,6 @@ export function CentroMensajeriaDriverSheet({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col bg-white text-slate-900 font-sans select-none">
-        <div className="p-3 bg-white border-b border-slate-100 flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2.5">
-            <div className="w-10 h-10 rounded-2xl bg-yellow-100 text-yellow-800 flex items-center justify-center shrink-0 shadow-sm">
-              <MessageSquare className="w-5 h-5" />
-            </div>
-            <div className="text-left">
-              <h2 className="text-sm font-black text-slate-900 flex items-center gap-1.5">
-                Mensajes
-              </h2>
-              <p className="text-[11px] text-slate-500 font-medium">
-                Pedidos y Copo IA · acceso directo
-              </p>
-            </div>
-          </div>
-        </div>
-
         {/* Buscador de Chats (Estilo WhatsApp) */}
         <div className="p-3 border-b border-slate-100 bg-slate-50">
           <div className="relative">
@@ -286,14 +271,6 @@ export function CentroMensajeriaDriverSheet({
           )}
         </div>
 
-        {/* Footer Informativo */}
-        <div className="p-3 bg-white border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
-          <span className="flex items-center gap-1 text-yellow-800 font-bold">
-            <Sparkles className="w-3.5 h-3.5" />
-            IA y chats en un solo lugar
-          </span>
-          <span className="text-slate-400">Mapa siempre visible</span>
-        </div>
     </div>
   );
 }

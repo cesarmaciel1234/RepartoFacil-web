@@ -31,10 +31,10 @@ import {
   loadClientProfile,
   type ClientProfile,
 } from "../repartidor/motor/driverService";
-import { useFirestore } from "@/firebase";
 import { ShoppingBag, ArrowRight, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import { authHeaders } from "@/lib/clientAuth";
 
 interface TiendaPiramidalProps {
   onSwitchToDriver: () => void;
@@ -84,7 +84,6 @@ function readSavedDeliveryCoordinates(): DeliveryCoordinates | null {
 }
 
 export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
-  const firestore = useFirestore();
   const { toast } = useToast();
   const {
     cart,
@@ -320,7 +319,7 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
     setCheckoutCompanyId(companyId);
     setIsCartOpen(false);
     const client = loadClientProfile();
-    if (!client) {
+    if (!client || !authHeaders("Client").Authorization) {
       setIsClientAuthOpen(true);
       return;
     }
@@ -375,7 +374,7 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
         deliveryFeeOverride: orderCompany?.deliveryFee,
         freeDeliveryThreshold: orderCompany?.freeDeliveryThreshold,
       };
-      const newOrder = await createOrder(checkoutCart, orderForm, firestore);
+      const newOrder = await createOrder(checkoutCart, orderForm);
       setIsCheckoutOpen(false);
       setOrderConfirmed(newOrder);
       clearCompanyCart(checkoutCompanyId);

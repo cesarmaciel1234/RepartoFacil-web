@@ -15,6 +15,7 @@ import {
   type PendingDriverAction,
 } from "./driverPendingActions";
 import { useToast } from "@/hooks/use-toast";
+import { authHeaders } from "@/lib/clientAuth";
 
 export function useDriverOrders(currentDriverId?: string | null) {
   const { toast } = useToast();
@@ -37,22 +38,14 @@ export function useDriverOrders(currentDriverId?: string | null) {
     // 2. Traer órdenes reales desde PostgreSQL crm-libro-local
     const fetchCloudOrders = async () => {
       try {
-        const res = await fetch("/api/orders", { cache: "no-store" });
+        const headers = authHeaders("Driver");
+        if (!headers.Authorization) return;
+        const res = await fetch("/api/orders", { cache: "no-store", headers });
         if (res.ok) {
           const cloudOrders: DriverOrder[] = await res.json();
-          if (Array.isArray(cloudOrders) && cloudOrders.length > 0) {
-            setLocalOrders((prev) => {
-              // Combinar respetando el estado más reciente
-              const map = new Map<string, DriverOrder>();
-              cloudOrders.forEach((o: DriverOrder) => map.set(o.id, o));
-              // Si localmente hay una orden que aún no se reflejó en red, conservarla
-              prev.forEach((o) => {
-                if (!map.has(o.id)) map.set(o.id, o);
-              });
-              const combined = Array.from(map.values());
-              saveLocalOrders(combined);
-              return combined;
-            });
+          if (Array.isArray(cloudOrders)) {
+            saveLocalOrders(cloudOrders);
+            setLocalOrders(cloudOrders);
           }
         }
       } catch (err) {
@@ -97,12 +90,13 @@ export function useDriverOrders(currentDriverId?: string | null) {
   const availableOrders = useMemo(() => {
     return localOrders.filter(
       (o) =>
+        Boolean(currentDriverId) &&
         ["confirmed", "ready", "accepted", "embalado"].includes(
           String(o.status).trim().toLowerCase()
         ) &&
         !o.driverId
     );
-  }, [localOrders]);
+  }, [localOrders, currentDriverId]);
 
   // Mis pedidos activos en ruta: SOLO aquellos asignados EXCLUSIVAMENTE a este repartidor
   // IMPORTANTE: Pedidos 'Delivered' (entregados) o 'Cancelled' se archivan de la ruta y del chat del repartidor.
@@ -113,7 +107,7 @@ export function useDriverOrders(currentDriverId?: string | null) {
           String(o.status).trim().toLowerCase()
         ) &&
         o.driverId &&
-        (!currentDriverId || o.driverId === currentDriverId)
+        o.driverId === currentDriverId
     );
   }, [localOrders, currentDriverId]);
 

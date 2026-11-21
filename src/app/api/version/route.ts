@@ -5,8 +5,8 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   return NextResponse.json({
     app: "Reparto Fácil",
-    version: "5.11",
-    release: "v5.11-migracion-repartidor",
+    version: "5.12",
+    release: "v5.12-seguridad-pedidos",
     status: "online",
     timestamp: new Date().toISOString(),
     features: [
@@ -19,6 +19,7 @@ export async function GET() {
       "Perfil de repartidor blanco y amarillo",
       "Pedidos embalados visibles en la ruta del repartidor asignado",
       "Actualización transitoria del repartidor y catálogo offline del comprador",
+      "Autorización de pedidos y verificación de precios en servidor",
     ],
   });
 }

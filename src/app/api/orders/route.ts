@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { queryDb } from "@/lib/db";
 import { ejecutarAuditoriaCustodio } from "@/lib/custodio";
+import { authenticateOrderUser } from "@/lib/orderAuth";
+import { validateOrder } from "@/lib/validateOrder";
+import { GET as readCatalog } from "@/app/api/cobrofacil/[...path]/route";
 
 export const dynamic = "force-dynamic";
 
@@ -80,6 +83,8 @@ function mapDriverActionResult(row: any, isDelivery: boolean) {
 // GET /api/orders: Obtener pedidos con filtrado estricto por cliente, empresa o chofer
 export async function GET(request: NextRequest) {
   try {
+    const auth = await authenticateOrderUser(request, ["Client", "Driver"]);
+    if (auth.response) return auth.response;
     // Custodio Intermediario del Sistema: audita desconexiones e inmovilidad de choferes asignados
     await ejecutarAuditoriaCustodio().catch(() => {});
 
@@ -90,9 +95,14 @@ export async function GET(request: NextRequest) {
     const driverIdParam = searchParams.get("repartidor_id") || searchParams.get("driverId");
     const viewParam = searchParams.get("view"); // 'driver_active' | 'driver_available' | 'driver_history'
 
-    let query = "SELECT * FROM repartofacil_pedidos WHERE 1=1";
-    const values: any[] = [];
-    let idx = 1;
+    let query = "SELECT * FROM repartofacil_pedidos WHERE ";
+    const values: any[] = [auth.user.id];
+    let idx = 2;
+    if (auth.user.role === "Client") {
+      query += "(cliente_id = $1 OR cliente_usuario_id = $1)";
+    } else {
+      query += "(repartidor_id = $1 OR ((repartidor_id IS NULL OR repartidor_id = '') AND LOWER(TRIM(estado)) IN ('ready', 'confirmed', 'accepted', 'embalado')))";
+    }
 
     // 1. Aislamiento por Cliente: cada comprador ve ÚNICAMENTE sus pedidos
     if (clienteId) {
@@ -154,45 +164,34 @@ export async function GET(request: NextRequest) {
 // POST /api/orders: Crear nuevo pedido real desde la tienda con asignación de IDs únicos de cliente y empresa
 export async function POST(request: NextRequest) {
   try {
+    const auth = await authenticateOrderUser(request, ["Client"]);
+    if (auth.response) return auth.response;
     const data = await request.json();
     const orderId = data.id || `RF-${Math.floor(1000 + Math.random() * 9000)}`;
 
-    const clienteId = data.clientId || data.cliente_id || `cli_${Math.random().toString(36).substring(2, 9)}`;
-    const clienteUsuarioId = data.clientUserId || data.cliente_usuario_id || `usr_${clienteId}`;
-
-    const rawCompanyId = String(data.companyId || "").toLowerCase().trim();
-    const rawSlug = String(data.empresaSlug || rawCompanyId.replace(/^empresa-/, "") || "").toLowerCase().trim();
-    const isPrueba = rawCompanyId === "empresa-prueba" || rawSlug === "prueba" || Number(data.empresaId) === 2;
-    const isMaciel = rawCompanyId === "frigorifico-maciel" || rawSlug === "maciel" || Number(data.empresaId) === 1;
-
-    let empresaId = Number(data.empresaId) || (isPrueba ? 2 : isMaciel ? 1 : 0);
-    let empresaSlug = isPrueba ? "prueba" : isMaciel ? "maciel" : rawSlug;
-    let empresaNombre = data.branch || "";
-
-    // Si es una empresa nueva registrada en Cobro Fácil (id > 2 o slug propio), resolver su ID exacto desde public.empresas
-    if (!empresaId || (!isMaciel && !isPrueba && rawSlug)) {
-      try {
-        const empRows = await queryDb(
-          "SELECT id, nombre, slug FROM public.empresas WHERE id = $1 OR LOWER(slug) = LOWER($2) LIMIT 1",
-          [empresaId || -1, rawSlug || ""]
-        );
-        if (empRows.length > 0) {
-          empresaId = Number(empRows[0].id);
-          empresaSlug = String(empRows[0].slug || rawSlug);
-          if (!empresaNombre || empresaNombre.includes("Tucumán 2130")) {
-            empresaNombre = empRows[0].nombre;
-          }
-        }
-      } catch {}
+    const clienteId = auth.user.id;
+    const clienteUsuarioId = auth.user.id;
+    if ((data.clientId && data.clientId !== clienteId) ||
+        (data.clientUserId && data.clientUserId !== clienteUsuarioId)) {
+      return NextResponse.json({ error: "El comprador no coincide con la sesión. Volvé a iniciar sesión." }, { status: 403 });
     }
-    if (!empresaId) empresaId = 1;
-    if (!empresaSlug) empresaSlug = "maciel";
-    if (!empresaNombre) {
-      empresaNombre = isPrueba
-        ? "Cobro Fácil - Empresa Prueba"
-        : isMaciel
-        ? "Frigorífico Maciel - Central"
-        : empresaSlug.toUpperCase();
+
+    const [productResponse, companyResponse] = await Promise.all([
+      readCatalog(request, { params: Promise.resolve({ path: ["products"] }) }),
+      readCatalog(request, { params: Promise.resolve({ path: ["companies"] }) }),
+    ]);
+    const [productData, companyData] = await Promise.all([productResponse.json(), companyResponse.json()]);
+    if (!productResponse.ok || !companyResponse.ok ||
+        productData.source !== "crm-libro-local (PostgreSQL Render)" ||
+        companyData.source !== "crm-libro-local (PostgreSQL Render)" ||
+        !Array.isArray(productData.products) || !Array.isArray(companyData.empresas)) {
+      return NextResponse.json({ error: "No se pudo validar el catálogo actualizado. Intentá nuevamente." }, { status: 503 });
+    }
+    let verified: ReturnType<typeof validateOrder>;
+    try {
+      verified = validateOrder(data, productData.products, companyData.empresas);
+    } catch (error) {
+      return NextResponse.json({ error: error instanceof Error ? error.message : "El pedido no es válido." }, { status: 409 });
     }
 
     const insertQuery = `
@@ -202,16 +201,7 @@ export async function POST(request: NextRequest) {
         subtotal, costo_envio, total, ganancia_repartidor, distancia_km,
         minutos_estimados, sucursal_origen, notas, ticket_id, created_at, updated_at
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, NOW(), NOW())
-      ON CONFLICT (id) DO UPDATE SET
-        estado = EXCLUDED.estado,
-        cliente_id = COALESCE(EXCLUDED.cliente_id, repartofacil_pedidos.cliente_id),
-        cliente_usuario_id = COALESCE(EXCLUDED.cliente_usuario_id, repartofacil_pedidos.cliente_usuario_id),
-        empresa_id = COALESCE(EXCLUDED.empresa_id, repartofacil_pedidos.empresa_id),
-        empresa_slug = COALESCE(EXCLUDED.empresa_slug, repartofacil_pedidos.empresa_slug),
-        repartidor_id = EXCLUDED.repartidor_id,
-        repartidor_nombre = EXCLUDED.repartidor_nombre,
-        ticket_id = COALESCE(EXCLUDED.ticket_id, repartofacil_pedidos.ticket_id),
-        updated_at = NOW()
+      ON CONFLICT (id) DO NOTHING
       RETURNING *;
     `;
 
@@ -222,26 +212,29 @@ export async function POST(request: NextRequest) {
       data.customerName || data.clientName || "Cliente Web",
       data.customerPhone || "+54 9 341 555-1234",
       data.deliveryAddress || "Tucumán 2130, Rosario",
-      data.deliveryType || "delivery",
+      data.deliveryType,
       normalizePaymentMethod(data.paymentMethod || data.metodo_pago),
-      data.status || "pending_store",
-      empresaId,
-      empresaSlug,
-      data.driverId || null,
-      data.driverName || null,
-      JSON.stringify(data.items || []),
-      data.subtotal || 0,
-      data.deliveryFee || 0,
-      data.total || 0,
-      data.driverEarnings || 2450,
-      data.distanceKm || 1.8,
-      data.estimatedMinutes || 20,
-      empresaNombre,
+      "pending_store",
+      Number(verified.company.empresa_id),
+      verified.company.slug,
+      null,
+      null,
+      JSON.stringify(verified.items),
+      verified.subtotal,
+      verified.deliveryFee,
+      verified.total,
+      verified.tarifa.driverEarnings,
+      verified.tarifa.distanceKm,
+      verified.tarifa.estimatedMinutes,
+      data.branch || verified.company.name,
       data.notes || "",
-      data.ticketId || data.ticket_id || null,
+      null,
     ];
 
     const result = await queryDb(insertQuery, values);
+    if (result.length === 0) {
+      return NextResponse.json({ error: "El identificador del pedido ya existe. Intentá nuevamente." }, { status: 409 });
+    }
     const created = mapDbRowToOrder(result[0]);
     return NextResponse.json(created, { status: 201 });
   } catch (err: any) {
@@ -256,8 +249,13 @@ export async function POST(request: NextRequest) {
 // PATCH /api/orders: Tomar pedido (Assigned) o Entregar pedido (Delivered)
 export async function PATCH(request: NextRequest) {
   try {
+    const auth = await authenticateOrderUser(request, ["Client", "Driver"]);
+    if (auth.response) return auth.response;
     const data = await request.json();
-    const { id, status, driverId, driverUserId, driverName, ticketId, ticket_id } = data;
+    const { id, status } = data;
+    const driverId = auth.user.id;
+    const driverUserId = auth.user.id;
+    const driverName = auth.user.displayName || "Repartidor";
 
     if (!id) {
       return NextResponse.json({ error: "id de pedido requerido" }, { status: 400 });
@@ -266,16 +264,14 @@ export async function PATCH(request: NextRequest) {
     const isAssignment = status === "Assigned";
     const isDelivery = status === "Delivered";
     const driverAction = isAssignment || isDelivery;
-    const legacyAction = driverAction &&
-      process.env.RF_DRIVER_ACTIONS_LEGACY_COMPAT === "1" &&
-      data.driverProtocol !== 2;
-    const guardedAction = driverAction && !legacyAction;
-    if ((isAssignment || (isDelivery && !legacyAction)) &&
-      (typeof driverId !== "string" || !driverId.trim())) {
-      return NextResponse.json({ error: "Identificación del repartidor requerida" }, { status: 400 });
+    const isCancellation = status === "cancelled_by_client";
+    if ((!driverAction && !isCancellation) ||
+        (driverAction && auth.user.role !== "Driver") ||
+        (isCancellation && auth.user.role !== "Client")) {
+      return NextResponse.json({ error: "La cuenta no puede realizar esta acción." }, { status: 403 });
     }
-    if (legacyAction) {
-      console.warn("[Orders API] Acción de repartidor con protocolo anterior durante migración.");
+    if (driverAction && data.driverId !== undefined && data.driverId !== driverId) {
+      return NextResponse.json({ error: "El repartidor no coincide con la sesión." }, { status: 403 });
     }
 
     let updateQuery = "UPDATE repartofacil_pedidos SET updated_at = NOW()";
@@ -289,37 +285,34 @@ export async function PATCH(request: NextRequest) {
         updateQuery += `, driver_last_ping = NOW(), custodio_estado = 'normal', custodio_advertencia_at = NULL`;
       }
     }
-    if (driverId !== undefined) {
+    if (driverAction) {
       updateQuery += `, repartidor_id = $${idx++}`;
       values.push(driverId);
     }
-    if (driverUserId !== undefined) {
+    if (driverAction) {
       updateQuery += `, repartidor_usuario_id = $${idx++}`;
       values.push(driverUserId);
     }
-    if (driverName !== undefined) {
+    if (driverAction) {
       updateQuery += `, repartidor_nombre = $${idx++}`;
       values.push(driverName);
     }
-    const finalTicket = ticketId || ticket_id;
-    if (finalTicket !== undefined) {
-      updateQuery += `, ticket_id = $${idx++}`;
-      values.push(finalTicket);
-    }
-
     updateQuery += ` WHERE id = $${idx++}`;
     values.push(id);
-    if (isAssignment && guardedAction) {
+    if (isAssignment) {
       updateQuery += " AND (repartidor_id IS NULL OR repartidor_id = '') AND LOWER(TRIM(estado)) IN ('confirmed', 'ready', 'accepted', 'embalado')";
-    } else if (isDelivery && guardedAction) {
+    } else if (isDelivery) {
       updateQuery += ` AND repartidor_id = $${idx++} AND LOWER(TRIM(estado)) IN ('assigned', 'picked up', 'in transit', 'ready', 'embalado')`;
       values.push(driverId);
+    } else {
+      updateQuery += ` AND (cliente_id = $${idx} OR cliente_usuario_id = $${idx}) AND LOWER(TRIM(estado)) NOT IN ('delivered', 'cancelled', 'cancelled_by_client', 'rejected')`;
+      values.push(auth.user.id);
     }
     updateQuery += " RETURNING *;";
 
     const rows = await queryDb(updateQuery, values);
     if (rows.length === 0) {
-      if (guardedAction) {
+      if (driverAction) {
         const existing = await queryDb(
           "SELECT * FROM repartofacil_pedidos WHERE id = $1 LIMIT 1",
           [id]
@@ -339,12 +332,11 @@ export async function PATCH(request: NextRequest) {
         return NextResponse.json(
           {
             error: isAssignment ? "El pedido ya no está disponible." : "La entrega no se puede confirmar para este repartidor.",
-            order: mapDbRowToOrder(existing[0]),
           },
           { status: 409 }
         );
       }
-      return NextResponse.json({ error: "Pedido no encontrado" }, { status: 404 });
+      return NextResponse.json({ error: "No se puede cancelar este pedido." }, { status: 409 });
     }
 
     // Si el chofer acepta la orden o la entrega, registrar el evento en el chat tripartito

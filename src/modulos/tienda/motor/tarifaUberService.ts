@@ -39,9 +39,14 @@ export function haversineKm(lat1: number, lon1: number, lat2: number, lon2: numb
 
 // Determinar si es horario pico (almuerzo 12-14:30 o cena 20-23:30)
 export function isPeakHourNow(): boolean {
-  if (typeof window === "undefined") return true;
-  const now = new Date();
-  const hour = now.getHours() + now.getMinutes() / 60;
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "America/Argentina/Buenos_Aires",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(new Date());
+  const hour = Number(parts.find((part) => part.type === "hour")?.value) +
+    Number(parts.find((part) => part.type === "minute")?.value) / 60;
   const isLunchPeak = hour >= 12.0 && hour <= 14.5;
   const isDinnerPeak = hour >= 20.0 && hour <= 23.5;
   return isLunchPeak || isDinnerPeak;

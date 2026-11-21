@@ -28,6 +28,7 @@ import { ModalMercados } from "@/components/ModalMercados";
 import { Layers, Truck, ShieldAlert, Navigation, Target, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { authHeaders } from "@/lib/clientAuth";
 
 interface RepartidorPiramidalProps {
   onSwitchToStore: () => void;
@@ -90,7 +91,7 @@ export function RepartidorPiramidal({ onSwitchToStore }: RepartidorPiramidalProp
       try {
         await fetch("/api/orders/custodio", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", ...authHeaders("Driver") },
           body: JSON.stringify({
             action: "ping",
             driverId: driverProfile.id,
@@ -245,10 +246,7 @@ export function RepartidorPiramidal({ onSwitchToStore }: RepartidorPiramidalProp
         )}
         style={{ transform: `translateY(${sheetY})` }}
       >
-        <div className={cn(
-          "w-full max-w-lg mx-auto bg-white rounded-t-[36px] shadow-[0_-16px_40px_rgba(15,23,42,0.2)] flex flex-col relative border-t-2 border-yellow-400",
-          activeTab === "mensajes" ? "h-[60dvh]" : "h-[80dvh]"
-        )}>
+        <div className="w-full max-w-lg mx-auto h-[80dvh] bg-white rounded-t-[36px] shadow-[0_-16px_40px_rgba(15,23,42,0.2)] flex flex-col relative border-t-2 border-yellow-400">
           {/* Handle de arrastre y Pestañas */}
           <div className="w-full flex flex-col items-center pb-2 select-none">
             <button

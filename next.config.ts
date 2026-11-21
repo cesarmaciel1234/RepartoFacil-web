@@ -1,6 +1,7 @@
 import type {NextConfig} from 'next';
 
 const nextConfig: NextConfig = {
+  distDir: process.env.RF_DEV_DIST_DIR || '.next',
   /* config options here */
   typescript: {
     ignoreBuildErrors: true,

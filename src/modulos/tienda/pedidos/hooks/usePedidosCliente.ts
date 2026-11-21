@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { getOrCreateActiveClientIdentity } from "../../../repartidor/motor/driverService";
 import type { OrderData } from "../../motor/tipos";
+import { authHeaders } from "@/lib/clientAuth";
 import {
   filterClientOrders,
   readClientOrdersCache,
@@ -78,7 +79,9 @@ export function usePedidosCliente({
       loading = true;
       try {
         const url = `/api/orders?cliente_id=${encodeURIComponent(clientId)}`;
-        const response = await fetch(url, { cache: "no-store", signal: controller.signal });
+        const headers = authHeaders("Client");
+        if (!headers.Authorization) return;
+        const response = await fetch(url, { cache: "no-store", signal: controller.signal, headers });
         if (!response.ok) throw new Error(`El servidor respondió ${response.status}`);
         const data: unknown = await response.json();
         if (!Array.isArray(data)) throw new Error("El historial recibido no es válido.");

@@ -44,8 +44,7 @@ Invariantes:
 1. PostgreSQL es la persistencia central que consume la recepción de Cobro Fácil.
 2. No mostrar un pedido como confirmado, vaciar el carrito ni dar por exitosa la
    compra si `POST /api/orders` falla.
-3. El historial local y Firestore son complementarios; no reemplazan el
-   registro central.
+3. El historial local es complementario; no reemplaza el registro central.
 4. Mantener los filtros de aislamiento por cliente, empresa y repartidor en
    `src/app/api/orders/route.ts`.
 5. Mantener los métodos de pago seleccionados (`cash`, `transfer`, `card`) desde
@@ -61,15 +60,35 @@ asignación simultánea entre clientes actualizados. El navegador
 debe admitir Web Locks; si no lo admite, se muestra un error de sincronización.
 La cartera permanece local al dispositivo y no sustituye una liquidación central.
 
-Para actualizar primero las instalaciones antiguas, configurar temporalmente
-`RF_DRIVER_ACTIONS_LEGACY_COMPAT=1` en Render antes de desplegar v5.11. Las
-solicitudes antiguas conservan el comportamiento anterior: pueden confirmar
-entregas sin identificador y no están protegidas contra asignaciones simultáneas;
-un cliente antiguo puede incluso sobrescribir una asignación de uno actualizado.
-No se garantiza una asignación exclusiva durante esta etapa. Cuando todos los
-repartidores hayan abierto y actualizado la app, eliminar esa variable o cambiarla
-a `0` y redesplegar. El modo estricto es el predeterminado si no está presente.
-No activar el modo estricto antes de comprobar cada instalación.
+La API de pedidos y chat exige una cuenta registrada y verifica su token contra
+`BACKEND_URL/api/auth/me`. El servidor determina el comprador o repartidor a partir
+de esa sesión. Las cuentas anónimas no pueden operar pedidos; el registro de
+repartidores sigue siendo libre. El catálogo permanece público. La API antigua
+`/api/db/orders` ya no accede a los pedidos de PostgreSQL.
+El inicio de sesión permite cinco intentos por cuenta en quince minutos; a partir
+del sexto devuelve HTTP 429. El contador reside en la base del backend y requiere
+la tabla `login_throttles`, creada al iniciar el servicio. Una instalación con
+varias instancias debe compartir la misma base persistente.
+En el backend, las colecciones heredadas de pedidos y alertas quedan
+deshabilitadas; los documentos privados de clientes, repartidores y usuarios
+requieren una cuenta registrada y solo se entregan a su titular. Las pantallas
+antiguas que dependían de esas colecciones deben migrarse.
+
+Esta versión no acepta clientes antiguos sin token, incluso si se configura
+`RF_DRIVER_ACTIONS_LEGACY_COMPAT`. Antes de desplegarla hay que actualizar las
+instalaciones y planificar el reinicio de sesión. El backend de autenticación
+debe estar disponible y persistir las cuentas: su configuración actual con
+SQLite efímero puede perderlas al reiniciar. No considerar completo el blindaje
+sin revisar las demás rutas heredadas del backend y resolver la reserva de stock.
+Los pedidos antiguos creados con identidades invitadas no pueden
+asociarse automáticamente de forma segura a una cuenta.
+
+Al recibir un pedido, el servidor consulta el catálogo de PostgreSQL y verifica
+comercio, artículos, cantidades, precios y tarifa antes de guardarlo. Si cambió
+el importe o falta el catálogo, rechaza la compra sin confirmarla. El stock
+refleja la última instantánea del TPV: esta verificación no reserva ni descuenta
+inventario, por lo que ventas simultáneas pueden agotarlo antes de preparar el
+pedido. La tarifa y la ganancia se recalculan en servidor.
 
 ## 3. Contrato de tienda y tarifa
 
@@ -137,8 +156,9 @@ en este orden:
 1. `npm run build` finaliza correctamente.
 2. `https://repartofacil.onrender.com/api/version` muestra la versión/release
    esperada para el despliegue.
-3. `GET /api/orders` responde HTTP 200 con JSON. Un HTTP 500 o el error de
-   `DATABASE_URL` bloquea la publicación funcional.
+3. `GET /api/orders` con un token válido responde HTTP 200 con JSON y sin token
+   responde HTTP 401. Un HTTP 500 o el error de `DATABASE_URL` bloquea la
+   publicación funcional.
 4. La tienda carga catálogo, abre el carrito y mantiene igual el costo de envío
    entre carrito y checkout.
 5. El login no produce errores de consola y devuelve al checkout sin perder el
@@ -170,8 +190,6 @@ vaciar carritos preexistentes ni alterar datos del CRM durante una prueba.
 
 ## 8. Estado de referencia
 
-En la comprobación más reciente, Render desplegó la versión `v5.9` después de
-configurar `DATABASE_URL` en el servicio Next.js. `GET /api/orders` respondió
-HTTP 200 con 18 pedidos existentes. Esto confirma la lectura de la base, pero
-no sustituye la prueba de checkout ni la confirmación visual en Cobro Fácil.
-Repetir la verificación después de cada cambio de configuración o despliegue.
+La lectura histórica de pedidos en Render confirmó la conexión con PostgreSQL,
+pero no sustituye la prueba autenticada de checkout ni la confirmación visual
+en Cobro Fácil. Repetir la verificación después de cada despliegue.

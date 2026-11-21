@@ -72,6 +72,9 @@ export function ModalDriverAuth({
       }
       const user = data.user;
       const token = data.access_token;
+      if (user.role !== "Driver" || user.isAnonymous !== false || typeof user.id !== "string" || !user.id) {
+        throw new Error("Ingresá con una cuenta registrada de repartidor.");
+      }
 
       // Crear objeto de perfil con rol Driver
       const driverId = user.id || user.uid || "repartidor-01";
@@ -132,8 +135,8 @@ export function ModalDriverAuth({
       setErrorMsg("Ingresá un email o nombre de usuario");
       return;
     }
-    if (password.length < 6) {
-      setErrorMsg("La contraseña debe tener al menos 6 caracteres");
+    if (password.length < 8) {
+      setErrorMsg("La contraseña debe tener al menos 8 caracteres");
       return;
     }
 
@@ -160,6 +163,9 @@ export function ModalDriverAuth({
       const user = data.user;
       if (!user || !data.access_token) {
         throw new Error("El servicio de autenticación devolvió una respuesta incompleta");
+      }
+      if (user.role !== "Driver" || user.isAnonymous !== false || typeof user.id !== "string" || !user.id) {
+        throw new Error("El servicio no confirmó una cuenta de repartidor válida.");
       }
       const driverId = user.id || `driver-${Date.now().toString(36)}`;
 
@@ -332,7 +338,7 @@ export function ModalDriverAuth({
 
             <div>
               <label className="text-[11px] font-bold text-slate-700 block mb-1">
-                Contraseña (mínimo 6 caracteres) *
+                Contraseña (mínimo 8 caracteres) *
               </label>
               <Input
                 type="password"

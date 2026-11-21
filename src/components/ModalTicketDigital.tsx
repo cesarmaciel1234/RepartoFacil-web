@@ -8,12 +8,14 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { authHeaders } from "@/lib/clientAuth";
 
 interface ModalTicketDigitalProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   ticketIdOrOrderId?: string | null;
   order?: any | null;
+  viewerRole?: "Client" | "Driver";
 }
 
 export function ModalTicketDigital({
@@ -21,6 +23,7 @@ export function ModalTicketDigital({
   onOpenChange,
   ticketIdOrOrderId,
   order,
+  viewerRole = "Client",
 }: ModalTicketDigitalProps) {
   const [ticketData, setTicketData] = useState<any | null>(null);
   const [loading, setLoading] = useState(false);
@@ -41,7 +44,7 @@ export function ModalTicketDigital({
     setLoading(true);
 
     // Intentar buscar los datos del ticket desde PostgreSQL
-    fetch(`/api/orders?status=all`)
+    fetch(`/api/orders?status=all`, { headers: authHeaders(viewerRole) })
       .then((r) => r.json())
       .then((ordersList) => {
         if (Array.isArray(ordersList)) {
@@ -63,7 +66,7 @@ export function ModalTicketDigital({
         if (order) setTicketData(order);
         setLoading(false);
       });
-  }, [isOpen, ticketIdOrOrderId, order]);
+  }, [isOpen, ticketIdOrOrderId, order, viewerRole]);
 
   const displayOrder = ticketData || order;
   const ticketNum =

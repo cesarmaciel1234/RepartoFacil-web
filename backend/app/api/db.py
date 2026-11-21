@@ -6,12 +6,27 @@ from typing import Any, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
-from app.api.auth import get_current_user
+from app.api.auth import bearer, get_current_user
+from fastapi.security import HTTPAuthorizationCredentials
 from app.database import get_db
 from app.models.local import Document, LocalUser
 
 
 router = APIRouter(prefix="/api/db", tags=["database"])
+
+
+def authorize_document_path(path: str, user: Optional[LocalUser]) -> None:
+    parts = [part for part in path.strip("/").split("/") if part]
+    if not parts:
+        raise HTTPException(status_code=400, detail="A collection path is required")
+    if parts[0] in {"orders", "alerts"}:
+        raise HTTPException(status_code=410, detail="Legacy collection is no longer available")
+    expected_role = {"clients": "client", "driverProfiles": "driver"}.get(parts[0])
+    if parts[0] in {"clients", "driverProfiles", "users"}:
+        if not user or user.is_anonymous == "true":
+            raise HTTPException(status_code=401, detail="Registered account required")
+        if len(parts) < 2 or parts[1] != user.id or (expected_role and user.role.lower() != expected_role):
+            raise HTTPException(status_code=403, detail="Document does not belong to this account")
 
 ORDER_TRANSITIONS = {
     "Pending": {"Assigned"},
@@ -94,7 +109,11 @@ def read_path(
     orderBy: Optional[str] = None,
     limit: Optional[int] = None,
     db: Session = Depends(get_db),
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(bearer),
 ):
+    root = path.strip("/").split("/", 1)[0]
+    user = get_current_user(credentials, db) if root in {"clients", "driverProfiles", "users"} else None
+    authorize_document_path(path, user)
     collection, document_id = split_path(path)
     if document_id:
         row = db.query(Document).filter(
@@ -144,6 +163,7 @@ def add_document(
     db: Session = Depends(get_db),
     user: LocalUser = Depends(get_current_user),
 ):
+    authorize_document_path(path, user)
     collection, document_id = split_path(path)
     if document_id:
         raise HTTPException(status_code=400, detail="Use PUT or PATCH to write a document")
@@ -167,6 +187,7 @@ def write_document(
     db: Session = Depends(get_db),
     user: LocalUser = Depends(get_current_user),
 ):
+    authorize_document_path(path, user)
     collection, document_id = split_path(path)
     if not document_id:
         raise HTTPException(status_code=400, detail="A document path is required")
@@ -209,6 +230,7 @@ def delete_document(
     db: Session = Depends(get_db),
     user: LocalUser = Depends(get_current_user),
 ):
+    authorize_document_path(path, user)
     collection, document_id = split_path(path)
     if not document_id:
         raise HTTPException(status_code=400, detail="A document path is required")

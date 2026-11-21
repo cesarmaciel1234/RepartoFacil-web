@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { formatSavedTime } from "../catalogo/AvisoCatalogo";
+import { authHeaders } from "@/lib/clientAuth";
 
 interface CentroPedidosClienteSheetProps {
   isOpen: boolean;
@@ -106,7 +107,7 @@ export function CentroPedidosClienteSheet({
     try {
       const response = await fetch("/api/orders", {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...authHeaders("Client") },
         body: JSON.stringify({ id: orderId, status: "cancelled_by_client" }),
       });
       if (!response.ok) {

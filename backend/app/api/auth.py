@@ -8,14 +8,18 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
+from sqlalchemy import case, update
+from sqlalchemy.exc import IntegrityError
 
 from app.database import get_db
 from app.config import settings
-from app.models.local import LocalUser
+from app.models.local import LocalUser, LoginThrottle
 
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 bearer = HTTPBearer(auto_error=False)
+LOGIN_ATTEMPTS = 5
+LOGIN_WINDOW = timedelta(minutes=15)
 
 
 class LoginRequest(BaseModel):
@@ -115,8 +119,8 @@ def register(request: LoginRequest, db: Session = Depends(get_db)):
     existing = db.query(LocalUser).filter(LocalUser.email == request.email.lower()).first()
     if existing:
         raise HTTPException(status_code=400, detail="Email already registered")
-    if len(request.password) < 6:
-        raise HTTPException(status_code=400, detail="Password must contain at least 6 characters")
+    if len(request.password) < 8:
+        raise HTTPException(status_code=400, detail="Password must contain at least 8 characters")
     user_id = str(__import__("uuid").uuid4())
     requested_role = request.role.strip().lower()
     roles = {"client": "Client", "driver": "Driver"}
@@ -140,11 +144,50 @@ def register(request: LoginRequest, db: Session = Depends(get_db)):
 @router.post("/login", response_model=AuthResponse)
 def login(request: LoginRequest, db: Session = Depends(get_db)):
     ident = request.email.lower().strip()
+    canonical = ident if "@" in ident else f"{ident}@repartofacil.com"
+    key = hashlib.sha256(canonical.encode()).hexdigest()
+    now = datetime.utcnow()
+    expires = now + LOGIN_WINDOW
+
+    def increment():
+        return db.execute(
+            update(LoginThrottle)
+            .where(LoginThrottle.account_key == key)
+            .values(
+                attempts=case((LoginThrottle.expires_at <= now, 1), else_=LoginThrottle.attempts + 1),
+                expires_at=case((LoginThrottle.expires_at <= now, expires), else_=LoginThrottle.expires_at),
+            )
+            .returning(LoginThrottle.attempts, LoginThrottle.expires_at)
+        ).first()
+
+    attempt = increment()
+    if attempt is None:
+        db.add(LoginThrottle(account_key=key, attempts=1, expires_at=expires))
+        try:
+            db.commit()
+            attempt = (1, expires)
+        except IntegrityError:
+            db.rollback()
+            attempt = increment()
+            db.commit()
+    else:
+        db.commit()
+    if attempt is None:
+        raise HTTPException(status_code=503, detail="No se pudo verificar el límite de acceso")
+    if attempt[0] > LOGIN_ATTEMPTS:
+        retry = max(1, int((attempt[1] - now).total_seconds()))
+        raise HTTPException(
+            status_code=429,
+            detail="Demasiados intentos. Intentá nuevamente más tarde.",
+            headers={"Retry-After": str(retry)},
+        )
     user = db.query(LocalUser).filter(
         (LocalUser.email == ident) | (LocalUser.email == f"{ident}@repartofacil.com")
     ).first()
     if not user or not user.password_hash or not verify_password(request.password, user.password_hash):
         raise HTTPException(status_code=401, detail="Incorrect email or password")
+    db.query(LoginThrottle).filter(LoginThrottle.account_key == key).delete()
+    db.commit()
     return AuthResponse(access_token=create_token(user.id, user.role), user=user_data(user))
 
 

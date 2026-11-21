@@ -55,7 +55,7 @@ test("asignación concurrente y entrega idempotente en PostgreSQL", {
         id text PRIMARY KEY, estado text, repartidor_id text, repartidor_usuario_id text,
         repartidor_nombre text, updated_at timestamptz, driver_last_ping timestamptz,
         custodio_estado text, custodio_advertencia_at timestamptz, ticket_id text,
-        created_at timestamptz, cliente_nombre text, direccion_entrega text,
+        created_at timestamptz, cliente_nombre text, cliente_id text, cliente_usuario_id text, direccion_entrega text,
         items jsonb, total numeric, ganancia_repartidor numeric, metodo_pago text
       )`);
       await safeQuery(admin, `CREATE TABLE ${quotedSchema}.repartofacil_chat_mensajes (
@@ -82,6 +82,14 @@ test("asignación concurrente y entrega idempotente en PostgreSQL", {
         }
         if (name === "@/lib/db") return { queryDb };
         if (name === "@/lib/custodio") return { ejecutarAuditoriaCustodio: async () => {} };
+        if (name === "@/lib/validateOrder") return {};
+        if (name === "@/app/api/cobrofacil/[...path]/route") return {};
+        if (name === "@/lib/orderAuth") return { authenticateOrderUser: async (req) => {
+          if (req.user) return { user: req.user };
+          const { driverId } = await req.json();
+          return driverId ? { user: { id: driverId, role: "Driver", displayName: "Prueba" } }
+            : { response: { status: 401 } };
+        } };
         throw new Error(`Dependencia inesperada: ${name}`);
       },
     });
@@ -102,14 +110,64 @@ test("asignación concurrente y entrega idempotente en PostgreSQL", {
     assert.equal(delivered.status, 200);
     assert.equal(delivered.body.driverSettlement.earning, 0);
     assert.equal((await exports.PATCH(request("Delivered", winner))).status, 200);
-    assert.equal((await exports.PATCH(request("Delivered"))).status, 400);
+    assert.equal((await exports.PATCH(request("Delivered"))).status, 401);
     const events = await queryDb("SELECT COUNT(*)::integer AS count FROM repartofacil_chat_mensajes");
     assert.equal(events[0].count, 2);
     await queryDb(`INSERT INTO repartofacil_pedidos
       (id, estado, cliente_nombre, direccion_entrega, items, total, ganancia_repartidor, metodo_pago, created_at)
       VALUES ('TEST-LEGACY', 'Assigned', 'Cliente ficticio', 'Dirección ficticia', '[]', 1000, 100, 'cash', NOW())`);
     const legacy = { json: async () => ({ id: "TEST-LEGACY", status: "Delivered" }) };
-    assert.equal((await exports.PATCH(legacy)).status, 200);
+    assert.equal((await exports.PATCH(legacy)).status, 401);
+
+    await queryDb(`INSERT INTO repartofacil_pedidos
+      (id, estado, cliente_id, repartidor_id, cliente_nombre, direccion_entrega, items, total, created_at)
+      VALUES
+      ('TEST-OWN', 'Assigned', 'buyer-1', 'test-driver-1', 'Cliente ficticio', 'Prueba', '[]', 100, NOW()),
+      ('TEST-OTHER', 'Assigned', 'buyer-2', 'test-driver-2', 'Otro ficticio', 'Prueba', '[]', 100, NOW()),
+      ('TEST-AVAILABLE', 'ready', 'buyer-2', NULL, 'Otro ficticio', 'Prueba', '[]', 100, NOW())`);
+    const getRequest = (id, role) => ({
+      user: { id, role, displayName: "Prueba" },
+      nextUrl: { searchParams: new URLSearchParams() },
+    });
+    const buyerOrders = await exports.GET(getRequest("buyer-1", "Client"));
+    assert.deepEqual(Array.from(buyerOrders.body, (order) => order.id), ["TEST-OWN"]);
+    const driverOrders = await exports.GET(getRequest("test-driver-1", "Driver"));
+    const driverIds = Array.from(driverOrders.body, (order) => order.id);
+    assert.ok(driverIds.includes("TEST-OWN"));
+    assert.ok(driverIds.includes("TEST-AVAILABLE"));
+    assert.ok(!driverIds.includes("TEST-OTHER"));
+    const cancel = (orderId) => ({
+      user: { id: "buyer-1", role: "Client", displayName: "Prueba" },
+      json: async () => ({ id: orderId, status: "cancelled_by_client" }),
+    });
+    assert.equal((await exports.PATCH(cancel("TEST-OTHER"))).status, 409);
+    assert.equal((await exports.PATCH(cancel("TEST-OWN"))).status, 200);
+
+    const chatSource = fs.readFileSync(path.join(process.cwd(), "src/app/api/chat/[orderId]/route.ts"), "utf8");
+    const chatExports = {};
+    vm.runInNewContext(ts.transpileModule(chatSource, {
+      compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 },
+    }).outputText, {
+      exports: chatExports, console,
+      require(name) {
+        if (name === "next/server") return { NextResponse: { json: (body, options) => ({ body, status: options?.status ?? 200 }) } };
+        if (name === "@/lib/db") return { queryDb };
+        if (name === "@/lib/orderAuth") return { authenticateOrderUser: async (req) => ({ user: req.user }) };
+        throw new Error(`Dependencia inesperada: ${name}`);
+      },
+    });
+    const chatParams = { params: Promise.resolve({ orderId: "TEST-OTHER" }) };
+    const chatRequest = (id, role, content) => ({
+      user: { id, role, displayName: "Prueba" },
+      json: async () => ({ id: "test-message", content }),
+    });
+    assert.equal((await chatExports.GET(chatRequest("buyer-2", "Client"), chatParams)).body.messages.length, 0);
+    assert.equal((await chatExports.GET(chatRequest("buyer-1", "Client"), chatParams)).status, 404);
+    assert.equal((await chatExports.POST(chatRequest("buyer-1", "Client", "Prueba"), chatParams)).status, 404);
+    assert.equal((await chatExports.POST(chatRequest("buyer-2", "Client", "Prueba"), chatParams)).status, 201);
+    assert.equal((await chatExports.GET(chatRequest("test-driver-2", "Driver"), chatParams)).body.messages.length, 1);
+    await queryDb("UPDATE repartofacil_pedidos SET repartidor_id = $1 WHERE id = $2", ["test-driver-3", "TEST-OTHER"]);
+    assert.equal((await chatExports.GET(chatRequest("test-driver-2", "Driver"), chatParams)).status, 404);
   } finally {
     if (created) {
       const admin = await pool.connect();

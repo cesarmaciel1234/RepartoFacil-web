@@ -1,7 +1,7 @@
 from datetime import datetime
 import uuid
 
-from sqlalchemy import Column, DateTime, String, Text, UniqueConstraint
+from sqlalchemy import Column, DateTime, Integer, String, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 
 from app.database import Base
@@ -29,3 +29,11 @@ class Document(Base):
     data = Column(Text, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class LoginThrottle(Base):
+    __tablename__ = "login_throttles"
+
+    account_key = Column(String(64), primary_key=True)
+    attempts = Column(Integer, nullable=False)
+    expires_at = Column(DateTime, nullable=False)

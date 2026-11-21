@@ -1,6 +1,7 @@
 import type { DriverOrder, DriverProfile } from "./tipos";
 import { loadDriverProfile, ORDERS_STORAGE_KEY } from "./driverService";
 import { creditDeliveryEarning } from "./walletService";
+import { authHeaders } from "@/lib/clientAuth";
 
 type PendingActionType = "assign" | "deliver";
 
@@ -100,7 +101,7 @@ export async function syncPendingDriverActions(driverId: string): Promise<Driver
       try {
         response = await fetch("/api/orders", {
           method: "PATCH",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", ...authHeaders("Driver") },
           body: JSON.stringify({
             id: action.order.id,
             status: action.type === "assign" ? "Assigned" : "Delivered",

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { queryDb } from "@/lib/db";
+import { authenticateOrderUser } from "@/lib/orderAuth";
 
 export const dynamic = "force-dynamic";
 
@@ -7,7 +8,9 @@ import { ejecutarAuditoriaCustodio } from "@/lib/custodio";
 
 
 // GET /api/orders/custodio: Auditoría periódica disparada por polling o cron
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const auth = await authenticateOrderUser(request, ["Client", "Driver"]);
+  if (auth.response) return auth.response;
   const resultado = await ejecutarAuditoriaCustodio();
   return NextResponse.json({ success: true, ...resultado });
 }
@@ -15,8 +18,21 @@ export async function GET() {
 // POST /api/orders/custodio: Pings de telemetría, desconexión forzada o liberación manual
 export async function POST(request: NextRequest) {
   try {
+    const auth = await authenticateOrderUser(request, ["Client", "Driver"]);
+    if (auth.response) return auth.response;
     const body = await request.json();
-    const { action, driverId, driverName, orderId, lat, lng, reason } = body;
+    const { action, orderId, lat, lng, reason } = body;
+    const driverId = auth.user.id;
+    const driverName = auth.user.displayName;
+    const driverAction = action === "ping" || action === "driver_disconnected";
+    const clientAction = action === "force_release" || action === "retry_order";
+    if ((driverAction && auth.user.role !== "Driver") ||
+        (clientAction && auth.user.role !== "Client")) {
+      return NextResponse.json({ error: "La cuenta no puede realizar esta acción." }, { status: 403 });
+    }
+    if (driverAction && body.driverId !== undefined && body.driverId !== driverId) {
+      return NextResponse.json({ error: "El repartidor no coincide con la sesión." }, { status: 403 });
+    }
 
     // 1. Ping GPS de telemetría del repartidor activo
     if (action === "ping" && driverId) {
@@ -44,7 +60,7 @@ export async function POST(request: NextRequest) {
 
       for (const p of pedidosChofer) {
         const nuevoEstado = p.estado === "ready" || p.estado === "Ready" ? "ready" : "confirmed";
-        await queryDb(
+        const released = await queryDb(
           `UPDATE repartofacil_pedidos 
            SET repartidor_id = NULL,
                repartidor_nombre = NULL,
@@ -52,9 +68,12 @@ export async function POST(request: NextRequest) {
                custodio_estado = 'reingresado',
                custodio_advertencia_at = NULL,
                updated_at = NOW()
-           WHERE id = $2`,
-          [nuevoEstado, p.id]
+           WHERE id = $2 AND repartidor_id = $3
+             AND LOWER(TRIM(estado)) NOT IN ('delivered', 'cancelled', 'cancelled_by_client', 'rejected')
+           RETURNING id`,
+          [nuevoEstado, p.id, driverId]
         );
+        if (released.length === 0) continue;
 
         const msgId = `msg-custodio-${Date.now()}`;
         const horaStr = new Date().toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" });
@@ -73,7 +92,13 @@ export async function POST(request: NextRequest) {
 
     // 3. Liberación manual forzada desde Cobro Fácil o Cliente ("Chofer no responde / No se mueve")
     if (action === "force_release" && orderId) {
-      const rows = await queryDb(`SELECT id, estado, repartidor_nombre FROM repartofacil_pedidos WHERE id = $1`, [orderId]);
+      const rows = await queryDb(
+        `SELECT id, estado, repartidor_id, repartidor_nombre FROM repartofacil_pedidos
+         WHERE id = $1 AND (cliente_id = $2 OR cliente_usuario_id = $2)
+           AND repartidor_id IS NOT NULL AND repartidor_id <> ''
+           AND LOWER(TRIM(estado)) IN ('assigned', 'picked up', 'in transit', 'ready', 'embalado')`,
+        [orderId, auth.user.id]
+      );
       if (rows.length === 0) {
         return NextResponse.json({ error: "Pedido no encontrado" }, { status: 404 });
       }
@@ -82,7 +107,7 @@ export async function POST(request: NextRequest) {
       const choferPrevio = p.repartidor_nombre || "el chofer";
       const nuevoEstado = p.estado === "ready" || p.estado === "Ready" ? "ready" : "confirmed";
 
-      await queryDb(
+      const released = await queryDb(
         `UPDATE repartofacil_pedidos 
          SET repartidor_id = NULL,
              repartidor_nombre = NULL,
@@ -90,9 +115,13 @@ export async function POST(request: NextRequest) {
              custodio_estado = 'reingresado',
              custodio_advertencia_at = NULL,
              updated_at = NOW()
-         WHERE id = $2`,
-        [nuevoEstado, orderId]
+         WHERE id = $2 AND (cliente_id = $3 OR cliente_usuario_id = $3)
+           AND repartidor_id = $4
+           AND LOWER(TRIM(estado)) IN ('assigned', 'picked up', 'in transit', 'ready', 'embalado')
+         RETURNING id`,
+        [nuevoEstado, orderId, auth.user.id, p.repartidor_id]
       );
+      if (released.length === 0) return NextResponse.json({ error: "Pedido no encontrado" }, { status: 404 });
 
       const msgId = `msg-custodio-${Date.now()}`;
       const horaStr = new Date().toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" });
@@ -111,7 +140,7 @@ export async function POST(request: NextRequest) {
 
     // 4. Retomar pedido cancelado/expirado por timeout
     if (action === "retry_order" && orderId) {
-      await queryDb(
+      const retried = await queryDb(
         `UPDATE repartofacil_pedidos 
          SET estado = 'pending_store',
              custodio_estado = 'reintentado',
@@ -120,9 +149,12 @@ export async function POST(request: NextRequest) {
              repartidor_nombre = NULL,
              created_at = NOW(),
              updated_at = NOW()
-         WHERE id = $1`,
-        [orderId]
+         WHERE id = $1 AND (cliente_id = $2 OR cliente_usuario_id = $2)
+           AND LOWER(TRIM(estado)) IN ('cancelled', 'cancelled_by_client', 'cancelled_timeout')
+         RETURNING id`,
+        [orderId, auth.user.id]
       );
+      if (retried.length === 0) return NextResponse.json({ error: "Pedido no encontrado" }, { status: 404 });
 
       const msgId = `msg-retry-${Date.now()}`;
       const horaStr = new Date().toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" });

@@ -1,7 +1,6 @@
 import { CartItem, CheckoutFormData, OrderData } from "./tipos";
 import { calcularTarifaEnvio, estimateAddressCoords, MARKET_CENTRAL } from "./tarifaUberService";
-import { addDocumentNonBlocking } from "@/firebase";
-import { collection } from "@/firebase/local-firestore";
+import { authHeaders } from "@/lib/clientAuth";
 import {
   loadClientProfile,
   getOrCreateActiveClientIdentity,
@@ -97,9 +96,12 @@ export function saveCustomerData(form: CheckoutFormData) {
 
 export async function createOrder(
   cart: CartItem[],
-  form: CheckoutFormData,
-  firestoreInstance: any = null
+  form: CheckoutFormData
 ): Promise<OrderData> {
+  const headers = authHeaders("Client");
+  if (!loadClientProfile() || !headers.Authorization) {
+    throw new Error("Iniciá sesión como comprador para confirmar el pedido.");
+  }
   const verifiedCart = cart.map((item) => {
     if (!isProductPurchasable(item.product)) {
       throw new Error(
@@ -147,7 +149,7 @@ export async function createOrder(
       : 0;
 
   const total = subtotal + deliveryFee;
-  const orderId = `RF-${Math.floor(1000 + Math.random() * 9000)}`;
+  const orderId = `RF-${crypto.randomUUID()}`;
   const { coords: destCoords } = estimateAddressCoords(form.deliveryAddress || "");
 
   // Asignar IDs únicos de usuario, perfil cliente y empresa destinataria (aislamiento estricto)
@@ -222,10 +224,17 @@ export async function createOrder(
   // 2. Persistencia central: no confirmar un pedido que no llegó al servidor
   const response = await fetch("/api/orders", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...headers },
     body: JSON.stringify(newOrder),
   });
   if (!response.ok) {
+    if (response.status === 401 || response.status === 403) {
+      throw new Error("Tu sesión no permite comprar. Volvé a iniciar sesión.");
+    }
+    if (response.status === 409 || response.status === 503) {
+      const error = await response.json();
+      throw new Error(typeof error.error === "string" ? error.error : "No se pudo validar el pedido.");
+    }
     throw new Error(`No se pudo registrar el pedido en el servidor (HTTP ${response.status}).`);
   }
 
@@ -239,15 +248,6 @@ export async function createOrder(
     }
   } catch (e) {
     console.warn("Error guardando en historial local:", e);
-  }
-
-  // 4. Persistencia adicional en Firestore / backend si está activo
-  try {
-    if (firestoreInstance) {
-      addDocumentNonBlocking(collection(firestoreInstance, "orders"), newOrder);
-    }
-  } catch (e) {
-    console.warn("Error sincronizando pedido en la nube:", e);
   }
 
   return newOrder;

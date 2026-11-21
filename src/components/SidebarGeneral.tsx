@@ -42,6 +42,7 @@ import {
 } from "@/modulos/repartidor/motor/driverService";
 import { ModalClientAuth } from "@/modulos/tienda/ui/ModalClientAuth";
 import { useState, useEffect } from "react";
+import { authHeaders } from "@/lib/clientAuth";
 
 interface SidebarGeneralProps {
   isOpen: boolean;
@@ -130,7 +131,7 @@ export function SidebarGeneral({
       if (driverProfileLocal?.id) {
         fetch("/api/orders/custodio", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", ...authHeaders("Driver") },
           body: JSON.stringify({
             action: "driver_disconnected",
             driverId: driverProfileLocal.id,
@@ -591,14 +592,14 @@ export function SidebarGeneral({
                   ? "bg-yellow-100 hover:bg-yellow-200 text-[#2D3277] border-yellow-300"
                   : "bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 hover:text-emerald-200 border-emerald-500/30"
               }`}
-              title="Borrar caché guardada offline y recargar última versión v5.11"
+              title="Borrar caché guardada offline y recargar última versión v5.12"
             >
               <RefreshCw
                 className={`w-3.5 h-3.5 ${
                   isDriverMode ? "text-yellow-800" : "text-emerald-400"
                 }`}
               />
-              <span>Actualizar a v5.11 (Limpiar Caché)</span>
+              <span>Actualizar a v5.12 (Limpiar Caché)</span>
             </Button>
 
             <Button

@@ -21,6 +21,7 @@ import { DriverOrder } from "../motor/tipos";
 import { loadClientProfile, loadDriverProfile } from "../motor/driverService";
 import { ModalTicketDigital } from "@/components/ModalTicketDigital";
 import { OrderChatMessageList } from "./OrderChatMessageList";
+import { authHeaders } from "@/lib/clientAuth";
 
 export type ChatAuthorRole = "driver" | "client" | "company";
 
@@ -68,6 +69,7 @@ export function OrderChatSheet({
   const [messages, setMessages] = useState<OrderChatMessage[]>([]);
   const [inputText, setInputText] = useState("");
   const [isSending, setIsSending] = useState(false);
+  const [sendError, setSendError] = useState<string | null>(null);
   const [isTicketModalOpen, setIsTicketModalOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -107,7 +109,10 @@ export function OrderChatSheet({
     // 2. Sincronizar con API cloud /api/chat/[orderId]
     const fetchCloudMessages = async () => {
       try {
-        const res = await fetch(`/api/chat/${orderId}`, { cache: "no-store" });
+        const res = await fetch(`/api/chat/${orderId}`, {
+          cache: "no-store",
+          headers: authHeaders(isDriverViewer ? "Driver" : "Client"),
+        });
         if (res.ok) {
           const data = await res.json();
           if (data.success && Array.isArray(data.messages) && data.messages.length > 0) {
@@ -140,7 +145,7 @@ export function OrderChatSheet({
       clearInterval(interval);
       window.removeEventListener("storage", handleStorageChange);
     };
-  }, [isOpen, orderId, storageKey]);
+  }, [isOpen, orderId, storageKey, isDriverViewer]);
 
   useEffect(() => {
     scrollToBottom();
@@ -175,24 +180,36 @@ export function OrderChatSheet({
       timestamp: timeStr,
     };
 
-    // Actualización optimista inmediata
-    const updated = [...messages, newMsg];
-    setMessages(updated);
-    setInputText("");
-    try {
-      localStorage.setItem(storageKey, JSON.stringify(updated));
-    } catch {}
-
-    // Persistencia en base de datos PostgreSQL de Cobro Fácil
+    setSendError(null);
     setIsSending(true);
     try {
-      await fetch(`/api/chat/${orderId}`, {
+      const response = await fetch(`/api/chat/${orderId}`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...authHeaders(isDriverViewer ? "Driver" : "Client") },
         body: JSON.stringify(newMsg),
       });
+      if (!response.ok) {
+        throw new Error(response.status === 401 || response.status === 403
+          ? "Tu sesión no permite enviar mensajes. Volvé a iniciar sesión."
+          : "No se pudo enviar el mensaje. Intentá nuevamente.");
+      }
+      const data = await response.json();
+      if (!data.success || !data.message) throw new Error("El servidor no confirmó el mensaje.");
+      setMessages((current) => {
+        const updated = current.some((message) => message.id === data.message.id)
+          ? current
+          : [...current, data.message];
+        try {
+          localStorage.setItem(storageKey, JSON.stringify(updated));
+        } catch (error) {
+          console.warn("No se pudo guardar el chat local:", error);
+        }
+        return updated;
+      });
+      setInputText("");
     } catch (err) {
-      console.warn("Aviso guardando mensaje en la nube:", err);
+      console.warn("No se pudo enviar el mensaje:", err);
+      setSendError(err instanceof Error ? err.message : "No se pudo enviar el mensaje. Intentá nuevamente.");
     } finally {
       setIsSending(false);
     }
@@ -410,6 +427,7 @@ export function OrderChatSheet({
         />
 
         {/* Input de Mensaje Scoped a la Cuenta Actual */}
+        {sendError && <p role="alert" className="px-3 pt-1 text-xs text-red-700">{sendError}</p>}
         <form
           onSubmit={handleSendMessage}
           className={`flex items-center gap-2 border-t p-3 ${
@@ -456,6 +474,7 @@ export function OrderChatSheet({
             isOpen={isTicketModalOpen}
             onOpenChange={setIsTicketModalOpen}
             order={activeOrder}
+            viewerRole={isDriverViewer ? "Driver" : "Client"}
           />
         )}
     </>

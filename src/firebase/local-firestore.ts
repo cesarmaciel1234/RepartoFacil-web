@@ -80,12 +80,16 @@ export async function setDoc(ref: DocumentReference, data: DocumentData, _option
   try {
     const response = await fetch(`/api/db/${encodeURI(ref.path)}`, {
       method: "PATCH",
-      headers: authHeaders(),
+      headers: authHeaders(ref.path),
       body: JSON.stringify(data),
     });
-    if (!response.ok) return null;
+    if (!response.ok) {
+      console.warn("No se pudo guardar el documento:", response.status);
+      return null;
+    }
     return await response.json();
-  } catch {
+  } catch (error) {
+    console.warn("No se pudo guardar el documento:", error);
     return null;
   }
 }
@@ -94,13 +98,17 @@ export async function addDoc(ref: CollectionReference, data: DocumentData) {
   try {
     const response = await fetch(`/api/db/${encodeURI(ref.path)}`, {
       method: "POST",
-      headers: authHeaders(),
+      headers: authHeaders(ref.path),
       body: JSON.stringify(data),
     });
-    if (!response.ok) return { id: `id-${Date.now()}` } as any;
+    if (!response.ok) {
+      console.warn("No se pudo crear el documento:", response.status);
+      return null;
+    }
     return (await response.json()) as DocumentReference;
-  } catch {
-    return { id: `id-${Date.now()}` } as any;
+  } catch (error) {
+    console.warn("No se pudo crear el documento:", error);
+    return null;
   }
 }
 
@@ -108,12 +116,16 @@ export async function updateDoc(ref: DocumentReference, data: DocumentData) {
   try {
     const response = await fetch(`/api/db/${encodeURI(ref.path)}`, {
       method: "PATCH",
-      headers: authHeaders(),
+      headers: authHeaders(ref.path),
       body: JSON.stringify(data),
     });
-    if (!response.ok) return null;
+    if (!response.ok) {
+      console.warn("No se pudo actualizar el documento:", response.status);
+      return null;
+    }
     return await response.json();
-  } catch {
+  } catch (error) {
+    console.warn("No se pudo actualizar el documento:", error);
     return null;
   }
 }
@@ -122,14 +134,20 @@ export async function deleteDoc(ref: DocumentReference) {
   try {
     const response = await fetch(`/api/db/${encodeURI(ref.path)}`, {
       method: "DELETE",
-      headers: authHeaders(),
+      headers: authHeaders(ref.path),
     });
-    if (!response.ok) return;
-  } catch {}
+    if (!response.ok) console.warn("No se pudo eliminar el documento:", response.status);
+  } catch (error) {
+    console.warn("No se pudo eliminar el documento:", error);
+  }
 }
 
-function authHeaders() {
-  const token = typeof window !== "undefined" ? localStorage.getItem("repartofacil_token") : null;
+function authHeaders(path: string) {
+  const root = path.split("/")[0];
+  const key = root === "clients" ? "repartofacil_client_token"
+    : root === "driverProfiles" ? "repartofacil_driver_token"
+    : "repartofacil_token";
+  const token = typeof window !== "undefined" ? localStorage.getItem(key) : null;
   return {
     "Content-Type": "application/json",
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -138,7 +156,7 @@ function authHeaders() {
 
 export async function localGetDocument(ref: DocumentReference) {
   try {
-    const response = await fetch(`/api/db/${encodeURI(ref.path)}`, { headers: authHeaders() });
+    const response = await fetch(`/api/db/${encodeURI(ref.path)}`, { headers: authHeaders(ref.path) });
     if (response.status === 404 || !response.ok) return null;
     return await response.json();
   } catch {
@@ -158,7 +176,7 @@ export async function localGetCollection(ref: CollectionReference | Query) {
       if (queryRef.limitCount) params.append("limit", String(queryRef.limitCount));
     }
     const url = `/api/db/${encodeURI(ref.path)}${params.size ? `?${params.toString()}` : ""}`;
-    const response = await fetch(url, { headers: authHeaders() });
+    const response = await fetch(url, { headers: authHeaders(ref.path) });
     if (!response.ok) return [];
     return await response.json();
   } catch {

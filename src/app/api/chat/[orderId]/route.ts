@@ -1,7 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { queryDb } from "@/lib/db";
+import { authenticateOrderUser, type OrderUser } from "@/lib/orderAuth";
 
 export const dynamic = "force-dynamic";
+
+function accessCondition(user: OrderUser, parameter: string): string {
+  return user.role === "Client"
+    ? `(p.cliente_id = ${parameter} OR p.cliente_usuario_id = ${parameter})`
+    : `p.repartidor_id = ${parameter}`;
+}
 
 export async function GET(
   request: NextRequest,
@@ -9,12 +16,19 @@ export async function GET(
 ) {
   const { orderId } = await params;
   try {
+    const auth = await authenticateOrderUser(request, ["Client", "Driver"]);
+    if (auth.response) return auth.response;
     const rows = await queryDb(
-      "SELECT id, order_id, author_role, author_name, content, timestamp_str, created_at FROM repartofacil_chat_mensajes WHERE order_id = $1 ORDER BY created_at ASC",
-      [orderId]
+      `SELECT m.id, m.order_id, m.author_role, m.author_name, m.content, m.timestamp_str, m.created_at
+       FROM repartofacil_pedidos p
+       LEFT JOIN repartofacil_chat_mensajes m ON m.order_id = p.id
+       WHERE p.id = $1 AND ${accessCondition(auth.user, "$2")}
+       ORDER BY m.created_at ASC`,
+      [orderId, auth.user.id]
     );
+    if (rows.length === 0) return NextResponse.json({ error: "Conversación no disponible." }, { status: 404 });
 
-    const messages = rows.map((r: any) => ({
+    const messages = rows.filter((r: any) => r.id !== null).map((r: any) => ({
       id: r.id,
       orderId: r.order_id,
       authorRole: r.author_role,
@@ -26,7 +40,7 @@ export async function GET(
     return NextResponse.json({ success: true, orderId, messages });
   } catch (err: any) {
     console.warn(`[Chat API GET Error for ${orderId}]:`, err.message);
-    return NextResponse.json({ success: false, messages: [] });
+    return NextResponse.json({ error: "No se pudieron cargar los mensajes." }, { status: 500 });
   }
 }
 
@@ -36,11 +50,13 @@ export async function POST(
 ) {
   const { orderId } = await params;
   try {
+    const auth = await authenticateOrderUser(request, ["Client", "Driver"]);
+    if (auth.response) return auth.response;
     const body = await request.json();
     const id = body.id || `msg-${Date.now()}`;
-    const authorRole = body.authorRole || "client";
-    const authorName = body.authorName || (authorRole === "driver" ? "Lucas Motomensajero" : "Cliente");
-    const content = body.content || "";
+    const authorRole = auth.user.role === "Driver" ? "driver" : "client";
+    const authorName = auth.user.displayName || (authorRole === "driver" ? "Repartidor" : "Cliente");
+    const content = typeof body.content === "string" ? body.content : "";
     const timestampStr = body.timestamp || new Date().toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" });
 
     if (!content.trim()) {
@@ -49,18 +65,21 @@ export async function POST(
 
     const insertQuery = `
       INSERT INTO repartofacil_chat_mensajes (id, order_id, author_role, author_name, content, timestamp_str, created_at)
-      VALUES ($1, $2, $3, $4, $5, $6, NOW())
+      SELECT $1, p.id, $3, $4, $5, $6, NOW() FROM repartofacil_pedidos p
+      WHERE p.id = $2 AND ${accessCondition(auth.user, "$7")}
+      FOR SHARE OF p
       RETURNING *;
     `;
 
-    const rows = await queryDb(insertQuery, [id, orderId, authorRole, authorName, content, timestampStr]);
+    const rows = await queryDb(insertQuery, [id, orderId, authorRole, authorName, content, timestampStr, auth.user.id]);
+    if (rows.length === 0) return NextResponse.json({ error: "Conversación no disponible." }, { status: 404 });
 
     // Si el repartidor responde en el chat, el Custodio limpia cualquier advertencia de inactividad
     if (authorRole === "driver") {
       await queryDb(
-        "UPDATE repartofacil_pedidos SET driver_last_ping = NOW(), custodio_advertencia_at = NULL, custodio_estado = 'normal', updated_at = NOW() WHERE id = $1",
-        [orderId]
-      ).catch(() => {});
+        "UPDATE repartofacil_pedidos SET driver_last_ping = NOW(), custodio_advertencia_at = NULL, custodio_estado = 'normal', updated_at = NOW() WHERE id = $1 AND repartidor_id = $2",
+        [orderId, auth.user.id]
+      ).catch((error) => console.warn("[Chat API] No se pudo actualizar el ping:", error));
     }
 
     return NextResponse.json({

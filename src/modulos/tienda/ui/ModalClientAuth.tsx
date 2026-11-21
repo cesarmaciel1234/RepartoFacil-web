@@ -69,6 +69,9 @@ export function ModalClientAuth({
       }
       const user = data.user;
       const token = data.access_token;
+      if (user.role !== "Client" || user.isAnonymous !== false || typeof user.id !== "string" || !user.id) {
+        throw new Error("Ingresá con una cuenta registrada de comprador.");
+      }
 
       const userAccountId = user.userId || user.uid || generateUniqueEntityId("usr_cli");
       const clientProfileId = user.id || generateUniqueEntityId("cli");
@@ -131,8 +134,8 @@ export function ModalClientAuth({
       setErrorMsg("Ingresá un email o nombre de usuario");
       return;
     }
-    if (password.length < 6) {
-      setErrorMsg("La contraseña debe tener al menos 6 caracteres");
+    if (password.length < 8) {
+      setErrorMsg("La contraseña debe tener al menos 8 caracteres");
       return;
     }
 
@@ -160,6 +163,9 @@ export function ModalClientAuth({
       }
       const user = data.user;
       const token = data.access_token;
+      if (user.role !== "Client" || user.isAnonymous !== false || typeof user.id !== "string" || !user.id) {
+        throw new Error("El servicio no confirmó una cuenta de comprador válida.");
+      }
       const userAccountId = user.userId || user.uid || generateUniqueEntityId("usr_cli");
       const clientProfileId = user.id || generateUniqueEntityId("cli");
 
@@ -333,7 +339,7 @@ export function ModalClientAuth({
 
             <div>
               <label className="text-[11px] font-bold text-slate-300 block mb-1">
-                Contraseña (mínimo 6 caracteres) *
+                Contraseña (mínimo 8 caracteres) *
               </label>
               <Input
                 type="password"
