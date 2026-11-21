@@ -7,8 +7,9 @@ Inicio, Súper, Promociones y el catálogo de un comercio.
 
 ## Estructura
 
-- `hooks/useCatalogoTienda.ts`: obtiene datos dinámicos con respaldo local,
-  calcula distancia aproximada y deriva departamentos/productos filtrados.
+- `hooks/useCatalogoTienda.ts`: obtiene comercios y productos de forma
+  independiente, conserva los últimos datos cargados ante fallos y deriva
+  departamentos/productos filtrados.
 - `pantallas/CatalogoEmpresaTienda.tsx`: presenta el catálogo del comercio
   seleccionado y emite acciones por callbacks.
 

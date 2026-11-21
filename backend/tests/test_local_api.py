@@ -1,3 +1,5 @@
+from uuid import uuid4
+
 from fastapi.testclient import TestClient
 
 from app.main import app
@@ -10,6 +12,31 @@ def test_health():
     response = client.get("/health")
     assert response.status_code == 200
     assert response.json()["database"] == "sqlite"
+
+
+def test_registration_preserves_client_role_and_rejects_admin():
+    client_response = client.post(
+        "/api/auth/register",
+        json={
+            "email": f"client-{uuid4()}@example.com",
+            "password": "valid-password",
+            "display_name": "Comprador de Prueba",
+            "role": "Client",
+        },
+    )
+    assert client_response.status_code == 200
+    assert client_response.json()["user"]["role"] == "Client"
+
+    admin_response = client.post(
+        "/api/auth/register",
+        json={
+            "email": f"admin-{uuid4()}@example.com",
+            "password": "valid-password",
+            "display_name": "Admin de Prueba",
+            "role": "Admin",
+        },
+    )
+    assert admin_response.status_code == 400
 
 
 def test_anonymous_and_document_crud():

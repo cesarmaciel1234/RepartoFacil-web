@@ -14,7 +14,7 @@ const InteractiveMap = dynamic(() => import("@/components/InteractiveMap"), {
 import { useDriverOrders } from "./motor/useDriverOrders";
 import { useDriverGps } from "./motor/useDriverGps";
 import { loadDriverProfile, clearDriverProfile } from "./motor/driverService";
-import { DriverProfile } from "./motor/tipos";
+import type { DriverOrder, DriverProfile } from "./motor/tipos";
 import { DriverTopBar } from "./ui/DriverTopBar";
 import { TabPedidosDisponibles } from "./ui/TabPedidosDisponibles";
 import { TabMiRuta } from "./ui/TabMiRuta";
@@ -432,8 +432,11 @@ export function RepartidorPiramidal({ onSwitchToStore }: RepartidorPiramidalProp
         isOpen={isMarketsOpen}
         onOpenChange={setIsMarketsOpen}
         selectedCompanyId="frigorifico-maciel"
-        onSelectCompany={() => {
+        onSelectCompany={(company) => {
           setIsMarketsOpen(false);
+          const url = new URL(window.location.href);
+          url.searchParams.set("tienda", company.slug || company.id);
+          window.history.replaceState({}, "", url);
           onSwitchToStore();
         }}
       />

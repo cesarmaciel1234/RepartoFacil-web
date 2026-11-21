@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { queryDb } from "@/lib/db";
-import { ejecutarAuditoriaCustodio } from "./custodio/route";
+import { ejecutarAuditoriaCustodio } from "@/lib/custodio";
 
 export const dynamic = "force-dynamic";
 

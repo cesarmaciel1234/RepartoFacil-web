@@ -1,13 +1,15 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { INITIAL_PRODUCTS, type Product } from "@/data/mockProducts";
-import { MOCK_COMPANIES, type CompanyStore } from "@/data/mockCompanies";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import type { Product } from "@/data/mockProducts";
+import type { CompanyStore } from "@/data/mockCompanies";
 
-type CatalogProduct = Product & {
+export type CatalogProduct = Product & {
   department?: string;
   categoryName?: string;
 };
+
+export type CatalogStatus = "loading" | "ready" | "error";
 
 interface UseCatalogoTiendaParams {
   selectedCompany: CompanyStore | null;
@@ -31,87 +33,114 @@ function getDepartmentIcon(department: string) {
   return "📦";
 }
 
+/** Un producto pertenece a un comercio si su companyId coincide con el id o el slug. */
+export function productBelongsToCompany(product: Product, company: CompanyStore) {
+  const productCompany = (product.companyId || "").toLowerCase();
+  if (!productCompany) return false;
+  const candidates = [company.id, company.slug, company.slug && `empresa-${company.slug}`]
+    .filter(Boolean)
+    .map((value) => String(value).toLowerCase());
+  if (company.id === "frigorifico-maciel" || company.slug === "maciel") candidates.push("maciel");
+  if (company.id === "empresa-prueba" || company.slug === "prueba") candidates.push("prueba");
+  return candidates.includes(productCompany);
+}
+
+export function departmentOf(product: CatalogProduct) {
+  return String(product.department || product.categoryName || product.category || "GENERAL")
+    .trim()
+    .toUpperCase();
+}
+
 export function useCatalogoTienda({
   selectedCompany,
   selectedCategory,
   searchQuery,
 }: UseCatalogoTiendaParams) {
-  const [products, setProducts] = useState<CatalogProduct[]>(INITIAL_PRODUCTS);
-  const [companies, setCompanies] = useState<CompanyStore[]>(MOCK_COMPANIES);
+  const [products, setProducts] = useState<CatalogProduct[]>([]);
+  const [companies, setCompanies] = useState<CompanyStore[]>([]);
+  const [status, setStatus] = useState<CatalogStatus>("loading");
+  const [productsStatus, setProductsStatus] = useState<CatalogStatus>("loading");
+  const [reloadKey, setReloadKey] = useState(0);
+
+  const reload = useCallback(() => setReloadKey((key) => key + 1), []);
 
   useEffect(() => {
-    fetch("/api/cobrofacil/companies")
-      .then((response) => (response.ok ? response.json() : null))
-      .then((data) => {
-        if (data && Array.isArray(data.empresas) && data.empresas.length > 0) {
-          setCompanies(data.empresas);
-        }
-      })
-      .catch((error) => console.warn("Error cargando empresas dinámicas:", error));
-  }, []);
+    let cancelled = false;
+    setStatus("loading");
+    setProductsStatus("loading");
 
-  useEffect(() => {
-    fetch("/api/cobrofacil/products", { cache: "no-store" })
-      .then((response) => (response.ok ? response.json() : null))
-      .then((data) => {
-        if (data && Array.isArray(data.products) && data.products.length > 0) {
-          const otherProducts = INITIAL_PRODUCTS.filter(
-            (product) =>
-              product.companyId &&
-              product.companyId !== "frigorifico-maciel" &&
-              product.companyId !== "empresa-prueba"
-          );
-          const productMap = new Map<string, CatalogProduct>();
-          data.products.forEach((product: CatalogProduct) =>
-            productMap.set(product.id, product)
-          );
-          otherProducts.forEach((product) => {
-            if (!productMap.has(product.id)) productMap.set(product.id, product);
-          });
-          setProducts(Array.from(productMap.values()));
-        }
-      })
-      .catch((error) => console.warn("Error cargando productos de Cobro Fácil:", error));
-  }, []);
+    const loadCompanies = async (): Promise<CompanyStore[]> => {
+      const response = await fetch("/api/cobrofacil/companies", { cache: "no-store" });
+      if (!response.ok) throw new Error(`Error cargando comercios: ${response.status}`);
+      const companiesData = await response.json();
+      if (!Array.isArray(companiesData?.empresas)) {
+        throw new Error("Cobro Fácil no devolvió el listado de comercios");
+      }
+      return companiesData.empresas;
+    };
+
+    const loadProducts = async (): Promise<CatalogProduct[]> => {
+      const response = await fetch("/api/cobrofacil/products", { cache: "no-store" });
+      if (!response.ok) throw new Error(`Error cargando productos: ${response.status}`);
+      const productsData = await response.json();
+      if (!Array.isArray(productsData?.products)) {
+        throw new Error("Cobro Fácil no devolvió el catálogo de productos");
+      }
+      return productsData.products;
+    };
+
+    const load = async () => {
+      const [companiesResult, productsResult] = await Promise.allSettled([
+        loadCompanies(),
+        loadProducts(),
+      ]);
+      if (cancelled) return;
+
+      if (companiesResult.status === "fulfilled") {
+        setCompanies(companiesResult.value);
+        setStatus("ready");
+      } else {
+        console.error("No se pudieron cargar los comercios de Cobro Fácil:", companiesResult.reason);
+        setStatus("error");
+      }
+
+      if (productsResult.status === "fulfilled") {
+        setProducts(productsResult.value);
+        setProductsStatus("ready");
+      } else {
+        console.error("No se pudieron cargar los productos de Cobro Fácil:", productsResult.reason);
+        setProductsStatus("error");
+      }
+    };
+
+    void load();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [reloadKey]);
+
+  /** Cantidad de productos reales por comercio (para mostrar en la portada). */
+  const productCountByCompany = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const company of companies) {
+      counts[company.id] = products.filter((product) =>
+        productBelongsToCompany(product, company)
+      ).length;
+    }
+    return counts;
+  }, [companies, products]);
 
   const activeCompanyCatalog = useMemo(() => {
     if (!selectedCompany) return [];
-    const companyId = (selectedCompany.id || "").toLowerCase();
-    const companySlug = (selectedCompany.slug || "").toLowerCase();
-
-    const companyProducts = products.filter((product) => {
-      const productCompany = (product.companyId || "").toLowerCase();
-      if (companyId === "frigorifico-maciel" || companySlug === "maciel") {
-        return productCompany === "frigorifico-maciel" || productCompany === "maciel";
-      }
-      if (companyId === "empresa-prueba" || companySlug === "prueba") {
-        return productCompany === "empresa-prueba" || productCompany === "prueba";
-      }
-      return productCompany === companyId || (companySlug && productCompany === companySlug);
-    });
-
-    return companyProducts.length > 0
-      ? companyProducts
-      : products
-          .filter((product) => product.companyId === "frigorifico-maciel")
-          .slice(0, 16)
-          .map((product) => ({
-            ...product,
-            id: `${selectedCompany.id}-${product.id}`,
-            companyId: selectedCompany.id,
-            companyName: selectedCompany.name,
-          }));
+    return products.filter((product) => productBelongsToCompany(product, selectedCompany));
   }, [products, selectedCompany]);
 
   const companyDepartments = useMemo(() => {
     if (!selectedCompany) return [];
     const counts = new Map<string, number>();
     activeCompanyCatalog.forEach((product) => {
-      const department = String(
-        product.department || product.categoryName || product.category || "GENERAL"
-      )
-        .trim()
-        .toUpperCase();
+      const department = departmentOf(product);
       counts.set(department, (counts.get(department) || 0) + 1);
     });
 
@@ -135,15 +164,11 @@ export function useCatalogoTienda({
     const category = selectedCategory.toLowerCase();
 
     return activeCompanyCatalog.filter((product) => {
-      const department = String(
-        product.department || product.categoryName || product.category || "GENERAL"
-      )
-        .trim()
-        .toLowerCase();
+      const department = departmentOf(product).toLowerCase();
       const matchesSearch =
         !query ||
         product.name.toLowerCase().includes(query) ||
-        product.description.toLowerCase().includes(query) ||
+        (product.description || "").toLowerCase().includes(query) ||
         department.includes(query);
       const matchesCategory =
         category === "todos" ||
@@ -157,6 +182,11 @@ export function useCatalogoTienda({
   return {
     products,
     companies,
+    status,
+    productsStatus,
+    reload,
+    productCountByCompany,
+    companyCatalogSize: activeCompanyCatalog.length,
     companyDepartments,
     filteredProducts,
   };

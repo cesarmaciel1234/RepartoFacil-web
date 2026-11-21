@@ -107,10 +107,6 @@ export function useDriverOrders(currentDriverId?: string | null) {
         (o.status === "Assigned" ||
           o.status === "Picked Up" ||
           o.status === "In Transit") &&
-        o.status !== "Delivered" &&
-        (o.status as any) !== "delivered" &&
-        o.status !== "Cancelled" &&
-        o.status !== "Rejected" &&
         o.driverId &&
         (!currentDriverId || o.driverId === currentDriverId)
     );

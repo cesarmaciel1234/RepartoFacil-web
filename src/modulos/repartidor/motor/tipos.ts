@@ -1,4 +1,4 @@
-export type OrderStatus = "Pending" | "Assigned" | "Picked Up" | "In Transit" | "Delivered" | "Cancelled";
+export type OrderStatus = "Pending" | "Confirmed" | "Ready" | "Assigned" | "Picked Up" | "In Transit" | "Delivered" | "Cancelled" | "Rejected";
 
 export interface OrderItemSummary {
   name: string;
@@ -38,6 +38,9 @@ export interface DriverOrder {
   storeCoords?: GPSCoords;
   
   branch?: string;
+  ticketId?: string;
+  ticket_id?: string;
+  notes?: string;
   driverId?: string;
   createdAt: string;
   updatedAt?: string;

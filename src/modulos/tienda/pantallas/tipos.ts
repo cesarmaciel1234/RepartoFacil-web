@@ -9,4 +9,7 @@ export interface PantallaComerciosProps {
   onSearchChange: (value: string) => void;
   deliveryAddress?: string;
   deliveryCoordinates?: { lat: number; lng: number } | null;
+  status?: "loading" | "ready" | "error";
+  onRetry?: () => void;
+  productCountByCompany?: Record<string, number>;
 }

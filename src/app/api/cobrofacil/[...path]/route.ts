@@ -171,96 +171,13 @@ export async function GET(
           }
         } catch {}
 
-        const testProducts = [
-          {
-            id: "prueba-1",
-            name: "Corte de Prueba Vacuno",
-            category: "vacuno",
-            categoryName: "Cortes Vacunos",
-            price: 4500,
-            unit: "kg",
-            description: "Corte para pruebas de flujo y circuito en vivo de Cobro Fácil (Empresa Prueba).",
-            image: "https://images.unsplash.com/photo-1544025162-d76694265947?w=600&auto=format&fit=crop&q=80",
-            stockKg: 100,
-            badge: "Empresa Prueba",
-            isPopular: true,
-            companyId: "empresa-prueba",
-            companyName: "Cobro Fácil - Empresa Prueba",
-            source: "sandbox",
-          },
-          {
-            id: "prueba-2",
-            name: "Combo Parrillada Prueba",
-            category: "combos",
-            categoryName: "Combos & Ofertas",
-            price: 12000,
-            unit: "un",
-            description: "Combo completo de prueba para testeo de checkout y despacho.",
-            image: "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=600&auto=format&fit=crop&q=80",
-            stockKg: 50,
-            badge: "Empresa Prueba",
-            isPopular: true,
-            companyId: "empresa-prueba",
-            companyName: "Cobro Fácil - Empresa Prueba",
-            source: "sandbox",
-          },
-          {
-            id: "prueba-3",
-            name: "Asado Especial Prueba",
-            category: "vacuno",
-            categoryName: "Cortes Vacunos",
-            price: 18900,
-            unit: "kg",
-            description: "Corte de asado fresco listo para entrega en Empresa Prueba.",
-            image: "https://images.unsplash.com/photo-1544025162-d76694265947?w=600&auto=format&fit=crop&q=80",
-            stockKg: 40,
-            badge: "Empresa Prueba",
-            isPopular: true,
-            companyId: "empresa-prueba",
-            companyName: "Cobro Fácil - Empresa Prueba",
-            source: "sandbox",
-          },
-          {
-            id: "prueba-4",
-            name: "Vacío Fino Prueba",
-            category: "vacuno",
-            categoryName: "Cortes Vacunos",
-            price: 19900,
-            unit: "kg",
-            description: "Vacío seleccionado para asado en Empresa Prueba.",
-            image: "https://images.unsplash.com/photo-1558030006-450675393462?w=600&auto=format&fit=crop&q=80",
-            stockKg: 35,
-            badge: "Empresa Prueba",
-            isPopular: true,
-            companyId: "empresa-prueba",
-            companyName: "Cobro Fácil - Empresa Prueba",
-            source: "sandbox",
-          },
-          {
-            id: "prueba-5",
-            name: "Suprema Pollo Prueba",
-            category: "pollo",
-            categoryName: "Pollo & Granja",
-            price: 13500,
-            unit: "kg",
-            description: "Suprema fresca de primera calidad en Empresa Prueba.",
-            image: "https://images.unsplash.com/photo-1587593810167-a84920ea0781?w=600&auto=format&fit=crop&q=80",
-            stockKg: 60,
-            badge: "Empresa Prueba",
-            isPopular: true,
-            companyId: "empresa-prueba",
-            companyName: "Cobro Fácil - Empresa Prueba",
-            source: "sandbox",
-          },
-        ];
-
         return NextResponse.json({
           success: true,
           source: "crm-libro-local (PostgreSQL Render)",
           terminal: "MACIEL - DESKTOP-7Q2Q4VD",
           sucursal: prodRows[0].sucursal_nombre,
-          total: products.length + (otherCompaniesProducts.length || testProducts.length),
-          products: [...products, ...(otherCompaniesProducts.length > 0 ? otherCompaniesProducts : testProducts)],
+          total: products.length + otherCompaniesProducts.length,
+          products: [...products, ...otherCompaniesProducts],
         });
       }
     } catch (dbErr: any) {
@@ -287,156 +204,86 @@ export async function GET(
         );
       } catch {}
 
+      const pick = (details: Record<string, any>, keys: string[]) =>
+        keys.map((key) => details[key]).find((value) => value !== undefined && value !== null && value !== "");
+      const toNumber = (value: unknown, fallback: number) => {
+        const parsed = Number(value);
+        return Number.isFinite(parsed) ? parsed : fallback;
+      };
+      const CATEGORY_SLUGS = ["carnes", "supermercados", "bebidas", "kioscos", "minimercados"] as const;
+      const inferCategorySlug = (text: string) => {
+        const lower = text.toLowerCase();
+        if (/carne|carnic|frigor|pollo|granja/.test(lower)) return "carnes";
+        if (/super/.test(lower)) return "supermercados";
+        if (/kiosc|golosin/.test(lower)) return "kioscos";
+        if (/bebida|vino|cerve/.test(lower)) return "bebidas";
+        return "minimercados";
+      };
+
       const dynamicCompanies = (dbEmpresas || []).map((row: any) => {
+        const details: Record<string, any> =
+          row.company_data && typeof row.company_data === "object" ? row.company_data : {};
         const slug = (row.slug || "").toLowerCase().trim();
         const isMaciel = slug === "maciel" || row.id === 1;
         const isPrueba = slug === "prueba" || row.id === 2;
         const companyLocation = getCompanyLocation(row);
 
-        if (isMaciel) {
-          return {
-            id: "frigorifico-maciel",
-            name: "Frigorífico Maciel - Central",
-            slug: "maciel",
-            empresa_id: row.id,
-            category: "Carnes y Pescados",
-            categorySlug: "carnes" as const,
-            rating: 4.8,
-            ratingCount: 342,
-            deliveryTimeMin: 15,
-            deliveryTimeMax: 40,
-            deliveryFee: 1605,
-            freeDeliveryThreshold: 35000,
-            badges: ["Sincronizado Cobro Fácil TPV", "MACIEL - DESKTOP-7Q2Q4VD", "Mismo precio que en local"],
-            address: companyLocation.address || "Tucumán 2130, Rosario",
-            ...(companyLocation.coordinates
-              ? { coordinates: companyLocation.coordinates }
-              : {}),
-            phone: "+54 9 341 555-1234",
-            cobroFacilApiEndpoint: "https://cobrofacil.onrender.com",
-            isOpen: true,
-            sucursales: sucursales.map((s) => ({ id: s.sucursal_id, nombre: s.sucursal_nombre })),
-          };
-        }
+        // Los ids históricos se conservan porque los pedidos ya guardados los referencian
+        const id = isMaciel
+          ? "frigorifico-maciel"
+          : isPrueba
+            ? "empresa-prueba"
+            : slug
+              ? `empresa-${slug}`
+              : `empresa-${row.id}`;
 
-        if (isPrueba) {
-          return {
-            id: "empresa-prueba",
-            name: "Cobro Fácil - Empresa Prueba",
-            slug: "prueba",
-            empresa_id: row.id,
-            category: "Comercio de Prueba & Sandbox",
-            categorySlug: "carnes" as const,
-            rating: 5.0,
-            ratingCount: 15,
-            deliveryTimeMin: 10,
-            deliveryTimeMax: 20,
-            deliveryFee: 1500,
-            freeDeliveryThreshold: 20000,
-            badges: ["Sandbox Cobro Fácil", "Empresa Prueba", "Entorno Seguro"],
-            address: companyLocation.address || "Tucumán 2130, Rosario",
-            ...(companyLocation.coordinates
-              ? { coordinates: companyLocation.coordinates }
-              : {}),
-            phone: "+54 9 341 555-9999",
-            cobroFacilApiEndpoint: "https://cobrofacil.onrender.com",
-            isOpen: true,
-          };
-        }
+        const category = String(
+          pick(details, ["rubro", "categoria", "category", "actividad"]) ||
+            (isMaciel ? "Carnes y Pescados" : "Comercio")
+        );
+        const rawSlug = String(pick(details, ["categoria_slug", "category_slug"]) || "").toLowerCase();
+        const categorySlug = (CATEGORY_SLUGS as readonly string[]).includes(rawSlug)
+          ? rawSlug
+          : inferCategorySlug(`${category} ${row.nombre || ""}`);
+        const rating = Number(pick(details, ["rating", "calificacion", "puntuacion"]));
+        const badges = pick(details, ["badges", "etiquetas", "promociones"]);
+        const isOpenValue = pick(details, ["abierto", "is_open", "isOpen"]);
 
         return {
-          id: slug ? `empresa-${slug}` : `empresa-${row.id}`,
-          name: row.nombre || `Empresa ${row.id}`,
-          slug: slug,
+          id,
+          name: String(pick(details, ["nombre_fantasia", "nombre_comercial"]) || row.nombre || `Empresa ${row.id}`),
+          slug: slug || String(row.id),
           empresa_id: row.id,
-          category: "Comercio & Almacén",
-          categorySlug: "carnes" as const,
-          rating: 4.9,
-          ratingCount: 8,
-          deliveryTimeMin: 15,
-          deliveryTimeMax: 30,
-          deliveryFee: 1500,
-          freeDeliveryThreshold: 25000,
-          badges: ["Comercio Verificado", "Cobro Fácil PRO", "Sincronizado"],
+          category,
+          categorySlug,
+          rating: Number.isFinite(rating) && rating > 0 ? rating : 0,
+          ratingCount: toNumber(pick(details, ["rating_count", "cantidad_calificaciones"]), 0),
+          deliveryTimeMin: toNumber(pick(details, ["tiempo_entrega_min", "delivery_time_min"]), 20),
+          deliveryTimeMax: toNumber(pick(details, ["tiempo_entrega_max", "delivery_time_max"]), 40),
+          deliveryFee: toNumber(pick(details, ["costo_envio", "delivery_fee"]), 1500),
+          freeDeliveryThreshold:
+            toNumber(pick(details, ["envio_gratis_desde", "free_delivery_threshold"]), 0) || undefined,
+          badges: Array.isArray(badges)
+            ? badges.map(String)
+            : typeof badges === "string" && badges.trim()
+              ? badges.split(",").map((badge) => badge.trim()).filter(Boolean)
+              : [],
+          logoUrl: pick(details, ["logo_url", "logo", "logoUrl", "imagen"]) || undefined,
           address: companyLocation.address,
-          ...(companyLocation.coordinates
-            ? { coordinates: companyLocation.coordinates }
-            : {}),
-          phone: "+54 9 341 555-0000",
+          ...(companyLocation.coordinates ? { coordinates: companyLocation.coordinates } : {}),
+          phone: String(pick(details, ["telefono", "celular", "whatsapp", "phone"]) || ""),
           cobroFacilApiEndpoint: "https://cobrofacil.onrender.com",
-          isOpen: true,
+          isOpen:
+            isOpenValue === undefined
+              ? true
+              : !["0", "false", "no", "cerrado"].includes(String(isOpenValue).toLowerCase()),
+          ...(isMaciel
+            ? { sucursales: sucursales.map((s) => ({ id: s.sucursal_id, nombre: s.sucursal_nombre })) }
+            : {}),
         };
       });
 
-      // Asegurar que siempre figuren Frigorífico Maciel y Empresa Prueba
-      const hasMaciel = dynamicCompanies.some((c: any) => c.id === "frigorifico-maciel");
-      const hasPrueba = dynamicCompanies.some((c: any) => c.id === "empresa-prueba");
-
-      const companyList: any[] = [];
-      if (!hasPrueba) {
-        companyList.push({
-          id: "empresa-prueba",
-          name: "Cobro Fácil - Empresa Prueba",
-          slug: "prueba",
-          empresa_id: 2,
-          category: "Comercio de Prueba & Sandbox",
-          categorySlug: "carnes",
-          rating: 5.0,
-          ratingCount: 15,
-          deliveryTimeMin: 10,
-          deliveryTimeMax: 20,
-          deliveryFee: 1500,
-          freeDeliveryThreshold: 20000,
-          badges: ["Sandbox Cobro Fácil", "Empresa Prueba", "Entorno Seguro"],
-          address: "Tucumán 2130, Rosario",
-          phone: "+54 9 341 555-9999",
-          cobroFacilApiEndpoint: "https://cobrofacil.onrender.com",
-          isOpen: true,
-        });
-      }
-
-      dynamicCompanies.forEach((dc) => companyList.push(dc));
-
-      if (!hasMaciel) {
-        companyList.push({
-          id: "frigorifico-maciel",
-          name: "Frigorífico Maciel - Central",
-          slug: "maciel",
-          empresa_id: 1,
-          category: "Carnes y Pescados",
-          categorySlug: "carnes",
-          rating: 4.8,
-          ratingCount: 342,
-          deliveryTimeMin: 15,
-          deliveryTimeMax: 40,
-          deliveryFee: 1605,
-          freeDeliveryThreshold: 35000,
-          badges: ["Sincronizado Cobro Fácil TPV", "MACIEL - DESKTOP-7Q2Q4VD", "Mismo precio que en local"],
-          address: "Tucumán 2130, Rosario",
-          phone: "+54 9 341 555-1234",
-          cobroFacilApiEndpoint: "https://cobrofacil.onrender.com",
-          isOpen: true,
-        });
-      }
-
-      companyList.push({
-        id: "kiosco-al-toque",
-        name: "Kiosco Al Toque - 24hs",
-        slug: "kiosco-al-toque",
-        category: "Kioscos y Golosinas",
-        categorySlug: "kioscos",
-        rating: 4.6,
-        ratingCount: 189,
-        deliveryTimeMin: 15,
-        deliveryTimeMax: 30,
-        deliveryFee: 1359,
-        freeDeliveryThreshold: 25000,
-        badges: ["Abierto 24hs", "Bebidas frías", "Cobro Fácil QR"],
-        address: "San Lorenzo 1920, Rosario",
-        phone: "+54 9 341 444-5678",
-        cobroFacilApiEndpoint: "https://cobrofacil.onrender.com/api/v1/kiosco",
-        isOpen: true,
-      });
+      const companyList = dynamicCompanies;
 
       return NextResponse.json({
         success: true,

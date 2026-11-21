@@ -112,6 +112,11 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
   const {
     products,
     companies,
+    status: catalogStatus,
+    productsStatus: catalogProductsStatus,
+    reload: reloadCatalog,
+    productCountByCompany,
+    companyCatalogSize,
     companyDepartments,
     filteredProducts,
   } = useCatalogoTienda({
@@ -122,7 +127,7 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
   const companyCarts = useMemo<CompanyCartSummary[]>(() => {
     const groups = new Map<string, typeof cart>();
     cart.forEach((item) => {
-      const companyId = item.product.companyId || "frigorifico-maciel";
+      const companyId = item.product.companyId || "sin-comercio";
       const items = groups.get(companyId) || [];
       items.push(item);
       groups.set(companyId, items);
@@ -171,7 +176,7 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
       checkoutCompanyId
         ? cart.filter(
             (item) =>
-              (item.product.companyId || "frigorifico-maciel") === checkoutCompanyId
+              (item.product.companyId || "sin-comercio") === checkoutCompanyId
           )
         : [],
     [cart, checkoutCompanyId]
@@ -322,13 +327,71 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
   };
 
   const formatMoney = (val: number) => "$" + val.toLocaleString("es-AR");
+
+  // ─── Cada comercio tiene su propia URL: /?tienda=<slug> ───
+  const companyKey = (company: CompanyStore) => company.slug || company.id;
+
+  const openCompany = (
+    company: CompanyStore,
+    initialSearch = "",
+    { pushHistory = true }: { pushHistory?: boolean } = {}
+  ) => {
+    setSelectedCompany(company);
+    setSelectedCategory("todos");
+    setSearchQuery(initialSearch);
+    if (pushHistory && typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      url.searchParams.set("tienda", companyKey(company));
+      window.history.pushState({ tienda: companyKey(company) }, "", url);
+    }
+    if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const closeCompany = ({ pushHistory = true }: { pushHistory?: boolean } = {}) => {
+    setSelectedCompany(null);
+    setSelectedCategory("todos");
+    setSearchQuery("");
+    if (pushHistory && typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      if (url.searchParams.has("tienda")) {
+        url.searchParams.delete("tienda");
+        window.history.pushState({}, "", url);
+      }
+    }
+    if (typeof window !== "undefined") window.scrollTo({ top: 0 });
+  };
+
+  const findCompanyByKey = (key: string | null) =>
+    key
+      ? companies.find(
+          (company) =>
+            company.slug === key || company.id === key || company.id === `empresa-${key}`
+        ) || null
+      : null;
+
+  // Abrir la tienda indicada en la URL al cargar y responder al botón "atrás" del navegador
+  useEffect(() => {
+    if (catalogStatus !== "ready") return;
+    const syncFromUrl = () => {
+      const key = new URL(window.location.href).searchParams.get("tienda");
+      const company = findCompanyByKey(key);
+      if (company) openCompany(company, "", { pushHistory: false });
+      else closeCompany({ pushHistory: false });
+    };
+    syncFromUrl();
+    window.addEventListener("popstate", syncFromUrl);
+    return () => window.removeEventListener("popstate", syncFromUrl);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [catalogStatus, companies]);
+
   const browseProps = {
     companies,
     products,
-    onSelectCompany: (company: CompanyStore, initialSearch?: string) => {
-      setSelectedCompany(company);
-      if (initialSearch) setSearchQuery(initialSearch);
-    },
+    status: catalogStatus,
+    onRetry: reloadCatalog,
+    productCountByCompany,
+    onSelectCompany: (company: CompanyStore, initialSearch?: string) =>
+      openCompany(company, initialSearch || ""),
     searchQuery,
     onSearchChange: setSearchQuery,
     deliveryAddress,
@@ -344,10 +407,8 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
         deliveryType="delivery"
         deliveryAddress={deliveryAddress}
         selectedCompanyName={selectedCompany ? selectedCompany.name : null}
-        onBackToMarkets={() => {
-          setSelectedCompany(null);
-          setSearchQuery("");
-        }}
+        onBackToMarkets={() => closeCompany()}
+
         onChangeAddress={() => setIsAddressModalOpen(true)}
         onOpenCart={() => {
           setActiveCartCompanyId(null);
@@ -418,14 +479,14 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
             selectedCategory={selectedCategory}
             products={filteredProducts}
             cart={cart}
+            catalogStatus={catalogProductsStatus}
+            onRetry={reloadCatalog}
             onSearchChange={setSearchQuery}
             onCategorySelect={setSelectedCategory}
             onAddToCart={handleAddToCart}
             onUpdateQuantity={updateSelectedCompanyQuantity}
-            onBackToStores={() => {
-              setSelectedCompany(null);
-              setSearchQuery("");
-            }}
+            catalogSize={companyCatalogSize}
+            onBackToStores={() => closeCompany()}
           />
         )}
       </main>
@@ -473,8 +534,7 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
         activeSection={activeBottomTab}
         onChangeSection={(section) => {
           setActiveBottomTab(section);
-          setSelectedCompany(null);
-          setSearchQuery("");
+          closeCompany();
         }}
       />
 
@@ -508,7 +568,7 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
             });
             return;
           }
-          setSelectedCompany(company);
+          openCompany(company);
           setIsCartOpen(false);
           setActiveCartCompanyId(null);
         }}

@@ -88,6 +88,7 @@ export function OrderChatSheet({
   // El rol real del usuario que visualiza el chat
   const effectiveRole: "client" | "driver" = viewerRole || defaultRole;
   const orderId = activeOrder?.id || "RF-7420";
+  const ticketId = activeOrder?.ticketId || activeOrder?.ticket_id;
   const storageKey = `rf_chat_${orderId}`;
 
   const [messages, setMessages] = useState<OrderChatMessage[]>(DEFAULT_MESSAGES);
@@ -275,14 +276,14 @@ export function OrderChatSheet({
                 <span className="text-[10px] text-slate-400 font-medium">
                   Pedido #{orderId}
                 </span>
-                {!embedded && (activeOrder?.ticketId || (activeOrder as any)?.ticket_id) && (
+                {!embedded && ticketId && (
                   <button
                     type="button"
                     onClick={() => setIsTicketModalOpen(true)}
                     className="flex items-center gap-1 rounded-md border border-blue-200 bg-blue-50 px-1.5 py-0.5 text-[9.5px] font-bold text-blue-700 transition-all hover:bg-blue-100"
                     title="Ver Ticket Digital Cobro Fácil"
                   >
-                    🧾 Ticket #{activeOrder.ticketId || (activeOrder as any).ticket_id} ↗
+                    🧾 Ticket #{ticketId} ↗
                   </button>
                 )}
               </div>

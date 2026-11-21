@@ -71,7 +71,7 @@ export function ModalClientAuth({
       const token = data.access_token;
 
       const userAccountId = user.userId || user.uid || generateUniqueEntityId("usr_cli");
-      const clientProfileId = (user.id && user.id !== "cliente-01") ? user.id : generateUniqueEntityId("cli");
+      const clientProfileId = user.id || generateUniqueEntityId("cli");
 
       const clientProfile = {
         id: clientProfileId,

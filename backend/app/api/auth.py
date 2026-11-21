@@ -118,7 +118,11 @@ def register(request: LoginRequest, db: Session = Depends(get_db)):
     if len(request.password) < 6:
         raise HTTPException(status_code=400, detail="Password must contain at least 6 characters")
     user_id = str(__import__("uuid").uuid4())
-    role = "Admin" if request.role.lower() == "admin" else "Driver"
+    requested_role = request.role.strip().lower()
+    roles = {"client": "Client", "driver": "Driver"}
+    role = roles.get(requested_role)
+    if role is None:
+        raise HTTPException(status_code=400, detail="Role must be Client or Driver")
     user = LocalUser(
         id=user_id,
         email=request.email.lower(),

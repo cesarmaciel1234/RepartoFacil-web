@@ -22,8 +22,9 @@ import {
   CheckCircle2,
   Sparkles,
 } from "lucide-react";
-import { MOCK_COMPANIES, CompanyStore } from "@/data/mockCompanies";
-import { INITIAL_PRODUCTS } from "@/data/mockProducts";
+import type { CompanyStore } from "@/data/mockCompanies";
+import type { Product } from "@/data/mockProducts";
+import { productBelongsToCompany } from "@/modulos/tienda/catalogo/hooks/useCatalogoTienda";
 
 interface ModalMercadosProps {
   isOpen: boolean;
@@ -40,18 +41,23 @@ export function ModalMercados({
 }: ModalMercadosProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCat, setSelectedCat] = useState<string>("todos");
-  const [companies, setCompanies] = useState<CompanyStore[]>(MOCK_COMPANIES);
+  const [companies, setCompanies] = useState<CompanyStore[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
 
   // Sincronizar dinámicamente las empresas dadas de alta en Cobro Fácil (PostgreSQL)
   React.useEffect(() => {
     fetch("/api/cobrofacil/companies")
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
-        if (data && Array.isArray(data.empresas) && data.empresas.length > 0) {
+        if (data && Array.isArray(data.empresas)) {
           setCompanies(data.empresas);
         }
       })
       .catch((err) => console.warn("Error cargando empresas dinámicas en modal:", err));
+    fetch("/api/cobrofacil/products", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => { if (data && Array.isArray(data.products)) setProducts(data.products); })
+      .catch((err) => console.warn("Error cargando productos en modal:", err));
   }, []);
 
   const categories = [
@@ -66,11 +72,11 @@ export function ModalMercados({
   const filtered = companies.map((comp) => {
     // Buscar si la empresa tiene productos que coincidan en su catálogo
     const matchingProducts = term
-      ? INITIAL_PRODUCTS.filter(
+      ? products.filter(
           (p) =>
-            (p.companyId === comp.id || (comp.slug && p.companyId === comp.slug) || (!p.companyId && comp.id === "frigorifico-maciel")) &&
+            productBelongsToCompany(p, comp) &&
             (p.name.toLowerCase().includes(term) ||
-              p.description.toLowerCase().includes(term) ||
+              (p.description || "").toLowerCase().includes(term) ||
               p.category.toLowerCase().includes(term))
         )
       : [];
@@ -79,7 +85,7 @@ export function ModalMercados({
       !term ||
       comp.name.toLowerCase().includes(term) ||
       comp.category.toLowerCase().includes(term) ||
-      comp.address.toLowerCase().includes(term) ||
+      (comp.address || "").toLowerCase().includes(term) ||
       matchingProducts.length > 0;
 
     const matchesCat = selectedCat === "todos" || comp.categorySlug === selectedCat;
