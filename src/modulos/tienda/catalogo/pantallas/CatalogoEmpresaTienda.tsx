@@ -23,6 +23,7 @@ import {
 
 interface CatalogoEmpresaTiendaProps {
   company: CompanyStore;
+  companyCached?: boolean;
   categories: Array<{ id: string; name: string; icon: string }>;
   searchQuery: string;
   selectedCategory: string;
@@ -42,6 +43,7 @@ const money = (value: number) => `$${value.toLocaleString("es-AR")}`;
 
 export function CatalogoEmpresaTienda({
   company,
+  companyCached = false,
   categories,
   searchQuery,
   selectedCategory,
@@ -132,10 +134,10 @@ export function CatalogoEmpresaTienda({
           <div className="mt-3 flex flex-wrap items-center gap-2 text-xs font-semibold text-slate-600">
             <span
               className={`rounded-full px-2.5 py-1 font-black ${
-                isClosed ? "bg-slate-100 text-slate-500" : "bg-emerald-50 text-emerald-700"
+                isClosed || companyCached ? "bg-slate-100 text-slate-500" : "bg-emerald-50 text-emerald-700"
               }`}
             >
-              {isClosed ? "Cerrado" : "Abierto ahora"}
+              {companyCached ? "Estado sin actualizar" : isClosed ? "Cerrado" : "Abierto ahora"}
             </span>
             <span className="flex items-center gap-1 rounded-full bg-slate-50 px-2.5 py-1 font-extrabold text-slate-900">
               <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
@@ -179,7 +181,7 @@ export function CatalogoEmpresaTienda({
             </div>
           ) : null}
 
-          {isClosed && (
+          {isClosed && !companyCached && (
             <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-600">
               Este comercio está cerrado en este momento. Podés ver el catálogo y armar tu carrito.
             </div>

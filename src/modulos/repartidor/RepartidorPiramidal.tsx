@@ -25,7 +25,7 @@ import { OrderChatSheet } from "./ui/OrderChatSheet";
 import { CentroMensajeriaDriverSheet } from "./ui/CentroMensajeriaDriverSheet";
 import { SidebarGeneral } from "@/components/SidebarGeneral";
 import { ModalMercados } from "@/components/ModalMercados";
-import { Layers, Truck, ShieldAlert, Navigation, Target } from "lucide-react";
+import { Layers, Truck, ShieldAlert, Navigation, Target, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -35,13 +35,11 @@ interface RepartidorPiramidalProps {
 
 export function RepartidorPiramidal({ onSwitchToStore }: RepartidorPiramidalProps) {
   const [driverProfile, setDriverProfile] = useState<DriverProfile | null>(null);
-  const [activeTab, setActiveTab] = useState<"pedidos" | "ruta" | "alerta">("pedidos");
+  const [activeTab, setActiveTab] = useState<"pedidos" | "ruta" | "alerta" | "mensajes">("pedidos");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isMarketsOpen, setIsMarketsOpen] = useState(false);
-  const [isCopilotOpen, setIsCopilotOpen] = useState(false);
-  const [isOrderChatOpen, setIsOrderChatOpen] = useState(false);
-  const [isChatInboxOpen, setIsChatInboxOpen] = useState(false);
   const [selectedDriverChatOrder, setSelectedDriverChatOrder] = useState<DriverOrder | null>(null);
+  const [isCopilotConversationOpen, setIsCopilotConversationOpen] = useState(false);
   const [isWalletModalOpen, setIsWalletModalOpen] = useState(false);
   const [isNavigating, setIsNavigating] = useState(false);
   const [mapCenterTrigger, setMapCenterTrigger] = useState(0);
@@ -51,6 +49,7 @@ export function RepartidorPiramidal({ onSwitchToStore }: RepartidorPiramidalProp
   const [dragY, setDragY] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const startY = useRef(0);
+  const didDrag = useRef(false);
 
   // Cargar perfil del conductor (para entrar como repartidor se requiere estar logueado)
   useEffect(() => {
@@ -79,6 +78,9 @@ export function RepartidorPiramidal({ onSwitchToStore }: RepartidorPiramidalProp
     setShowLoginModal,
     confirmOrderAfterLogin,
     wallet,
+    pendingActions,
+    syncError,
+    syncPending,
   } = useDriverOrders(driverProfile?.id);
 
   // Heartbeat de telemetría y presencia para el Custodio del Sistema
@@ -109,12 +111,14 @@ export function RepartidorPiramidal({ onSwitchToStore }: RepartidorPiramidalProp
   const handleDragStart = (clientY: number) => {
     setIsDragging(true);
     startY.current = clientY;
+    didDrag.current = false;
   };
 
   useEffect(() => {
     const handleMove = (clientY: number) => {
       if (!isDragging) return;
       const delta = clientY - startY.current;
+      if (Math.abs(delta) > 10) didDrag.current = true;
       setDragY(delta);
     };
 
@@ -152,6 +156,27 @@ export function RepartidorPiramidal({ onSwitchToStore }: RepartidorPiramidalProp
     setMapCenterTrigger((prev) => prev + 1);
   };
 
+  const showMessageInbox = () => {
+    setSelectedDriverChatOrder(null);
+    setIsCopilotConversationOpen(false);
+    setActiveTab("mensajes");
+    setIsExpanded(true);
+  };
+
+  const openCopilotConversation = () => {
+    setSelectedDriverChatOrder(null);
+    setIsCopilotConversationOpen(true);
+    setActiveTab("mensajes");
+    setIsExpanded(true);
+  };
+
+  const openOrderConversation = (order: DriverOrder) => {
+    setSelectedDriverChatOrder(order);
+    setIsCopilotConversationOpen(false);
+    setActiveTab("mensajes");
+    setIsExpanded(true);
+  };
+
   return (
     <div className="relative h-screen h-[100dvh] w-full overflow-hidden bg-slate-50 text-slate-900 flex flex-col font-sans select-none">
       {/* ─── 1. Mapa Interactivo de Fondo (Full Screen) ─── */}
@@ -174,17 +199,8 @@ export function RepartidorPiramidal({ onSwitchToStore }: RepartidorPiramidalProp
         walletBalance={wallet.balance}
         activeOrder={myActiveOrders[0] || null}
         onOpenSidebar={() => setIsSidebarOpen(true)}
-        onOpenCopilot={() => setIsCopilotOpen(true)}
-        onOpenOrderChat={() => {
-          if (myActiveOrders.length > 1) {
-            setIsChatInboxOpen(true);
-          } else if (myActiveOrders.length === 1) {
-            setSelectedDriverChatOrder(myActiveOrders[0]);
-            setIsOrderChatOpen(true);
-          } else {
-            setIsChatInboxOpen(true);
-          }
-        }}
+        onOpenCopilot={openCopilotConversation}
+        onOpenOrderChat={showMessageInbox}
         onFocusActiveRoute={handleFocusActiveRoute}
         onOpenWallet={() => setIsWalletModalOpen(true)}
         onLogout={() => {
@@ -229,14 +245,24 @@ export function RepartidorPiramidal({ onSwitchToStore }: RepartidorPiramidalProp
         )}
         style={{ transform: `translateY(${sheetY})` }}
       >
-        <div className="h-[80vh] w-full max-w-lg mx-auto bg-white rounded-t-[36px] shadow-[0_-16px_40px_rgba(15,23,42,0.2)] flex flex-col relative border-t-2 border-yellow-400">
+        <div className={cn(
+          "w-full max-w-lg mx-auto bg-white rounded-t-[36px] shadow-[0_-16px_40px_rgba(15,23,42,0.2)] flex flex-col relative border-t-2 border-yellow-400",
+          activeTab === "mensajes" ? "h-[60dvh]" : "h-[80dvh]"
+        )}>
           {/* Handle de arrastre y Pestañas */}
-          <div
-            className="w-full flex flex-col items-center pt-3 pb-2 cursor-grab active:cursor-grabbing touch-none select-none"
-            onMouseDown={(e) => handleDragStart(e.clientY)}
-            onTouchStart={(e) => handleDragStart(e.touches[0].clientY)}
-          >
-            <div className="w-12 h-1.5 rounded-full bg-slate-300 mb-3" />
+          <div className="w-full flex flex-col items-center pb-2 select-none">
+            <button
+              type="button"
+              aria-label={isExpanded ? "Minimizar panel" : "Expandir panel"}
+              className="w-full flex items-center justify-center pt-3 pb-3 cursor-grab active:cursor-grabbing touch-none"
+              onMouseDown={(e) => handleDragStart(e.clientY)}
+              onTouchStart={(e) => handleDragStart(e.touches[0].clientY)}
+              onClick={(event) => {
+                if (event.detail === 0 || !didDrag.current) setIsExpanded((expanded) => !expanded);
+              }}
+            >
+              <span className="w-12 h-1.5 rounded-full bg-slate-300" />
+            </button>
             <div className="w-full px-4">
               <div className="flex bg-slate-50 rounded-2xl p-1 border border-slate-200">
                 <button
@@ -247,16 +273,16 @@ export function RepartidorPiramidal({ onSwitchToStore }: RepartidorPiramidalProp
                     setIsExpanded(true);
                   }}
                   className={cn(
-                    "flex-1 h-10 rounded-xl transition-all flex items-center justify-center gap-1.5 text-xs font-black relative",
+                    "min-w-0 flex-1 h-12 sm:h-10 rounded-xl px-1 transition-all flex flex-col sm:flex-row items-center justify-center gap-0 sm:gap-1 text-[10px] sm:text-xs font-black relative",
                     activeTab === "pedidos"
                       ? "bg-[#FFE600] text-[#2D3277] shadow-sm"
                       : "text-slate-500 hover:text-slate-900"
                   )}
                 >
-                  <Layers className="w-4 h-4" />
-                  <span>Disponibles</span>
+                  <Layers className="w-3.5 h-3.5 shrink-0" />
+                  <span className="truncate">Disponibles</span>
                   {availableOrders.length > 0 && (
-                    <span className="bg-white text-[#2D3277] border border-yellow-300 text-[10px] px-1.5 py-0.2 rounded-full font-bold">
+                    <span className="absolute -top-1 -right-0.5 min-w-4 h-4 px-1 bg-white text-[#2D3277] border border-yellow-300 text-[9px] rounded-full font-bold">
                       {availableOrders.length}
                     </span>
                   )}
@@ -270,16 +296,16 @@ export function RepartidorPiramidal({ onSwitchToStore }: RepartidorPiramidalProp
                     setIsExpanded(true);
                   }}
                   className={cn(
-                    "flex-1 h-10 rounded-xl transition-all flex items-center justify-center gap-1.5 text-xs font-black relative",
+                    "min-w-0 flex-1 h-12 sm:h-10 rounded-xl px-1 transition-all flex flex-col sm:flex-row items-center justify-center gap-0 sm:gap-1 text-[10px] sm:text-xs font-black relative",
                     activeTab === "ruta"
                       ? "bg-[#FFE600] text-[#2D3277] shadow-sm"
                       : "text-slate-500 hover:text-slate-900"
                   )}
                 >
-                  <Truck className="w-4 h-4" />
-                  <span>Mi Ruta</span>
+                  <Truck className="w-3.5 h-3.5 shrink-0" />
+                  <span className="truncate">Mi Ruta</span>
                   {myActiveOrders.length > 0 && (
-                    <span className="bg-yellow-100 text-yellow-900 border border-yellow-200 text-[10px] px-1.5 py-0.2 rounded-full font-bold">
+                    <span className="absolute -top-1 -right-0.5 min-w-4 h-4 px-1 bg-yellow-100 text-yellow-900 border border-yellow-200 text-[9px] rounded-full font-bold">
                       {myActiveOrders.length}
                     </span>
                   )}
@@ -293,25 +319,64 @@ export function RepartidorPiramidal({ onSwitchToStore }: RepartidorPiramidalProp
                     setIsExpanded(true);
                   }}
                   className={cn(
-                    "flex-1 h-10 rounded-xl transition-all flex items-center justify-center gap-1.5 text-xs font-black relative",
+                    "min-w-0 flex-1 h-12 sm:h-10 rounded-xl px-1 transition-all flex flex-col sm:flex-row items-center justify-center gap-0 sm:gap-1 text-[10px] sm:text-xs font-black relative",
                     activeTab === "alerta"
                       ? "bg-[#FFE600] text-[#2D3277] shadow-sm"
                       : "text-slate-500 hover:text-slate-900"
                   )}
                 >
-                  <ShieldAlert className="w-4 h-4" />
-                  <span>Alertas</span>
+                  <ShieldAlert className="w-3.5 h-3.5 shrink-0" />
+                  <span className="truncate">Alertas</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    showMessageInbox();
+                  }}
+                  className={cn(
+                    "min-w-0 flex-1 h-12 sm:h-10 rounded-xl px-1 transition-all flex flex-col sm:flex-row items-center justify-center gap-0 sm:gap-1 text-[10px] sm:text-xs font-black relative",
+                    activeTab === "mensajes"
+                      ? "bg-[#FFE600] text-[#2D3277] shadow-sm"
+                      : "text-slate-500 hover:text-slate-900"
+                  )}
+                  title="Mensajes de pedidos y Copo IA"
+                >
+                  <MessageCircle className="w-3.5 h-3.5 shrink-0" />
+                  <span className="truncate">Mensajes</span>
                 </button>
               </div>
             </div>
           </div>
 
           {/* Contenido scrolleable de la pestaña */}
-          <div className="flex-1 overflow-y-auto px-4 pb-[max(4rem,calc(env(safe-area-inset-bottom)+2rem))] pt-2 scrollbar-none text-left">
+          <div
+            className={cn(
+              "flex-1 min-h-0 pt-2 scrollbar-none text-left",
+              activeTab === "mensajes"
+                ? "flex flex-col overflow-hidden px-0 pb-0"
+                : "overflow-y-auto px-4 pb-[max(4rem,calc(env(safe-area-inset-bottom)+2rem))]"
+            )}
+          >
+            {(pendingActions.length > 0 || syncError) && (
+              <div role="status" className="mx-4 mb-3 rounded-xl border border-amber-300 bg-amber-50 p-3 text-xs text-amber-950">
+                <p className="font-bold">
+                  {pendingActions.length} acción{pendingActions.length === 1 ? "" : "es"} pendiente{pendingActions.length === 1 ? "" : "s"} de confirmación
+                </p>
+                <p className="mt-1">
+                  {syncError || "No se confirma la asignación ni la ganancia hasta que responda el servidor."}
+                </p>
+                <button type="button" onClick={() => void syncPending()} className="mt-2 font-bold underline">
+                  Reintentar sincronización
+                </button>
+              </div>
+            )}
             {activeTab === "pedidos" && (
               <TabPedidosDisponibles
                 orders={availableOrders}
                 onAcceptOrder={handleTakeOrder}
+                pendingOrderIds={pendingActions.map((action) => action.order.id)}
               />
             )}
 
@@ -319,10 +384,8 @@ export function RepartidorPiramidal({ onSwitchToStore }: RepartidorPiramidalProp
               <TabMiRuta
                 activeOrders={myActiveOrders}
                 onCompleteDelivery={handleCompleteDelivery}
-                onOpenOrderChat={(order) => {
-                  setSelectedDriverChatOrder(order);
-                  setIsOrderChatOpen(true);
-                }}
+                onOpenOrderChat={openOrderConversation}
+                pendingOrderIds={pendingActions.map((action) => action.order.id)}
               />
             )}
 
@@ -334,6 +397,43 @@ export function RepartidorPiramidal({ onSwitchToStore }: RepartidorPiramidalProp
                   Tránsito fluido en el corredor central de Rosario (Tucumán y San Lorenzo).
                 </p>
               </div>
+            )}
+
+            {activeTab === "mensajes" && selectedDriverChatOrder && (
+                <OrderChatSheet
+                  key={selectedDriverChatOrder.id}
+                  embedded
+                  isOpen
+                  onOpenChange={(open) => {
+                    if (!open) showMessageInbox();
+                  }}
+                  activeOrder={selectedDriverChatOrder}
+                  viewerRole="driver"
+                  driverName={driverProfile?.firstName || "Repartidor"}
+                  clientName={
+                    selectedDriverChatOrder.clientName ||
+                    selectedDriverChatOrder.customerName
+                  }
+                  deliveryAddress={selectedDriverChatOrder.deliveryAddress}
+                  onBackToOrdersHub={showMessageInbox}
+                />
+            )}
+            <div className={cn(
+              "min-h-0 flex-1 flex-col",
+              activeTab === "mensajes" && isCopilotConversationOpen ? "flex" : "hidden"
+            )}>
+              <DriverCopilotSheet
+                onBack={showMessageInbox}
+                activeOrdersCount={myActiveOrders.length}
+              />
+            </div>
+            {activeTab === "mensajes" && !selectedDriverChatOrder && !isCopilotConversationOpen && (
+                <CentroMensajeriaDriverSheet
+                  isOpen
+                  orders={myActiveOrders}
+                  onSelectOrderChat={openOrderConversation}
+                  onSelectCopilot={openCopilotConversation}
+                />
             )}
           </div>
         </div>
@@ -356,45 +456,6 @@ export function RepartidorPiramidal({ onSwitchToStore }: RepartidorPiramidalProp
             confirmOrderAfterLogin(id);
             setActiveTab("ruta");
             setIsExpanded(true);
-          }
-        }}
-      />
-
-      {/* ─── 6. Copiloto IA Sheet ─── */}
-      <DriverCopilotSheet
-        isOpen={isCopilotOpen}
-        onOpenChange={setIsCopilotOpen}
-        activeOrdersCount={myActiveOrders.length}
-      />
-
-      {/* ─── 6a. Centro de Mensajería WhatsApp-Style (Inbox de Pedidos) ─── */}
-      <CentroMensajeriaDriverSheet
-        isOpen={isChatInboxOpen}
-        onOpenChange={setIsChatInboxOpen}
-        orders={myActiveOrders}
-        onSelectOrderChat={(order) => {
-          setSelectedDriverChatOrder(order);
-          setIsChatInboxOpen(false);
-          setIsOrderChatOpen(true);
-        }}
-      />
-
-      {/* ─── 6b. Chat Tripartito de Entrega (Repartidor · Cliente · Empresa CobroFácil) ─── */}
-      <OrderChatSheet
-        isOpen={isOrderChatOpen}
-        onOpenChange={setIsOrderChatOpen}
-        activeOrder={selectedDriverChatOrder || myActiveOrders[0] || null}
-        viewerRole="driver"
-        driverName={driverProfile?.firstName || "Lucas Motomensajero"}
-        clientName={
-          (selectedDriverChatOrder || myActiveOrders[0])?.clientName ||
-          (selectedDriverChatOrder || myActiveOrders[0])?.customerName
-        }
-        deliveryAddress={(selectedDriverChatOrder || myActiveOrders[0])?.deliveryAddress}
-        onBackToOrdersHub={() => {
-          setIsOrderChatOpen(false);
-          if (myActiveOrders.length > 1) {
-            setIsChatInboxOpen(true);
           }
         }}
       />

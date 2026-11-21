@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Sparkles, User, Truck, Bell } from "lucide-react";
+import { Sparkles, User, Truck, MessageCircle } from "lucide-react";
 import { DriverProfile, DriverOrder } from "../motor/tipos";
 
 interface DriverTopBarProps {
@@ -52,7 +52,7 @@ export function DriverTopBar({
         <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-500 border-2 border-white rounded-full" />
       </button>
 
-      {/* Acciones Derecha: Copiloto IA + Campana Chat Tripartito + Estado Pedido/Perfil */}
+      {/* Acciones rápidas: Copo IA, mensajes y estado del pedido/perfil */}
       <div className="pointer-events-auto flex items-center gap-1.5 shrink-0">
         {/* Copiloto IA */}
         <button
@@ -64,18 +64,15 @@ export function DriverTopBar({
           <Sparkles className="w-4 h-4" />
         </button>
 
-        {/* Campana de Notificaciones & Chat de Pedido Tripartito */}
+        {/* Acceso directo a la bandeja de mensajes */}
         <button
           type="button"
           onClick={onOpenOrderChat}
           className="relative h-11 w-11 rounded-full bg-white hover:bg-yellow-50 border border-yellow-300 text-[#2D3277] shadow-lg shadow-slate-900/10 backdrop-blur-md flex items-center justify-center active:scale-95 transition-all"
-          title="Chat y Avisos de Entrega (Repartidor · Cliente · Empresa)"
+          title="Mensajes de pedidos y Copo IA"
+          aria-label="Abrir mensajes"
         >
-          <Bell className="w-4 h-4" />
-          <span className="absolute top-2 right-2 flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-400 opacity-60" />
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
-          </span>
+          <MessageCircle className="w-4 h-4" />
         </button>
 
         {/* Píldora de Pedido en Curso o Perfil del Repartidor */}

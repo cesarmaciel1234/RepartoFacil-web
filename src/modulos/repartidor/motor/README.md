@@ -7,7 +7,8 @@
 
 ## 1. Qué hace
 - Provee los contratos de datos en `tipos.ts` (DriverOrder, DriverProfile, OrderStatus, DriverWallet, WalletTransaction, TelemetryState, HeadingSource).
-- Persiste y actualiza las asignaciones de pedidos en `driverService.ts` (`rf_orders_history`).
+- Persiste pedidos locales en `driverService.ts` (`rf_orders_history`).
+- `driverPendingActions.ts` guarda por repartidor y pedido las asignaciones y entregas pendientes, las reintenta al recuperar conexión y solo acredita la cartera después de la confirmación del servidor. Requiere Web Locks para evitar sincronizaciones simultáneas entre pestañas.
 - Maneja la cartera del repartidor en `walletService.ts` (`rf_driver_wallet`), sumando ganancias netas acreditadas, registrando efectivo cobrado y emitiendo el evento reactivo `rf-wallet-updated`.
 - Proporciona el hook `useDriverOrders.ts` para unificar órdenes locales y de Firestore, exponiendo `handleTakeOrder()`, `handleCompleteDelivery()` y `wallet`.
 - **Motor de Telemetría y Orientación Fusionada (`telemetryEngine.ts` & `useDriverGps.ts`):** Fusión de sensores en tiempo real (GPS satelital de alta precisión + Brújula del móvil/magnetómetro) con conmutación dinámica por velocidad, promedio circular de buffer y filtro exponencial (EMA) para suavizado a 60fps sin temblores.
@@ -29,9 +30,8 @@
   3. Bucle de animación en segundo plano (`requestAnimationFrame`) que suaviza el ángulo a 60fps.
   4. Sincronización continua de ubicación y rumbo en Firestore (`driverProfiles`).
 - `driverService.ts`:
-  - `loadLocalOrders()` / `saveLocalOrders()`: Persistencia en `localStorage` con fallback a `DEFAULT_AVAILABLE_ORDERS`.
-  - `assignOrderToDriver(orderId, driverId)`: Pasa la orden a `"Assigned"`.
-  - `completeOrderDelivery(orderId)`: Pasa la orden a `"Delivered"`, calcula la ganancia y llama a `creditDeliveryEarning()`.
+  - `loadLocalOrders()` / `saveLocalOrders()`: Persistencia en `localStorage`.
+- `driverPendingActions.ts`: Encola y sincroniza acciones pendientes para el repartidor activo; los rechazos del servidor se muestran y no se acreditan.
 - `walletService.ts`:
   - `loadDriverWallet()` / `saveDriverWallet()`: Persistencia reactiva de la cartera (`rf_driver_wallet`).
   - `creditDeliveryEarning(orderId, earningAmount, cashCollected)`: Acredita la ganancia y registra el efectivo recibido.
@@ -56,6 +56,6 @@
 ---
 
 ## 5. Qué NO romper (Invariantes Sagrados)
-- **Persistencia atómica:** Siempre actualizar la orden y la cartera de forma sincronizada.
+- **Confirmación:** No mostrar una asignación o acreditar una entrega antes de la confirmación del servidor. El saldo sigue siendo local al dispositivo, no una liquidación central.
 - **Eventos reactivos:** Emitir `rf-wallet-updated` y `rf-orders-updated` para actualización instantánea sin recarga.
 - **Normalización angular:** Jamás promediar ángulos aritméticamente como `(a + b)/2` (genera desastres en 359° y 1°); siempre usar `circularAverage` o `shortestAngularDifference`.

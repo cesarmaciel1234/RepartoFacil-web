@@ -22,12 +22,14 @@ interface TabMiRutaProps {
   activeOrders: DriverOrder[];
   onCompleteDelivery: (orderId: string) => void;
   onOpenOrderChat?: (order: DriverOrder) => void;
+  pendingOrderIds: string[];
 }
 
 export function TabMiRuta({
   activeOrders,
   onCompleteDelivery,
   onOpenOrderChat,
+  pendingOrderIds,
 }: TabMiRutaProps) {
   const formatMoney = (val: number) => "$" + (val || 0).toLocaleString("es-AR");
 
@@ -50,8 +52,7 @@ export function TabMiRuta({
       {activeOrders.map((order) => {
         const client = order.clientName || order.customerName || "Cliente";
         const phone = order.customerPhone || "+54 9 341 555-1234";
-        const earnings =
-          order.driverEarnings || Math.max(1600, Math.round((order.deliveryFee || 2000) * 0.85));
+        const earnings = order.driverEarnings;
         const isCash =
           order.paymentMethod === "cash" ||
           order.paymentMethod === ("efectivo" as any) ||
@@ -100,7 +101,7 @@ export function TabMiRuta({
                   Tu ganancia neta
                 </span>
                 <span className="text-base font-black text-[#2D3277]">
-                  +{formatMoney(earnings)}
+                  {earnings == null ? "Sin dato" : `+${formatMoney(earnings)}`}
                 </span>
               </div>
             </div>
@@ -229,14 +230,15 @@ export function TabMiRuta({
             <div className="pt-1">
               <Button
                 onClick={() => onCompleteDelivery(order.id)}
+                disabled={pendingOrderIds.includes(order.id)}
                 className="w-full h-13 rounded-2xl bg-[#FFE600] hover:bg-yellow-300 text-[#2D3277] font-black text-sm flex items-center justify-center gap-2 shadow-md shadow-yellow-500/20 active:scale-98 transition-all"
               >
                 <CheckCircle2 className="w-5 h-5 text-[#2D3277]" />
-                <span>CONFIRMAR ENTREGA (+{formatMoney(earnings)})</span>
+                <span>{pendingOrderIds.includes(order.id) ? "ENTREGA PENDIENTE DE CONFIRMACIÓN" : earnings == null ? "CONFIRMAR ENTREGA" : `CONFIRMAR ENTREGA (+${formatMoney(earnings)})`}</span>
               </Button>
               <p className="text-[10px] text-center text-slate-500 font-medium mt-1.5 flex items-center justify-center gap-1">
                 <Sparkles className="w-3 h-3 text-yellow-700" />
-                Al pulsar confirmar, la orden se cierra en la base de datos y se acredita tu pago.
+                La ganancia se acredita cuando el servidor confirma la entrega.
               </p>
             </div>
           </div>

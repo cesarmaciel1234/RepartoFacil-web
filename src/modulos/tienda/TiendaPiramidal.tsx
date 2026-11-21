@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import type { CompanyStore } from "@/data/mockCompanies";
 import { useCart } from "./motor/useCart";
 import {
@@ -12,6 +12,7 @@ import type { CheckoutFormData, DeliveryCoordinates, OrderData } from "./motor/t
 import { useCatalogoTienda } from "./catalogo/hooks/useCatalogoTienda";
 import { usePedidosCliente } from "./pedidos/hooks/usePedidosCliente";
 import { CatalogoEmpresaTienda } from "./catalogo/pantallas/CatalogoEmpresaTienda";
+import { AvisoCatalogo, formatSavedTime } from "./catalogo/AvisoCatalogo";
 import { HeaderTienda } from "./ui/HeaderTienda";
 import { DrawerCarrito, type CompanyCartSummary } from "./ui/DrawerCarrito";
 import { ModalCheckout } from "./ui/ModalCheckout";
@@ -98,6 +99,8 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
 
   // Al arrancar, no hay empresa "clavada": arranca en la vista de empresas / mercados
   const [selectedCompany, setSelectedCompany] = useState<CompanyStore | null>(null);
+  const selectedCompanyRef = useRef<CompanyStore | null>(null);
+  selectedCompanyRef.current = selectedCompany;
   const [selectedCategory, setSelectedCategory] = useState("todos");
   const [activeBottomTab, setActiveBottomTab] = useState<SeccionTienda>("home");
   const [searchQuery, setSearchQuery] = useState("");
@@ -121,6 +124,11 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
     status: catalogStatus,
     productsStatus: catalogProductsStatus,
     productsWarnings,
+    companiesCached,
+    productsCached,
+    companiesSavedAt,
+    productsSavedAt,
+    cacheError,
     reload: reloadCatalog,
     productCountByCompany,
     companyCatalogSize,
@@ -219,7 +227,7 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
           0
         )
       : 0;
-  const { clientOrdersList, activeOrdersCount } = usePedidosCliente({
+  const { clientOrdersList, activeOrdersCount, ordersCached, ordersSavedAt } = usePedidosCliente({
     selectedChatOrder,
     setSelectedChatOrder,
     orderConfirmed,
@@ -434,8 +442,13 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
     const syncFromUrl = () => {
       const key = new URL(window.location.href).searchParams.get("tienda");
       const company = findCompanyByKey(key);
-      if (company) openCompany(company, "", { pushHistory: false });
-      else closeCompany({ pushHistory: false });
+      if (company && company.id === selectedCompanyRef.current?.id) {
+        setSelectedCompany(company);
+      } else if (company) {
+        openCompany(company, "", { pushHistory: false });
+      } else if (selectedCompanyRef.current) {
+        closeCompany({ pushHistory: false });
+      }
     };
     syncFromUrl();
     window.addEventListener("popstate", syncFromUrl);
@@ -445,6 +458,7 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
 
   const browseProps = {
     companies,
+    companiesCached,
     products,
     status: catalogStatus,
     onRetry: reloadCatalog,
@@ -480,26 +494,20 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
 
       {/* ─── Contenido Principal ─── */}
       <main className="flex-1 max-w-6xl w-full mx-auto px-3 sm:px-4 py-4 space-y-4">
-        {(catalogProductsStatus === "error" || productsWarnings.length > 0) && (
-          <div
-            role={catalogProductsStatus === "error" ? "alert" : "status"}
-            className="flex items-center justify-between gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-950"
-          >
-            <p>
-              {catalogProductsStatus === "error"
-                ? "No se pudo validar el inventario de Cobro Fácil. Se conserva el carrito, pero no se pueden finalizar compras."
-                : `Catálogo parcial: ${productsWarnings.length} problema(s) al leer el inventario. Los datos faltantes quedan pendientes.`}
-            </p>
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              onClick={reloadCatalog}
-              className="shrink-0 border-amber-300 bg-white text-amber-900"
-            >
-              Reintentar
-            </Button>
-          </div>
+        <AvisoCatalogo
+          companiesCached={companiesCached}
+          productsCached={productsCached}
+          companiesSavedAt={companiesSavedAt}
+          productsSavedAt={productsSavedAt}
+          productsError={catalogProductsStatus === "error"}
+          warnings={productsWarnings}
+          cacheError={cacheError}
+          onRetry={reloadCatalog}
+        />
+        {activeBottomTab === "orders" && ordersCached && (
+          <p role="status" className="rounded-2xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-950">
+            Mostramos los pedidos guardados; sus estados pueden haber cambiado ({formatSavedTime(ordersSavedAt)}).
+          </p>
         )}
         {activeBottomTab === "profile" ? (
           <PerfilCliente
@@ -554,6 +562,7 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
         ) : (
           <CatalogoEmpresaTienda
             company={selectedCompany}
+            companyCached={companiesCached}
             categories={companyDepartments}
             searchQuery={searchQuery}
             selectedCategory={selectedCategory}
@@ -717,6 +726,8 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
         isOpen={isOrdersHubOpen}
         onOpenChange={setIsOrdersHubOpen}
         orders={clientOrdersList}
+        ordersCached={ordersCached}
+        ordersSavedAt={ordersSavedAt}
       />
 
       {/* ─── Chat Tripartito Privado del Pedido Seleccionado ─── */}

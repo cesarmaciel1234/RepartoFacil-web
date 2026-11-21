@@ -7,6 +7,7 @@ export interface Product {
   description: string;
   image?: string;
   priceSource?: "tpv";
+  catalogCached?: boolean;
   isPopular?: boolean;
   discountBadge?: string;
   badge?: string;

@@ -33,33 +33,6 @@ export interface OrderChatMessage {
   timestamp: string;
 }
 
-const DEFAULT_MESSAGES: OrderChatMessage[] = [
-  {
-    id: "msg-1",
-    orderId: "RF-7420",
-    authorRole: "company",
-    authorName: "Central Frigorífico Maciel (CobroFácil)",
-    content: "¡Pedido #RF-7420 preparado y embalado en sucursal! Listo para que el repartidor retire.",
-    timestamp: "18:40",
-  },
-  {
-    id: "msg-2",
-    orderId: "RF-7420",
-    authorRole: "driver",
-    authorName: "Lucas Motomensajero",
-    content: "Pedido retirado del local. En viaje hacia San Lorenzo 2040 en moto. Demora estimada: 15 minutos.",
-    timestamp: "18:44",
-  },
-  {
-    id: "msg-3",
-    orderId: "RF-7420",
-    authorRole: "client",
-    authorName: "Familia Gómez",
-    content: "¡Excelente! Por favor tocar el timbre 3B o avisar por acá al llegar.",
-    timestamp: "18:46",
-  },
-];
-
 interface OrderChatSheetProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
@@ -87,12 +60,12 @@ export function OrderChatSheet({
 }: OrderChatSheetProps) {
   // El rol real del usuario que visualiza el chat
   const effectiveRole: "client" | "driver" = viewerRole || defaultRole;
-  const isDriverViewer = effectiveRole === "driver" && !embedded;
+  const isDriverViewer = effectiveRole === "driver";
   const orderId = activeOrder?.id || "RF-7420";
   const ticketId = activeOrder?.ticketId || activeOrder?.ticket_id;
   const storageKey = `rf_chat_${orderId}`;
 
-  const [messages, setMessages] = useState<OrderChatMessage[]>(DEFAULT_MESSAGES);
+  const [messages, setMessages] = useState<OrderChatMessage[]>([]);
   const [inputText, setInputText] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [isTicketModalOpen, setIsTicketModalOpen] = useState(false);
@@ -227,7 +200,7 @@ export function OrderChatSheet({
 
   const isClientViewer = effectiveRole === "client";
   const displayDestAddress = deliveryAddress || activeOrder?.deliveryAddress || "Tucumán 2130, Rosario";
-  const backButtonLabel = embedded ? "Volver al pedido" : "Volver a la lista de pedidos";
+  const backButtonLabel = isDriverViewer ? "Volver a mensajes" : embedded ? "Volver al pedido" : "Volver a la lista de pedidos";
 
   const chatContent = (
     <>
@@ -246,27 +219,27 @@ export function OrderChatSheet({
                 onClick={onBackToOrdersHub}
                 aria-label={backButtonLabel}
                 className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border transition-all ${
-                  embedded
-                    ? "border-slate-200 text-slate-600 hover:bg-slate-100"
-                    : isDriverViewer
+                  isDriverViewer
                     ? "border-yellow-300 bg-yellow-50 text-yellow-900 hover:bg-yellow-100"
+                    : embedded
+                    ? "border-slate-200 text-slate-600 hover:bg-slate-100"
                     : "border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white"
                 }`}
                 title={backButtonLabel}
               >
                 <ArrowLeft
                   className={`h-4 w-4 ${
-                    embedded ? "text-blue-600" : isDriverViewer ? "text-yellow-800" : "text-emerald-400"
+                    isDriverViewer ? "text-yellow-800" : embedded ? "text-blue-600" : "text-emerald-400"
                   }`}
                 />
               </button>
             )}
             <div
               className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl shadow-md ${
-                embedded
-                  ? "bg-blue-50 text-blue-600"
-                  : isDriverViewer
+                isDriverViewer
                   ? "bg-yellow-100 text-yellow-900"
+                  : embedded
+                  ? "bg-blue-50 text-blue-600"
                   : isClientViewer
                   ? "bg-blue-500/20 text-blue-400"
                   : "bg-emerald-500/20 text-emerald-400"
@@ -276,15 +249,15 @@ export function OrderChatSheet({
             </div>
             <div className="text-left">
               <div className="flex items-center gap-1.5">
-                <SheetTitle
-                  className={`text-sm font-black ${
-                    embedded || isDriverViewer ? "text-slate-900" : "text-white"
-                  }`}
-                >
-                  {isClientViewer
-                    ? `Chat con tu Repartidor`
-                    : `Chat con el Cliente`}
-                </SheetTitle>
+                {embedded ? (
+                  <h2 className="text-sm font-black text-slate-900">
+                    {isClientViewer ? "Chat con tu Repartidor" : "Chat con el Cliente"}
+                  </h2>
+                ) : (
+                  <SheetTitle className={`text-sm font-black ${isDriverViewer ? "text-slate-900" : "text-white"}`}>
+                    {isClientViewer ? "Chat con tu Repartidor" : "Chat con el Cliente"}
+                  </SheetTitle>
+                )}
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
               </div>
               <div className="flex items-center gap-2 mt-0.5">
@@ -295,7 +268,7 @@ export function OrderChatSheet({
                 >
                   Pedido #{orderId}
                 </span>
-                {!embedded && ticketId && (
+                {(!embedded || isDriverViewer) && ticketId && (
                   <button
                     type="button"
                     onClick={() => setIsTicketModalOpen(true)}
@@ -314,10 +287,10 @@ export function OrderChatSheet({
           </div>
           <Badge
             className={`border py-0.5 text-[9px] font-black ${
-              embedded
-                ? "border-blue-100 bg-blue-50 text-blue-700"
-                : isDriverViewer
+              isDriverViewer
                 ? "border-yellow-300 bg-yellow-100 text-yellow-900"
+                : embedded
+                ? "border-blue-100 bg-blue-50 text-blue-700"
                 : "border-emerald-500/30 bg-emerald-500/20 text-emerald-400"
             }`}
           >
@@ -328,10 +301,10 @@ export function OrderChatSheet({
         {/* Tarjeta de Estado del Reparto (Estilo Uber Eats / Rappi) */}
         <div
           className={`flex items-center justify-between border-b px-4 py-2.5 ${
-            embedded
-              ? "border-blue-100 bg-blue-50/70"
-              : isDriverViewer
+            isDriverViewer
               ? "border-yellow-200 bg-yellow-50"
+              : embedded
+              ? "border-blue-100 bg-blue-50/70"
               : isClientViewer
               ? "border-blue-500/20 bg-blue-950/30"
               : "border-emerald-500/20 bg-emerald-950/30"
@@ -340,10 +313,10 @@ export function OrderChatSheet({
           <div className="flex items-center gap-2.5 min-w-0">
             <div
               className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-sm font-bold shadow-sm ${
-                embedded
-                  ? "bg-white text-blue-700"
-                  : isDriverViewer
+                isDriverViewer
                   ? "bg-white text-yellow-800 border border-yellow-200"
+                  : embedded
+                  ? "bg-white text-blue-700"
                   : "bg-slate-800/90 text-white"
               }`}
             >
@@ -360,10 +333,10 @@ export function OrderChatSheet({
                 </span>
                 <span
                   className={`shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-bold ${
-                    embedded
-                      ? "bg-blue-100 text-blue-700"
-                      : isDriverViewer
+                    isDriverViewer
                       ? "bg-yellow-100 text-yellow-900"
+                      : embedded
+                      ? "bg-blue-100 text-blue-700"
                       : "bg-emerald-500/20 text-emerald-300"
                   }`}
                 >
@@ -379,7 +352,7 @@ export function OrderChatSheet({
               </p>
             </div>
           </div>
-          <div className="text-right shrink-0 pl-2">
+          {!isDriverViewer && <div className="text-right shrink-0 pl-2">
             <span
               className={`text-xs font-black ${
                 embedded ? "text-blue-700" : isDriverViewer ? "text-yellow-900" : "text-emerald-400"
@@ -394,7 +367,7 @@ export function OrderChatSheet({
             >
               GPS activo
             </span>
-          </div>
+          </div>}
         </div>
 
         {/* Barra de perfil activo (Auditoría de Identidad) */}
@@ -432,7 +405,7 @@ export function OrderChatSheet({
         <OrderChatMessageList
           messages={messages}
           effectiveRole={effectiveRole}
-          embedded={embedded}
+          embedded={embedded && !isDriverViewer}
           scrollRef={scrollRef}
         />
 
@@ -454,10 +427,10 @@ export function OrderChatSheet({
                 : `Escribir mensaje al cliente (${clientName || activeOrder?.clientName || "Cliente"})...`
             }
             className={
-              embedded
-                ? "h-10 rounded-xl border-slate-200 bg-white text-xs text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:ring-blue-500"
-                : isDriverViewer
+              isDriverViewer
                 ? "h-10 rounded-xl border-slate-200 bg-white text-xs text-slate-900 placeholder:text-slate-400 focus:border-yellow-400 focus:ring-yellow-400"
+                : embedded
+                ? "h-10 rounded-xl border-slate-200 bg-white text-xs text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:ring-blue-500"
                 : "h-10 rounded-xl border-slate-800 bg-slate-900 text-xs text-white placeholder:text-slate-500 focus:border-emerald-500 focus:ring-emerald-500"
             }
           />
@@ -465,10 +438,10 @@ export function OrderChatSheet({
             type="submit"
             disabled={!inputText.trim() || isSending}
             className={`h-10 w-10 p-0 rounded-xl text-white shrink-0 shadow-lg active:scale-95 transition-all ${
-              embedded || isClientViewer
-                ? "bg-blue-600 hover:bg-blue-700 shadow-blue-600/20 disabled:opacity-40"
-                : isDriverViewer
+              isDriverViewer
                 ? "bg-[#FFE600] hover:bg-yellow-300 text-[#2D3277] shadow-yellow-500/20 disabled:opacity-40"
+                : embedded || isClientViewer
+                ? "bg-blue-600 hover:bg-blue-700 shadow-blue-600/20 disabled:opacity-40"
                 : "bg-emerald-500 hover:bg-emerald-600 shadow-emerald-500/20 disabled:opacity-40"
             }`}
             title="Enviar mensaje"
@@ -478,7 +451,7 @@ export function OrderChatSheet({
         </form>
 
         {/* Modal Ticket Digital Cobro Fácil */}
-        {!embedded && (
+        {(!embedded || isDriverViewer) && (
           <ModalTicketDigital
             isOpen={isTicketModalOpen}
             onOpenChange={setIsTicketModalOpen}

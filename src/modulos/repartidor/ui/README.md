@@ -14,7 +14,9 @@
 ---
 
 ## 2. Componentes Principales
-- `DriverTopBar.tsx`: Encabezado con botón de volver, estado GPS, botón de cartera `💼 $X.XXX`, botón de copiloto IA y perfil del repartidor.
+- `DriverTopBar.tsx`: Accesos rápidos al perfil, Copo, mensajería y pedido activo.
+- `CentroMensajeriaDriverSheet.tsx`: Bandeja integrada en el panel inferior con conversaciones de pedidos y el contacto Copo.
+- `DriverCopilotSheet.tsx`: Conversación de prueba de Copo integrada en la bandeja; no analiza rutas ni tráfico real.
 - `TabPedidosDisponibles.tsx`: Listado de pedidos listos con ganancia estimada para el bolsillo (`+$X.XXX`), badge de tarifa dinámica pico (`⚡ 1.35x`), trayecto al market y trayecto al cliente.
 - `TabMiRuta.tsx`: Tarjetas de pedidos en curso con simulación GPS en marcha, velocímetro, barra de proximidad y botón bloqueado con candado hasta estar a menos de 100 metros del domicilio.
 - `ModalCarteraRepartidor.tsx`: Diálogo con el desglose de ganancias del repartidor, efectivo cobrado en mano, liquidación neta a rendir a la central y movimientos recientes.

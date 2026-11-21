@@ -23,17 +23,22 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { formatSavedTime } from "../catalogo/AvisoCatalogo";
 
 interface CentroPedidosClienteSheetProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   orders: any[];
+  ordersCached?: boolean;
+  ordersSavedAt?: string | null;
 }
 
 export function CentroPedidosClienteSheet({
   isOpen,
   onOpenChange,
   orders = [],
+  ordersCached = false,
+  ordersSavedAt = null,
 }: CentroPedidosClienteSheetProps) {
   const [selectedTicketOrder, setSelectedTicketOrder] = useState<any | null>(null);
   const [isTicketModalOpen, setIsTicketModalOpen] = useState(false);
@@ -185,13 +190,13 @@ export function CentroPedidosClienteSheet({
                 </div>
                 <div className="text-left">
                   <DialogTitle className="flex items-center gap-2 text-sm font-black text-slate-900">
-                    Pedidos en vivo
-                    {activeOrders.length > 0 && (
+                    {ordersCached ? "Pedidos guardados" : "Pedidos en vivo"}
+                    {!ordersCached && activeOrders.length > 0 && (
                       <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" />
                     )}
                   </DialogTitle>
                   <DialogDescription className="mt-1 text-[11px] font-medium text-slate-500">
-                    Seguimiento en tiempo real y chat por pedido
+                    {ordersCached ? "Los estados pueden haber cambiado" : "Seguimiento en tiempo real y chat por pedido"}
                   </DialogDescription>
                 </div>
               </div>
@@ -210,6 +215,11 @@ export function CentroPedidosClienteSheet({
               : "min-h-0 flex-1 space-y-4 overflow-y-auto bg-slate-50/70 p-4 sm:p-5"
           }
         >
+          {ordersCached && !isChatOpen && (
+            <p role="status" className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-950">
+              Mostramos pedidos guardados; sus estados pueden haber cambiado ({formatSavedTime(ordersSavedAt)}).
+            </p>
+          )}
           {isChatOpen && selectedOrder && (
             <OrderChatSheet
               embedded

@@ -53,6 +53,24 @@ Invariantes:
 6. No cambiar estados, columnas o reglas de conflicto de pedidos sin comprobar
    compatibilidad con el CRM y la bandeja del repartidor.
 
+Las acciones de repartidor sin conexión quedan pendientes en el almacenamiento
+del dispositivo y se reintentan al reconectar mientras la aplicación esté
+abierta y el mismo repartidor tenga sesión iniciada. No se asigna ni acredita
+una acción hasta que el servidor la confirme. El protocolo nuevo protege la
+asignación simultánea entre clientes actualizados. El navegador
+debe admitir Web Locks; si no lo admite, se muestra un error de sincronización.
+La cartera permanece local al dispositivo y no sustituye una liquidación central.
+
+Para actualizar primero las instalaciones antiguas, configurar temporalmente
+`RF_DRIVER_ACTIONS_LEGACY_COMPAT=1` en Render antes de desplegar v5.11. Las
+solicitudes antiguas conservan el comportamiento anterior: pueden confirmar
+entregas sin identificador y no están protegidas contra asignaciones simultáneas;
+un cliente antiguo puede incluso sobrescribir una asignación de uno actualizado.
+No se garantiza una asignación exclusiva durante esta etapa. Cuando todos los
+repartidores hayan abierto y actualizado la app, eliminar esa variable o cambiarla
+a `0` y redesplegar. El modo estricto es el predeterminado si no está presente.
+No activar el modo estricto antes de comprobar cada instalación.
+
 ## 3. Contrato de tienda y tarifa
 
 - Mantener el acceso abierto al catálogo y al carrito; el login se solicita al

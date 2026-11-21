@@ -20,9 +20,10 @@ import {
 interface TabPedidosDisponiblesProps {
   orders: DriverOrder[];
   onAcceptOrder: (order: DriverOrder) => void;
+  pendingOrderIds: string[];
 }
 
-export function TabPedidosDisponibles({ orders, onAcceptOrder }: TabPedidosDisponiblesProps) {
+export function TabPedidosDisponibles({ orders, onAcceptOrder, pendingOrderIds }: TabPedidosDisponiblesProps) {
   const formatMoney = (val: number) => "$" + (val || 0).toLocaleString("es-AR");
 
   if (orders.length === 0) {
@@ -43,8 +44,7 @@ export function TabPedidosDisponibles({ orders, onAcceptOrder }: TabPedidosDispo
     <div className="space-y-3 pb-8">
       {orders.map((order) => {
         const client = order.clientName || order.customerName || "Cliente";
-        const earnings =
-          order.driverEarnings || Math.max(1600, Math.round((order.deliveryFee || 2000) * 0.85));
+        const earnings = order.driverEarnings;
         const distStore = order.distanceToStoreKm || 0.8;
         const distDelivery = order.distanceToDeliveryKm || order.distanceKm || 1.4;
         const totalDist = Math.round((distStore + distDelivery) * 10) / 10;
@@ -69,7 +69,7 @@ export function TabPedidosDisponibles({ orders, onAcceptOrder }: TabPedidosDispo
                 </span>
                 <div className="flex items-center gap-1.5">
                   <span className="text-xl font-black text-[#2D3277] tracking-tight">
-                    +{formatMoney(earnings)}
+                    {earnings == null ? "Sin dato" : `+${formatMoney(earnings)}`}
                   </span>
                   {order.isPeakHour && (
                     <Badge className="bg-yellow-100 text-yellow-900 border border-yellow-300 text-[9px] font-black px-1.5 py-0.5 flex items-center gap-0.5">
@@ -167,9 +167,10 @@ export function TabPedidosDisponibles({ orders, onAcceptOrder }: TabPedidosDispo
             {/* Botón Aceptar Pedido */}
             <Button
               onClick={() => onAcceptOrder(order)}
+              disabled={pendingOrderIds.includes(order.id)}
               className="w-full h-11 rounded-xl bg-[#FFE600] hover:bg-yellow-300 text-[#2D3277] font-extrabold text-xs flex items-center justify-center gap-2 shadow-md shadow-yellow-500/20 active:scale-98 transition-all"
             >
-              <span>ACEPTAR PEDIDO ({totalDist} km total)</span>
+              <span>{pendingOrderIds.includes(order.id) ? "PENDIENTE DE CONFIRMACIÓN" : `ACEPTAR PEDIDO (${totalDist} km total)`}</span>
               <ArrowRight className="w-4 h-4" />
             </Button>
           </div>

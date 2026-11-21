@@ -29,13 +29,17 @@ export function TarjetaProducto({
   const formatMoney = (val: number) => "$" + val.toLocaleString("es-AR");
   const canPurchase = isProductPurchasable(product);
   const priceIsValid = product.priceSource === "tpv" && hasValidPrice(product);
+  const cachedPriceIsValid = product.catalogCached && hasValidPrice(product);
+  const displayedPrice = hasValidPrice(product) && (priceIsValid || cachedPriceIsValid)
+    ? product.price
+    : null;
   const stockIsValid = hasValidStock(product);
   const stockIsCurrent = product.priceSource === "tpv" && stockIsValid;
   const stockAtLimit =
     stockIsValid && quantityInCart >= product.stockKg;
   const pendingData = [
     !product.image ? "Foto pendiente" : "",
-    !priceIsValid ? "Precio pendiente" : "",
+    !priceIsValid && !cachedPriceIsValid ? "Precio pendiente" : "",
     !stockIsCurrent
       ? "Stock pendiente"
       : product.stockKg < 0
@@ -119,11 +123,16 @@ export function TarjetaProducto({
       {/* Precio y Acción */}
       <div className="mt-3 pt-2.5 border-t border-slate-100 flex flex-col xs:flex-row items-start xs:items-center justify-between gap-2">
         <div className="shrink-0">
-          {priceIsValid ? (
+          {displayedPrice !== null ? (
             <>
               <span className="font-black text-sm xs:text-base text-slate-900 tracking-tight">
-                {formatMoney(product.price)}
+                {formatMoney(displayedPrice)}
               </span>
+              {cachedPriceIsValid && (
+                <span className="block text-[10px] font-semibold text-amber-800">
+                  Último precio guardado
+                </span>
+              )}
               {product.unit && (
                 <span className="text-[10px] text-slate-500 font-semibold ml-1">
                   /{product.unit}
@@ -150,7 +159,7 @@ export function TarjetaProducto({
                 <span>Agregar</span>
               </>
             ) : (
-              <span>{productAvailabilityMessage(product)}</span>
+              <span>{product.catalogCached ? "Sin actualizar" : productAvailabilityMessage(product)}</span>
             )}
           </Button>
         ) : (

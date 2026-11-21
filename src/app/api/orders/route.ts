@@ -49,7 +49,7 @@ function mapDbRowToOrder(row: any) {
     subtotal: Number(row.subtotal) || 0,
     deliveryFee: Number(row.costo_envio) || 0,
     total: Number(row.total) || 0,
-    driverEarnings: Number(row.ganancia_repartidor) || 2450,
+    driverEarnings: row.ganancia_repartidor == null ? null : Number(row.ganancia_repartidor),
     distanceKm: Number(row.distancia_km) || 1.8,
     distanceToStoreKm: 0.8,
     distanceToDeliveryKm: Number(row.distancia_km) || 1.8,
@@ -60,6 +60,20 @@ function mapDbRowToOrder(row: any) {
     notes: row.notas || "",
     createdAt: row.created_at ? new Date(row.created_at).toISOString() : new Date().toISOString(),
     updatedAt: row.updated_at ? new Date(row.updated_at).toISOString() : new Date().toISOString(),
+  };
+}
+
+function mapDriverActionResult(row: any, isDelivery: boolean) {
+  const order = mapDbRowToOrder(row);
+  if (!isDelivery) return order;
+  return {
+    ...order,
+    driverSettlement: {
+      earning: row.ganancia_repartidor == null ? null : Number(row.ganancia_repartidor),
+      cashCollected: normalizePaymentMethod(row.metodo_pago) === "cash"
+        ? row.total == null ? null : Number(row.total)
+        : 0,
+    },
   };
 }
 
@@ -249,6 +263,21 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: "id de pedido requerido" }, { status: 400 });
     }
 
+    const isAssignment = status === "Assigned";
+    const isDelivery = status === "Delivered";
+    const driverAction = isAssignment || isDelivery;
+    const legacyAction = driverAction &&
+      process.env.RF_DRIVER_ACTIONS_LEGACY_COMPAT === "1" &&
+      data.driverProtocol !== 2;
+    const guardedAction = driverAction && !legacyAction;
+    if ((isAssignment || (isDelivery && !legacyAction)) &&
+      (typeof driverId !== "string" || !driverId.trim())) {
+      return NextResponse.json({ error: "Identificación del repartidor requerida" }, { status: 400 });
+    }
+    if (legacyAction) {
+      console.warn("[Orders API] Acción de repartidor con protocolo anterior durante migración.");
+    }
+
     let updateQuery = "UPDATE repartofacil_pedidos SET updated_at = NOW()";
     const values: any[] = [];
     let idx = 1;
@@ -278,11 +307,43 @@ export async function PATCH(request: NextRequest) {
       values.push(finalTicket);
     }
 
-    updateQuery += ` WHERE id = $${idx} RETURNING *;`;
+    updateQuery += ` WHERE id = $${idx++}`;
     values.push(id);
+    if (isAssignment && guardedAction) {
+      updateQuery += " AND (repartidor_id IS NULL OR repartidor_id = '') AND LOWER(TRIM(estado)) IN ('confirmed', 'ready', 'accepted', 'embalado')";
+    } else if (isDelivery && guardedAction) {
+      updateQuery += ` AND repartidor_id = $${idx++} AND LOWER(TRIM(estado)) IN ('assigned', 'picked up', 'in transit', 'ready', 'embalado')`;
+      values.push(driverId);
+    }
+    updateQuery += " RETURNING *;";
 
     const rows = await queryDb(updateQuery, values);
     if (rows.length === 0) {
+      if (guardedAction) {
+        const existing = await queryDb(
+          "SELECT * FROM repartofacil_pedidos WHERE id = $1 LIMIT 1",
+          [id]
+        );
+        if (existing.length === 0) {
+          return NextResponse.json({ error: "Pedido no encontrado" }, { status: 404 });
+        }
+        const existingStatus = String(existing[0].estado || "").trim().toLowerCase();
+        const alreadyApplied = existing[0].repartidor_id === driverId && (
+          isAssignment
+            ? ["assigned", "picked up", "in transit", "ready", "embalado", "delivered"].includes(existingStatus)
+            : existingStatus === "delivered"
+        );
+        if (alreadyApplied) {
+          return NextResponse.json(mapDriverActionResult(existing[0], isDelivery));
+        }
+        return NextResponse.json(
+          {
+            error: isAssignment ? "El pedido ya no está disponible." : "La entrega no se puede confirmar para este repartidor.",
+            order: mapDbRowToOrder(existing[0]),
+          },
+          { status: 409 }
+        );
+      }
       return NextResponse.json({ error: "Pedido no encontrado" }, { status: 404 });
     }
 
@@ -313,7 +374,7 @@ export async function PATCH(request: NextRequest) {
       ).catch(() => {});
     }
 
-    const updated = mapDbRowToOrder(rows[0]);
+    const updated = mapDriverActionResult(rows[0], isDelivery);
     return NextResponse.json(updated);
   } catch (err: any) {
     console.error("[Orders API PATCH Error]:", err.message);

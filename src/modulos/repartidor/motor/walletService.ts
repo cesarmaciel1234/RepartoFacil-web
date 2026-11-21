@@ -44,7 +44,21 @@ export function creditDeliveryEarning(
   cashCollected: number = 0,
   description: string = "Entrega completada"
 ): DriverWallet {
-  const current = loadDriverWallet();
+  const raw = localStorage.getItem(WALLET_STORAGE_KEY);
+  const current: DriverWallet = raw
+    ? JSON.parse(raw)
+    : { balance: 0, cashInHand: 0, completedOrdersCount: 0, transactions: [] };
+  if (
+    !Array.isArray(current.transactions) ||
+    !Number.isFinite(current.balance) ||
+    !Number.isFinite(current.cashInHand) ||
+    !Number.isFinite(current.completedOrdersCount)
+  ) {
+    throw new Error("No se pudo validar la cartera guardada en este dispositivo.");
+  }
+  if (current.transactions.some((transaction) => transaction.type === "earning" && transaction.orderId === orderId)) {
+    return current;
+  }
 
   const newTx: WalletTransaction = {
     id: `tx-${Date.now().toString(36)}`,
@@ -62,7 +76,8 @@ export function creditDeliveryEarning(
     transactions: [newTx, ...current.transactions],
   };
 
-  saveDriverWallet(updated);
+  localStorage.setItem(WALLET_STORAGE_KEY, JSON.stringify(updated));
+  window.dispatchEvent(new CustomEvent("rf-wallet-updated", { detail: updated }));
   return updated;
 }
 

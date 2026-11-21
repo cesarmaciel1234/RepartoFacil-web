@@ -3,6 +3,15 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Product } from "@/data/mockProducts";
 import type { CompanyStore } from "@/data/mockCompanies";
+import {
+  asCachedProducts,
+  isCatalogCompany,
+  isCatalogProduct,
+  readCompaniesCache,
+  readProductsCache,
+  saveCompaniesCache,
+  saveProductsCache,
+} from "../cacheCatalogo";
 
 export type CatalogProduct = Product & {
   department?: string;
@@ -61,37 +70,54 @@ export function useCatalogoTienda({
   const [status, setStatus] = useState<CatalogStatus>("loading");
   const [productsStatus, setProductsStatus] = useState<CatalogStatus>("loading");
   const [productsWarnings, setProductsWarnings] = useState<string[]>([]);
+  const [companiesCached, setCompaniesCached] = useState(false);
+  const [productsCached, setProductsCached] = useState(false);
+  const [companiesSavedAt, setCompaniesSavedAt] = useState<string | null>(null);
+  const [productsSavedAt, setProductsSavedAt] = useState<string | null>(null);
+  const [companiesCacheError, setCompaniesCacheError] = useState(false);
+  const [productsCacheError, setProductsCacheError] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
 
   const reload = useCallback(() => setReloadKey((key) => key + 1), []);
 
   useEffect(() => {
     let cancelled = false;
-    setStatus("loading");
-    setProductsStatus("loading");
-    setProductsWarnings([]);
-    setProducts((current) =>
-      current.map((product) => ({ ...product, priceSource: undefined }))
-    );
+    let loading = false;
+    let refreshQueued = false;
+    let activeRequest: AbortController | null = null;
+    const cachedCompanies = readCompaniesCache();
+    const cachedProducts = readProductsCache();
+    if (cachedCompanies) {
+      setCompanies(cachedCompanies.data);
+      setCompaniesSavedAt(cachedCompanies.savedAt);
+      setCompaniesCached(true);
+      setStatus("ready");
+    }
+    if (cachedProducts) {
+      setProducts(asCachedProducts(cachedProducts.data));
+      setProductsSavedAt(cachedProducts.savedAt);
+      setProductsCached(true);
+      setProductsStatus("error");
+    }
 
-    const loadCompanies = async (): Promise<CompanyStore[]> => {
-      const response = await fetch("/api/cobrofacil/companies", { cache: "no-store" });
+    const loadCompanies = async (signal: AbortSignal): Promise<CompanyStore[]> => {
+      const response = await fetch("/api/cobrofacil/companies", { cache: "no-store", signal });
       if (!response.ok) throw new Error(`Error cargando comercios: ${response.status}`);
       const companiesData = await response.json();
-      if (!Array.isArray(companiesData?.empresas)) {
+      if (!Array.isArray(companiesData?.empresas) || !companiesData.empresas.every(isCatalogCompany)) {
         throw new Error("Cobro Fácil no devolvió el listado de comercios");
       }
       return companiesData.empresas;
     };
 
-    const loadProducts = async (): Promise<{
+    const loadProducts = async (signal: AbortSignal): Promise<{
       products: CatalogProduct[];
       warnings: string[];
     }> => {
-      const response = await fetch("/api/cobrofacil/products", { cache: "no-store" });
+      const response = await fetch("/api/cobrofacil/products", { cache: "no-store", signal });
       if (!response.ok) throw new Error(`Error cargando productos: ${response.status}`);
       const productsData = await response.json();
-      if (!Array.isArray(productsData?.products)) {
+      if (!Array.isArray(productsData?.products) || !productsData.products.every(isCatalogProduct)) {
         throw new Error("Cobro Fácil no devolvió el catálogo de productos");
       }
       const warnings = Array.isArray(productsData.warnings)
@@ -101,45 +127,108 @@ export function useCatalogoTienda({
     };
 
     const load = async () => {
+      if (loading) {
+        refreshQueued = true;
+        return;
+      }
+      loading = true;
+      activeRequest = new AbortController();
+      const request = activeRequest;
+      const timeout = window.setTimeout(() => request.abort(), 15000);
       const [companiesResult, productsResult] = await Promise.allSettled([
-        loadCompanies(),
-        loadProducts(),
+        loadCompanies(request.signal),
+        loadProducts(request.signal),
       ]);
+      window.clearTimeout(timeout);
       if (cancelled) return;
 
-      if (companiesResult.status === "fulfilled") {
+      if (companiesResult.status === "fulfilled" && navigator.onLine) {
         setCompanies(companiesResult.value);
         setStatus("ready");
+        setCompaniesCached(false);
+        setCompaniesSavedAt(new Date().toISOString());
+        try {
+          setCompaniesSavedAt(saveCompaniesCache(companiesResult.value));
+          setCompaniesCacheError(false);
+        } catch (error) {
+          console.warn("No se pudieron guardar los comercios para uso sin conexión:", error);
+          setCompaniesCacheError(true);
+        }
       } else {
-        console.error("No se pudieron cargar los comercios de Cobro Fácil:", companiesResult.reason);
-        setStatus("error");
+        if (companiesResult.status === "rejected") {
+          console.warn("No se pudieron actualizar los comercios de Cobro Fácil:", companiesResult.reason);
+        }
+        setCompaniesCached(true);
+        setStatus((current) => current === "ready" ? "ready" : "error");
       }
 
-      if (productsResult.status === "fulfilled") {
+      if (productsResult.status === "fulfilled" && navigator.onLine) {
         setProducts(productsResult.value.products);
         setProductsWarnings(productsResult.value.warnings);
+        setProductsCached(false);
+        setProductsSavedAt(new Date().toISOString());
         if (productsResult.value.warnings.length > 0) {
           console.warn(
             "El catálogo se cargó parcialmente desde Cobro Fácil:",
             productsResult.value.warnings
           );
+        } else {
+          try {
+            setProductsSavedAt(saveProductsCache(productsResult.value.products));
+            setProductsCacheError(false);
+          } catch (error) {
+            console.warn("No se pudieron guardar los productos para uso sin conexión:", error);
+            setProductsCacheError(true);
+          }
         }
         setProductsStatus("ready");
       } else {
-        console.error("No se pudieron cargar los productos de Cobro Fácil:", productsResult.reason);
-        setProductsWarnings([
-          productsResult.reason instanceof Error
-            ? productsResult.reason.message
-            : "No se pudo leer el inventario de Cobro Fácil.",
-        ]);
+        if (productsResult.status === "rejected") {
+          console.warn("No se pudieron actualizar los productos de Cobro Fácil:", productsResult.reason);
+        }
+        setProducts((current) => asCachedProducts(current));
+        setProductsCached(true);
+        setProductsWarnings([]);
         setProductsStatus("error");
+      }
+      loading = false;
+      if (refreshQueued && navigator.onLine) {
+        refreshQueued = false;
+        void load();
       }
     };
 
     void load();
+    const timer = window.setInterval(() => {
+      if (navigator.onLine) void load();
+    }, 60000);
+    const handleOnline = () => void load();
+    const handleOffline = () => {
+      setCompaniesCached(true);
+      setProductsCached(true);
+      setProducts((current) => asCachedProducts(current));
+      setProductsStatus("error");
+    };
+    const handleVisible = () => {
+      if (document.visibilityState === "visible" && navigator.onLine) {
+        setCompaniesCached(true);
+        setProductsCached(true);
+        setProducts((current) => asCachedProducts(current));
+        setProductsStatus("error");
+        void load();
+      }
+    };
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+    document.addEventListener("visibilitychange", handleVisible);
 
     return () => {
       cancelled = true;
+      activeRequest?.abort();
+      window.clearInterval(timer);
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+      document.removeEventListener("visibilitychange", handleVisible);
     };
   }, [reloadKey]);
 
@@ -208,6 +297,11 @@ export function useCatalogoTienda({
     status,
     productsStatus,
     productsWarnings,
+    companiesCached,
+    productsCached,
+    companiesSavedAt,
+    productsSavedAt,
+    cacheError: companiesCacheError || productsCacheError,
     reload,
     productCountByCompany,
     companyCatalogSize: activeCompanyCatalog.length,

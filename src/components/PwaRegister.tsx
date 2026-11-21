@@ -39,7 +39,7 @@ export function PwaRegister() {
                       installingWorker.state === "installed" &&
                       navigator.serviceWorker.controller
                     ) {
-                      console.log("[PWA] Nueva versión v5.10 detectada. Activando...");
+                      console.log("[PWA] Nueva versión detectada. Activando...");
                       if (registration.waiting) {
                         registration.waiting.postMessage({ type: "SKIP_WAITING" });
                       }

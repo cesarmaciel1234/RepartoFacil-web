@@ -3,6 +3,7 @@ import type { Product } from "@/data/mockProducts";
 
 export interface PantallaComerciosProps {
   companies: CompanyStore[];
+  companiesCached?: boolean;
   products?: Product[];
   onSelectCompany: (company: CompanyStore, initialSearch?: string) => void;
   searchQuery: string;

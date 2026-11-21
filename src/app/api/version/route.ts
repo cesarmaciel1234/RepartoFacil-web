@@ -5,8 +5,8 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   return NextResponse.json({
     app: "Reparto Fácil",
-    version: "5.10",
-    release: "v5.10-driver-yellow-packed-flow",
+    version: "5.11",
+    release: "v5.11-migracion-repartidor",
     status: "online",
     timestamp: new Date().toISOString(),
     features: [
@@ -18,6 +18,7 @@ export async function GET() {
       "Chat de pedidos activos integrado y carrito blanco/azul",
       "Perfil de repartidor blanco y amarillo",
       "Pedidos embalados visibles en la ruta del repartidor asignado",
+      "Actualización transitoria del repartidor y catálogo offline del comprador",
     ],
   });
 }

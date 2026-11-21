@@ -1,10 +1,9 @@
 "use client";
 
 import React, { useState } from "react";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Sparkles, Send, Bot, User } from "lucide-react";
+import { ArrowLeft, Sparkles, Send, Bot, User } from "lucide-react";
 
 interface CopilotMessage {
   role: "model" | "user";
@@ -12,58 +11,53 @@ interface CopilotMessage {
 }
 
 interface DriverCopilotSheetProps {
-  isOpen: boolean;
-  onOpenChange: (open: boolean) => void;
+  onBack: () => void;
   activeOrdersCount: number;
 }
 
 export function DriverCopilotSheet({
-  isOpen,
-  onOpenChange,
+  onBack,
   activeOrdersCount,
 }: DriverCopilotSheetProps) {
   const [messages, setMessages] = useState<CopilotMessage[]>([
     {
       role: "model",
-      content: "¡Hola! Soy Copo, tu asistente logístico de Reparto Fácil. ¿Querés que revise las direcciones o te indique la entrega más cercana?",
+      content: "¡Hola! Soy Copo. Esta conversación está en modo de prueba: puedo decirte cuántas entregas tenés, pero todavía no analizo rutas ni tráfico real.",
     },
   ]);
   const [input, setInput] = useState("");
-  const [isThinking, setIsThinking] = useState(false);
-
   const handleSend = (userText: string) => {
     if (!userText.trim()) return;
 
-    const newMsgs = [...messages, { role: "user" as const, content: userText }];
-    setMessages(newMsgs);
+    const text = userText.trim();
+    const reply = /pedido|entrega|orden/i.test(text)
+      ? `Tenés ${activeOrdersCount} entrega(s) en tu ruta activa.`
+      : "Todavía no puedo consultar rutas, distancias ni tráfico real. Revisá Mi Ruta para ver tus pedidos.";
+    setMessages((current) => [
+      ...current,
+      { role: "user", content: text },
+      { role: "model", content: reply },
+    ]);
     setInput("");
-    setIsThinking(true);
-
-    setTimeout(() => {
-      let reply = "Entendido. Según el tráfico y las direcciones de entrega, la mejor ruta es tomar las avenidas principales para evitar demoras.";
-      if (userText.toLowerCase().includes("orden") || userText.toLowerCase().includes("ruta") || userText.toLowerCase().includes("siguiente")) {
-        reply = `Tenés ${activeOrdersCount} entrega(s) en camino. Te recomiendo entregar primero las que están dentro del radio de 2 km.`;
-      }
-      setMessages([...newMsgs, { role: "model", content: reply }]);
-      setIsThinking(false);
-    }, 700);
   };
 
   return (
-    <Sheet open={isOpen} onOpenChange={onOpenChange}>
-      <SheetContent className="w-full sm:max-w-md bg-white border-l border-slate-200 text-slate-900 p-0 flex flex-col h-full">
-        <SheetHeader className="p-4 border-b border-slate-100 flex flex-row items-center gap-2">
+    <div className="min-h-0 flex-1 bg-white text-slate-900 flex flex-col">
+        <div className="p-3 border-b border-slate-100 flex items-center gap-2">
+          <button type="button" onClick={onBack} aria-label="Volver a mensajes" className="h-9 w-9 flex items-center justify-center rounded-xl border border-yellow-300 bg-yellow-50 text-yellow-900">
+            <ArrowLeft className="w-4 h-4" />
+          </button>
           <div className="w-8 h-8 rounded-xl bg-yellow-100 text-yellow-800 flex items-center justify-center">
             <Sparkles className="w-4 h-4" />
           </div>
           <div>
-            <SheetTitle className="text-base font-black text-slate-900">Copiloto IA · Copo</SheetTitle>
-            <p className="text-[11px] text-slate-500 font-medium">Asistente de ruta para repartidores</p>
+            <h2 className="text-sm font-black text-slate-900">Copiloto IA · Copo</h2>
+            <p className="text-[11px] text-slate-500 font-medium">Modo de prueba · respuestas simuladas</p>
           </div>
-        </SheetHeader>
+        </div>
 
         {/* Mensajes */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-3">
+        <div className="min-h-0 flex-1 overflow-y-auto p-3 space-y-3">
           {messages.map((m, idx) => (
             <div
               key={idx}
@@ -90,19 +84,12 @@ export function DriverCopilotSheet({
               )}
             </div>
           ))}
-
-          {isThinking && (
-            <div className="flex gap-2 items-center text-xs text-slate-500 italic">
-              <Bot className="w-3.5 h-3.5 text-yellow-700 animate-spin" />
-              <span>Copo está pensando...</span>
-            </div>
-          )}
         </div>
 
         {/* Input */}
-        <div className="p-3 border-t border-slate-200 bg-white space-y-2">
+        <div className="p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] border-t border-slate-200 bg-white space-y-2">
           <div className="flex gap-1.5 overflow-x-auto pb-1">
-            {["¿Cuál es la más cercana?", "Optimizar mi ruta", "Ver estado de entrega"].map((chip) => (
+            {["¿Cuántas entregas tengo?", "Ver mi ruta"].map((chip) => (
               <button
                 key={chip}
                 onClick={() => handleSend(chip)}
@@ -124,12 +111,12 @@ export function DriverCopilotSheet({
             <Button
               onClick={() => handleSend(input)}
               className="h-10 px-3 rounded-xl bg-[#FFE600] hover:bg-yellow-300 text-[#2D3277] shrink-0"
+              aria-label="Enviar mensaje a Copo"
             >
               <Send className="w-4 h-4" />
             </Button>
           </div>
         </div>
-      </SheetContent>
-    </Sheet>
+    </div>
   );
 }

@@ -32,6 +32,7 @@ import {
 
 interface VistaMercadosEmpresasProps {
   companies: CompanyStore[];
+  companiesCached?: boolean;
   products?: Product[];
   onSelectCompany: (company: CompanyStore, initialSearch?: string) => void;
   searchQuery?: string;
@@ -52,6 +53,7 @@ let lastCompanyGeocodeStartedAt = 0;
 
 export function VistaMercadosEmpresas({
   companies,
+  companiesCached = false,
   products = [],
   onSelectCompany,
   searchQuery: externalSearch,
@@ -405,9 +407,9 @@ export function VistaMercadosEmpresas({
                   )}
                   <span
                     className={`absolute -bottom-1 -right-1 h-4 w-4 rounded-full border-2 border-white ${
-                      comp.isOpen === false ? "bg-slate-400" : "bg-emerald-500"
+                      companiesCached || comp.isOpen === false ? "bg-slate-400" : "bg-emerald-500"
                     }`}
-                    title={comp.isOpen === false ? "Cerrado" : "Abierto"}
+                    title={companiesCached ? "Estado sin actualizar" : comp.isOpen === false ? "Cerrado" : "Abierto"}
                   />
                 </div>
 
@@ -469,7 +471,7 @@ export function VistaMercadosEmpresas({
                         ? `${productCountByCompany[comp.id]} productos`
                         : "Catálogo en preparación"}
                     </span>
-                    {comp.isOpen === false && (
+                    {!companiesCached && comp.isOpen === false && (
                       <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-black bg-slate-200 text-slate-600">
                         CERRADO
                       </span>

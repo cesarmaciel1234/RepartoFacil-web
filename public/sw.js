@@ -1,4 +1,6 @@
+// Se conserva la caché durante la migración: las versiones antiguas eliminan las demás.
 const CACHE_NAME = "repartofacil-v5.10";
+const RELEASE = "v5.11-migracion-repartidor";
 
 const STATIC_PRECACHE = [
   "/manifest.webmanifest",
@@ -20,6 +22,7 @@ self.addEventListener("install", (event) => {
 });
 
 self.addEventListener("activate", (event) => {
+  console.log("[SW] Activando", RELEASE);
   event.waitUntil(
     caches.keys().then((keys) =>
       Promise.all(

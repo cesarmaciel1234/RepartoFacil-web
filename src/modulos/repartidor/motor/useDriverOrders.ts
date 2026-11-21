@@ -1,14 +1,19 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback } from "react";
-import { DriverOrder, OrderStatus, DriverWallet } from "./tipos";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import { DriverOrder, DriverWallet } from "./tipos";
 import {
   loadLocalOrders,
   saveLocalOrders,
-  assignOrderToDriver,
-  completeOrderDelivery,
+  loadDriverProfile,
 } from "./driverService";
 import { loadDriverWallet } from "./walletService";
+import {
+  loadPendingDriverActions,
+  queueDriverAction,
+  syncPendingDriverActions,
+  type PendingDriverAction,
+} from "./driverPendingActions";
 import { useToast } from "@/hooks/use-toast";
 
 export function useDriverOrders(currentDriverId?: string | null) {
@@ -18,7 +23,9 @@ export function useDriverOrders(currentDriverId?: string | null) {
   const [pendingAcceptOrder, setPendingAcceptOrder] = useState<DriverOrder | null>(null);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [wallet, setWallet] = useState<DriverWallet>(loadDriverWallet());
-  const [isCompleting, setIsCompleting] = useState(false);
+  const [pendingActions, setPendingActions] = useState<PendingDriverAction[]>([]);
+  const [syncError, setSyncError] = useState<string | null>(null);
+  const syncing = useRef(false);
 
   // Cargar órdenes y wallet locales iniciales y sincronizar con base de datos PostgreSQL
   useEffect(() => {
@@ -110,87 +117,120 @@ export function useDriverOrders(currentDriverId?: string | null) {
     );
   }, [localOrders, currentDriverId]);
 
-  // Aceptar pedido: requiere login solo si no está identificado
-  const handleTakeOrder = useCallback(
-    async (order: DriverOrder, driverId?: string | null) => {
-      const activeDriverId = driverId || currentDriverId;
-      if (!activeDriverId) {
-        setPendingAcceptOrder(order);
-        setShowLoginModal(true);
+  const syncPending = useCallback(async () => {
+    if (!currentDriverId || syncing.current) return;
+    syncing.current = true;
+    try {
+      const pending = loadPendingDriverActions(currentDriverId);
+      setPendingActions(pending);
+      if (pending.length === 0) {
+        setSyncError(null);
         return;
       }
-
-      // Actualización optimista inmediata
-      setLocalOrders((prev) =>
-        prev.map((o) =>
-          o.id === order.id
-            ? { ...o, status: "Assigned" as OrderStatus, driverId: activeDriverId }
-            : o
-        )
-      );
-
-      const updated = await assignOrderToDriver(order.id, activeDriverId);
-      setLocalOrders(updated);
-      toast({
-        title: "¡Pedido Asignado!",
-        description: `El pedido #${order.id} fue agregado a tu ruta activa.`,
-      });
-    },
-    [currentDriverId, toast]
-  );
-
-  // Confirmar pedido tras loguearse
-  const confirmOrderAfterLogin = useCallback(
-    async (driverId: string) => {
-      setShowLoginModal(false);
-      if (pendingAcceptOrder) {
-        const updated = await assignOrderToDriver(pendingAcceptOrder.id, driverId);
-        setLocalOrders(updated);
-        toast({
-          title: "¡Pedido Tomado con Éxito!",
-          description: `El pedido #${pendingAcceptOrder.id} está en tu ruta.`,
-        });
-        setPendingAcceptOrder(null);
+      if (!navigator.onLine) return;
+      const results = await syncPendingDriverActions(currentDriverId);
+      if (loadDriverProfile()?.id !== currentDriverId) return;
+      setPendingActions(loadPendingDriverActions(currentDriverId));
+      setSyncError(null);
+      setLocalOrders(loadLocalOrders());
+      setWallet(loadDriverWallet());
+      for (const result of results) {
+        toast(result.status === "confirmed"
+          ? {
+              title: result.action.type === "assign" ? "Pedido confirmado" : "Entrega confirmada",
+              description: `El servidor confirmó el pedido #${result.action.order.id}.`,
+            }
+          : {
+              variant: "destructive",
+              title: `No se pudo confirmar #${result.action.order.id}`,
+              description: result.message,
+            });
       }
-    },
-    [pendingAcceptOrder, toast]
-  );
+    } catch (error) {
+      console.error("Error sincronizando acciones pendientes:", error);
+      setSyncError(error instanceof Error ? error.message : "No se pudieron sincronizar las acciones pendientes.");
+    } finally {
+      syncing.current = false;
+    }
+  }, [currentDriverId, toast]);
 
-  // Completar entrega y acreditar ganancia a cartera
-  const handleCompleteDelivery = useCallback(
-    async (orderId: string) => {
-      if (isCompleting) return;
-      setIsCompleting(true);
-
-      // 1. Desaparecer inmediatamente de la ruta activa (UI reactiva instantánea)
-      setLocalOrders((prev) =>
-        prev.map((o) =>
-          o.id === orderId
-            ? { ...o, status: "Delivered" as OrderStatus, updatedAt: new Date().toISOString() }
-            : o
-        )
-      );
-
+  useEffect(() => {
+    if (!currentDriverId) {
+      setPendingActions([]);
+      setSyncError(null);
+      return;
+    }
+    void syncPending();
+    const timer = window.setInterval(() => void syncPending(), 10000);
+    const handleOnline = () => void syncPending();
+    const handleStorage = () => {
       try {
-        // 2. Persistir en la base de datos PostgreSQL crm-libro-local y acreditar billetera
-        const res = await completeOrderDelivery(orderId);
-        setLocalOrders(res.updatedOrders);
-        setWallet(res.wallet);
-
-        toast({
-          title: "¡Entrega Completada! 🛵🎉",
-          description: `Ganancia acreditada a tu Cartera. Total acumulado: $${res.wallet.balance.toLocaleString(
-            "es-AR"
-          )}`,
-        });
-      } catch (err: any) {
-        console.warn("Aviso al completar entrega:", err);
-      } finally {
-        setIsCompleting(false);
+        setPendingActions(loadPendingDriverActions(currentDriverId));
+      } catch (error) {
+        console.error("Error leyendo acciones pendientes:", error);
+        setSyncError("No se pudieron leer las acciones pendientes.");
       }
-    },
-    [isCompleting, toast]
-  );
+    };
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("storage", handleStorage);
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("storage", handleStorage);
+    };
+  }, [currentDriverId, syncPending]);
+
+  const queueAction = useCallback((type: "assign" | "deliver", order: DriverOrder, driverId: string) => {
+    try {
+      const profile = loadDriverProfile();
+      if (!profile || profile.id !== driverId) {
+        throw new Error("Volvé a iniciar sesión como repartidor antes de continuar.");
+      }
+      queueDriverAction(type, order, profile);
+      setPendingActions(loadPendingDriverActions(driverId));
+      toast({
+        title: "Pendiente de confirmación",
+        description: type === "assign"
+          ? "El pedido no está asignado hasta que el servidor lo confirme."
+          : "La entrega y la ganancia se confirmarán al sincronizar.",
+      });
+      void syncPending();
+    } catch (error) {
+      console.error("Error guardando acción pendiente:", error);
+      toast({
+        variant: "destructive",
+        title: "No se pudo guardar la acción",
+        description: error instanceof Error ? error.message : "Intentá nuevamente.",
+      });
+    }
+  }, [syncPending, toast]);
+
+  const handleTakeOrder = useCallback((order: DriverOrder, driverId?: string | null) => {
+    const activeDriverId = driverId || currentDriverId;
+    if (!activeDriverId) {
+      setPendingAcceptOrder(order);
+      setShowLoginModal(true);
+      return;
+    }
+    queueAction("assign", order, activeDriverId);
+  }, [currentDriverId, queueAction]);
+
+  const confirmOrderAfterLogin = useCallback((driverId: string) => {
+    setShowLoginModal(false);
+    if (pendingAcceptOrder) {
+      queueAction("assign", pendingAcceptOrder, driverId);
+      setPendingAcceptOrder(null);
+    }
+  }, [pendingAcceptOrder, queueAction]);
+
+  const handleCompleteDelivery = useCallback((orderId: string) => {
+    const order = myActiveOrders.find((item) => item.id === orderId);
+    if (!order || !currentDriverId) {
+      toast({ variant: "destructive", title: "Pedido no disponible", description: "Revisá tu ruta antes de confirmar la entrega." });
+      return;
+    }
+    queueAction("deliver", order, currentDriverId);
+  }, [currentDriverId, myActiveOrders, queueAction, toast]);
 
   return {
     availableOrders,
@@ -202,5 +242,8 @@ export function useDriverOrders(currentDriverId?: string | null) {
     setShowLoginModal,
     confirmOrderAfterLogin,
     wallet,
+    pendingActions,
+    syncError,
+    syncPending,
   };
 }

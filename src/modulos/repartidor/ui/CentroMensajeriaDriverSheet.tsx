@@ -1,33 +1,22 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import {
   MessageSquare,
   Search,
-  CheckCheck,
-  User,
-  Truck,
   Store,
   ChevronRight,
-  Clock,
   Sparkles,
 } from "lucide-react";
 import { DriverOrder } from "../motor/tipos";
 
 interface CentroMensajeriaDriverSheetProps {
   isOpen: boolean;
-  onOpenChange: (open: boolean) => void;
   orders: DriverOrder[];
   onSelectOrderChat: (order: DriverOrder) => void;
+  onSelectCopilot: () => void;
 }
 
 interface ChatConversationSummary {
@@ -36,21 +25,20 @@ interface ChatConversationSummary {
   lastSender: string;
   lastTime: string;
   timestampMs: number;
-  unread: boolean;
 }
 
 export function CentroMensajeriaDriverSheet({
   isOpen,
-  onOpenChange,
   orders = [],
   onSelectOrderChat,
+  onSelectCopilot,
 }: CentroMensajeriaDriverSheetProps) {
   const [searchFilter, setSearchFilter] = useState("");
   const [chatSummaries, setChatSummaries] = useState<ChatConversationSummary[]>([]);
 
   // Cargar últimos mensajes y ordenar: el más nuevo se posiciona primero (Estilo WhatsApp)
   useEffect(() => {
-    if (!isOpen && orders.length === 0) return;
+    if (!isOpen) return;
 
     const loadSummaries = () => {
       const summaries: ChatConversationSummary[] = orders.map((order) => {
@@ -91,7 +79,6 @@ export function CentroMensajeriaDriverSheet({
           lastSender,
           lastTime,
           timestampMs,
-          unread: false,
         };
       });
 
@@ -155,31 +142,27 @@ export function CentroMensajeriaDriverSheet({
     });
   }, [chatSummaries, searchFilter]);
 
+  const showCopilotContact = ["copo", "ia", "asistente", "ruta"].some((term) =>
+    term.includes(searchFilter.toLowerCase().trim())
+  ) || !searchFilter.trim();
+
   return (
-    <Sheet open={isOpen} onOpenChange={onOpenChange}>
-      <SheetContent
-        side="right"
-        className="w-full sm:max-w-md bg-white border-l border-slate-200 text-slate-900 p-0 flex flex-col h-full font-sans select-none"
-      >
-        <SheetHeader className="p-4 bg-white border-b border-slate-100 flex flex-row items-center justify-between gap-2">
+    <div className="flex min-h-0 flex-1 flex-col bg-white text-slate-900 font-sans select-none">
+        <div className="p-3 bg-white border-b border-slate-100 flex items-center justify-between gap-2">
           <div className="flex items-center gap-2.5">
             <div className="w-10 h-10 rounded-2xl bg-yellow-100 text-yellow-800 flex items-center justify-center shrink-0 shadow-sm">
               <MessageSquare className="w-5 h-5" />
             </div>
             <div className="text-left">
-              <SheetTitle className="text-sm font-black text-slate-900 flex items-center gap-1.5">
-                Mensajería de Entrega
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              </SheetTitle>
+              <h2 className="text-sm font-black text-slate-900 flex items-center gap-1.5">
+                Mensajes
+              </h2>
               <p className="text-[11px] text-slate-500 font-medium">
-                {orders.length} chat{orders.length === 1 ? "" : "s"} activos con clientes y locales
+                Pedidos y Copo IA · acceso directo
               </p>
             </div>
           </div>
-          <Badge className="bg-yellow-100 text-yellow-900 border border-yellow-300 text-[10px] font-bold py-0.5">
-            EN VIVO
-          </Badge>
-        </SheetHeader>
+        </div>
 
         {/* Buscador de Chats (Estilo WhatsApp) */}
         <div className="p-3 border-b border-slate-100 bg-slate-50">
@@ -188,15 +171,15 @@ export function CentroMensajeriaDriverSheet({
             <Input
               value={searchFilter}
               onChange={(e) => setSearchFilter(e.target.value)}
-              placeholder="Buscar por cliente, pedido o comercio..."
+              placeholder="Buscar cliente, pedido, comercio o Copo..."
               className="pl-9 h-9 bg-white border-slate-200 text-slate-900 placeholder:text-slate-400 rounded-xl text-xs focus:ring-yellow-400"
             />
           </div>
         </div>
 
         {/* Lista de Conversaciones (Tipo WhatsApp - El nuevo primero) */}
-        <div className="flex-1 overflow-y-auto divide-y divide-slate-100">
-          {filteredConversations.length === 0 ? (
+        <div className="min-h-0 flex-1 overflow-y-auto divide-y divide-slate-100">
+          {filteredConversations.length === 0 && !showCopilotContact ? (
             <div className="py-16 text-center space-y-3 px-6">
               <div className="w-12 h-12 rounded-2xl bg-yellow-50 text-yellow-700 mx-auto flex items-center justify-center border border-yellow-200">
                 <MessageSquare className="w-6 h-6" />
@@ -207,7 +190,37 @@ export function CentroMensajeriaDriverSheet({
               </p>
             </div>
           ) : (
-            filteredConversations.map((item) => {
+            <>
+            {showCopilotContact && (
+              <button
+                type="button"
+                onClick={onSelectCopilot}
+                className="w-full p-3.5 flex items-start gap-3 hover:bg-yellow-50 active:bg-yellow-100 transition-colors text-left group"
+              >
+                <div className="relative shrink-0">
+                  <div className="w-11 h-11 rounded-full bg-yellow-100 border border-yellow-300 flex items-center justify-center text-[#2D3277] shadow-sm group-hover:border-yellow-500 transition-colors">
+                    <Sparkles className="w-5 h-5" />
+                  </div>
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between gap-1 mb-0.5">
+                    <span className="font-black text-xs text-slate-900 truncate">Copo · Asistente IA</span>
+                    <Badge className="bg-yellow-100 text-yellow-900 border border-yellow-200 text-[9px] font-bold px-1.5 py-0 shrink-0">
+                      IA
+                    </Badge>
+                  </div>
+                  <div className="text-[10px] text-slate-500 truncate mb-1">
+                    Asistente de prueba · respuestas simuladas
+                  </div>
+                  <div className="flex items-center gap-1 text-[11px] text-slate-600 truncate">
+                    <Sparkles className="w-3.5 h-3.5 text-yellow-700 shrink-0" />
+                    <span className="truncate">Consultá el estado de tus entregas</span>
+                  </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-yellow-800 shrink-0 self-center transition-colors" />
+              </button>
+            )}
+            {filteredConversations.map((item) => {
               const client =
                 item.order.clientName || item.order.customerName || "Cliente";
               const initials = client
@@ -230,7 +243,6 @@ export function CentroMensajeriaDriverSheet({
                     <div className="w-11 h-11 rounded-full bg-yellow-100 border border-yellow-300 flex items-center justify-center font-black text-sm text-[#2D3277] shadow-sm group-hover:border-yellow-500 transition-colors">
                       {initials}
                     </div>
-                    <span className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-emerald-500 border-2 border-white" />
                   </div>
 
                   {/* Detalle de la Conversación */}
@@ -257,7 +269,6 @@ export function CentroMensajeriaDriverSheet({
 
                     {/* Último Mensaje Snippet (Estilo WhatsApp) */}
                     <div className="flex items-center gap-1 text-[11px] text-slate-600 truncate">
-                      <CheckCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
                       <span className="truncate">
                         <strong className="text-slate-700 font-semibold">
                           {item.lastSender}:
@@ -270,7 +281,8 @@ export function CentroMensajeriaDriverSheet({
                   <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-yellow-800 shrink-0 self-center transition-colors" />
                 </button>
               );
-            })
+            })}
+            </>
           )}
         </div>
 
@@ -278,11 +290,10 @@ export function CentroMensajeriaDriverSheet({
         <div className="p-3 bg-white border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
           <span className="flex items-center gap-1 text-yellow-800 font-bold">
             <Sparkles className="w-3.5 h-3.5" />
-            Ordenado por mensaje más reciente
+            IA y chats en un solo lugar
           </span>
-          <span className="text-slate-400">Cobro Fácil Sync</span>
+          <span className="text-slate-400">Mapa siempre visible</span>
         </div>
-      </SheetContent>
-    </Sheet>
+    </div>
   );
 }

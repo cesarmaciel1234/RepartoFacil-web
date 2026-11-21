@@ -40,7 +40,7 @@ export interface DriverOrder {
   distanceToDeliveryKm?: number; // Distancia del market al cliente
   distanceKm?: number;           // Distancia total
   estimatedMinutes?: number;
-  driverEarnings?: number;       // Ganancia neta para el bolsillo del repartidor
+  driverEarnings?: number | null; // Ganancia neta informada para el repartidor
   isPeakHour?: boolean;          // Tarifa dinámica / horario pico
   
   // Coordenadas para geocerca y mapa

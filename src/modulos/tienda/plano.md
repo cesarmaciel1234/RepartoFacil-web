@@ -87,7 +87,10 @@ src/app/page.tsx
       └── ModalCambiarDireccion ── coordenadas guardadas para el comprador
 ```
 
-El catálogo mantiene datos de respaldo mientras obtiene datos dinámicos. La
+El catálogo conserva una copia local de respuestas completas y la muestra como
+información no vigente mientras obtiene datos dinámicos. No permite confirmar
+compras sin validar precio y stock. Los pedidos del comprador también conservan
+una copia por identidad y muestran un aviso cuando no están actualizados. La
 selección de dirección persiste texto y coordenadas; ambas se comparten para
 mostrar la distancia aproximada al comercio.
 
