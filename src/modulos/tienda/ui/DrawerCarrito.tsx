@@ -1,10 +1,12 @@
 "use client";
 
 import React from "react";
-import { CartItem } from "../motor/tipos";
+import type { CartItem } from "../motor/tipos";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { ShoppingBag, Plus, Minus, Trash2, ArrowRight, ShieldCheck, Truck } from "lucide-react";
+
+const FREE_DELIVERY_THRESHOLD = 35000;
 
 interface DrawerCarritoProps {
   isOpen: boolean;
@@ -30,35 +32,41 @@ export function DrawerCarrito({
   onProceedToPayment,
 }: DrawerCarritoProps) {
   const formatMoney = (val: number) => "$" + val.toLocaleString("es-AR");
-
-  const deliveryFee = deliveryType === "delivery" && cartTotal > 0 ? (cartTotal >= 35000 ? 0 : 2100) : 0;
+  const itemsCount = cart.reduce((total, item) => total + item.quantity, 0);
+  const deliveryFee =
+    deliveryType === "delivery" && cartTotal > 0
+      ? cartTotal >= FREE_DELIVERY_THRESHOLD
+        ? 0
+        : 2100
+      : 0;
   const finalTotal = cartTotal + deliveryFee;
 
   return (
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
-      <SheetContent className="w-full max-w-[100vw] sm:max-w-md bg-slate-900 border-l border-slate-800 text-slate-100 p-0 flex flex-col h-full overflow-x-hidden">
+      <SheetContent className="flex h-full w-full max-w-[100vw] flex-col overflow-x-hidden border-l border-slate-200 bg-white p-0 text-slate-900 sm:max-w-md">
         {/* Header Drawer */}
         <SheetHeader
           style={{
             paddingTop: "max(1rem, calc(env(safe-area-inset-top, 0px) + 0.75rem))",
           }}
-          className="p-4 border-b border-slate-800 flex flex-row items-center justify-between"
+          className="flex flex-row items-center justify-between border-b border-slate-100 bg-white p-4"
         >
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
               <ShoppingBag className="w-4 h-4" />
             </div>
             <div>
-              <SheetTitle className="text-base font-black text-white">Tu Carrito</SheetTitle>
-              <p className="text-[11px] text-slate-400 font-medium">
-                {cart.length} {cart.length === 1 ? "producto" : "productos"} seleccionados
+              <SheetTitle className="text-base font-black text-slate-900">Tu pedido</SheetTitle>
+              <p className="text-[11px] font-medium text-slate-500">
+                {itemsCount} {itemsCount === 1 ? "producto" : "productos"} en tu carrito
               </p>
             </div>
           </div>
           {cart.length > 0 && (
             <button
+              type="button"
               onClick={onClearCart}
-              className="text-[11px] font-bold text-slate-400 hover:text-red-400 transition-colors"
+              className="text-[11px] font-bold text-slate-500 transition-colors hover:text-red-600"
             >
               Vaciar
             </button>
@@ -66,68 +74,85 @@ export function DrawerCarrito({
         </SheetHeader>
 
         {/* Lista de Ítems */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-3">
+        <div className="flex-1 space-y-3 overflow-y-auto bg-slate-50/60 p-4">
           {cart.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center text-center p-6 space-y-3">
-              <div className="w-16 h-16 rounded-3xl bg-slate-800/80 border border-slate-700/60 flex items-center justify-center text-slate-500">
-                <ShoppingBag className="w-8 h-8" />
+            <div className="flex h-full flex-col items-center justify-center space-y-4 p-6 text-center">
+              <div className="flex h-16 w-16 items-center justify-center rounded-3xl border border-blue-100 bg-blue-50 text-blue-500">
+                <ShoppingBag className="h-8 w-8" />
               </div>
               <div>
-                <h4 className="font-extrabold text-sm text-white">Tu carrito está vacío</h4>
-                <p className="text-xs text-slate-400 mt-1 max-w-[200px]">
-                  Explorá nuestros cortes seleccionados y armá tu pedido para la parrilla o la semana.
+                <h4 className="text-sm font-extrabold text-slate-900">Tu carrito está vacío</h4>
+                <p className="mt-1 max-w-[220px] text-xs leading-relaxed text-slate-500">
+                  Explorá los comercios y agregá tus productos favoritos.
                 </p>
               </div>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => onOpenChange(false)}
+                className="h-10 rounded-xl border-blue-200 bg-white px-5 text-xs font-bold text-blue-700 hover:bg-blue-50"
+              >
+                Explorar productos
+              </Button>
             </div>
           ) : (
             cart.map((item) => (
               <div
                 key={item.product.id}
-                className="bg-slate-800/60 border border-slate-700/60 rounded-2xl p-2.5 flex items-center gap-3"
+                className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-2.5 shadow-sm"
               >
                 <img
                   src={item.product.image}
                   alt={item.product.name}
-                  className="w-14 h-14 rounded-xl object-cover shrink-0 bg-slate-800"
+                  className="h-14 w-14 shrink-0 rounded-xl bg-slate-100 object-cover"
                 />
                 <div className="flex-1 min-w-0">
-                  <span className="text-[9px] font-bold text-emerald-400 block truncate">
+                  <span className="block truncate text-[9px] font-bold text-blue-600">
                     {item.product.companyName || "Frigorífico Maciel"}
                   </span>
-                  <h4 className="font-bold text-xs text-white truncate">{item.product.name}</h4>
-                  <p className="text-[11px] text-emerald-400 font-extrabold mt-0.5">
+                  <h4 className="truncate text-xs font-bold text-slate-900">{item.product.name}</h4>
+                  <p className="mt-0.5 text-[11px] font-extrabold text-blue-700">
                     {formatMoney(item.product.price)}
-                    <span className="text-[10px] text-slate-400 font-normal"> /{item.product.unit}</span>
+                    <span className="text-[10px] font-normal text-slate-500">
+                      {" "}
+                      /{item.product.unit}
+                    </span>
                   </p>
-                  <p className="text-[10px] text-slate-400 font-semibold mt-0.5">
+                  <p className="mt-0.5 text-[10px] font-semibold text-slate-500">
                     Subtotal: {formatMoney(item.product.price * item.quantity)}
                   </p>
                 </div>
 
                 <div className="flex items-center gap-1.5 shrink-0">
-                  <div className="flex items-center bg-slate-900 border border-slate-700 rounded-xl p-0.5">
+                  <div className="flex items-center rounded-xl border border-slate-200 bg-white p-0.5">
                     <button
+                      type="button"
                       onClick={() => onUpdateQuantity(item.product.id, -1)}
-                      className="w-6 h-6 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 flex items-center justify-center transition-colors"
+                      aria-label={`Quitar una unidad de ${item.product.name}`}
+                      className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-600 transition-colors hover:bg-slate-100"
                     >
-                      <Minus className="w-2.5 h-2.5" />
+                      <Minus className="h-3 w-3" />
                     </button>
-                    <span className="w-5 text-center font-black text-xs text-white">
+                    <span className="w-6 text-center text-xs font-black text-slate-900">
                       {item.quantity}
                     </span>
                     <button
+                      type="button"
                       onClick={() => onUpdateQuantity(item.product.id, 1)}
-                      className="w-6 h-6 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white flex items-center justify-center transition-colors"
+                      aria-label={`Agregar una unidad de ${item.product.name}`}
+                      className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-600 text-white transition-colors hover:bg-blue-700"
                     >
-                      <Plus className="w-2.5 h-2.5" />
+                      <Plus className="h-3 w-3" />
                     </button>
                   </div>
                   <button
+                    type="button"
                     onClick={() => onRemoveItem(item.product.id)}
-                    className="p-1.5 text-slate-500 hover:text-red-400 transition-colors"
+                    aria-label={`Eliminar ${item.product.name} del carrito`}
+                    className="p-1.5 text-slate-400 transition-colors hover:text-red-600"
                     title="Eliminar"
                   >
-                    <Trash2 className="w-3.5 h-3.5" />
+                    <Trash2 className="h-3.5 w-3.5" />
                   </button>
                 </div>
               </div>
@@ -141,53 +166,55 @@ export function DrawerCarrito({
             style={{
               paddingBottom: "max(1rem, calc(env(safe-area-inset-bottom, 0px) + 0.75rem))",
             }}
-            className="p-4 border-t border-slate-800 bg-slate-900/90 space-y-3"
+            className="space-y-3 border-t border-slate-200 bg-white p-4"
           >
             {/* Banner Envío Gratis */}
             {deliveryType === "delivery" && (
-              <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-2.5 flex items-center gap-2 text-xs">
-                <Truck className="w-4 h-4 text-emerald-400 shrink-0" />
-                <span className="text-[11px] text-emerald-300 font-medium leading-tight">
-                  {cartTotal >= 30000
+              <div className="flex items-center gap-2 rounded-xl border border-blue-100 bg-blue-50 p-2.5 text-xs">
+                <Truck className="h-4 w-4 shrink-0 text-blue-600" />
+                <span className="text-[11px] font-medium leading-tight text-blue-800">
+                  {cartTotal >= FREE_DELIVERY_THRESHOLD
                     ? "¡Envío GRATIS aplicado a tu pedido!"
-                    : `Sumá ${formatMoney(30000 - cartTotal)} más para tener envío gratis.`}
+                    : `Sumá ${formatMoney(FREE_DELIVERY_THRESHOLD - cartTotal)} más para tener envío gratis.`}
                 </span>
               </div>
             )}
 
             <div className="space-y-1.5 text-xs">
-              <div className="flex justify-between text-slate-400">
+              <div className="flex justify-between text-slate-500">
                 <span>Subtotal productos</span>
-                <span className="font-bold text-slate-200">{formatMoney(cartTotal)}</span>
+                <span className="font-bold text-slate-800">{formatMoney(cartTotal)}</span>
               </div>
-              <div className="flex justify-between text-slate-400">
+              <div className="flex justify-between text-slate-500">
                 <span>Envío</span>
-                <span className="font-bold text-slate-200">
+                <span className="font-bold text-slate-800">
                   {deliveryFee === 0 ? (
-                    <span className="text-emerald-400 font-extrabold uppercase text-[10px]">Gratis</span>
+                    <span className="text-[10px] font-extrabold uppercase text-blue-700">
+                      Gratis
+                    </span>
                   ) : (
                     formatMoney(deliveryFee)
                   )}
                 </span>
               </div>
-              <div className="flex justify-between text-sm font-black text-white pt-2 border-t border-slate-800">
-                <span>Total Final</span>
-                <span className="text-base text-emerald-400 font-black">{formatMoney(finalTotal)}</span>
+              <div className="flex justify-between border-t border-slate-100 pt-2 text-sm font-black text-slate-900">
+                <span>Total</span>
+                <span className="text-base font-black text-blue-700">{formatMoney(finalTotal)}</span>
               </div>
             </div>
 
             {/* Botón Pagar */}
             <Button
               onClick={onProceedToPayment}
-              className="w-full h-12 rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white font-black text-xs uppercase tracking-wider shadow-lg shadow-emerald-500/25 flex items-center justify-center gap-2 active:scale-98 transition-all"
+              className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 text-xs font-black uppercase tracking-wider text-white shadow-lg shadow-blue-600/20 transition-all hover:bg-blue-700 active:scale-98"
             >
               <span>Continuar y Pagar</span>
               <ArrowRight className="w-4 h-4" />
             </Button>
 
-            <p className="text-[10px] text-slate-500 text-center flex items-center justify-center gap-1">
-              <ShieldCheck className="w-3 h-3 text-emerald-400" />
-              Compra directa y segura · Conectado con Cobro Fácil
+            <p className="flex items-center justify-center gap-1 text-center text-[10px] text-slate-500">
+              <ShieldCheck className="h-3 w-3 text-blue-600" />
+              Compra segura · Conectado con Cobro Fácil
             </p>
           </div>
         )}

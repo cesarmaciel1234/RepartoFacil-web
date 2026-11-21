@@ -11,14 +11,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
-  Bell,
   Send,
-  Truck,
   User,
-  Store,
-  ExternalLink,
-  Sparkles,
-  CheckCheck,
   ShieldCheck,
   Bike,
   ArrowLeft,
@@ -26,6 +20,7 @@ import {
 import { DriverOrder } from "../motor/tipos";
 import { loadClientProfile, loadDriverProfile } from "../motor/driverService";
 import { ModalTicketDigital } from "@/components/ModalTicketDigital";
+import { OrderChatMessageList } from "./OrderChatMessageList";
 
 export type ChatAuthorRole = "driver" | "client" | "company";
 
@@ -68,6 +63,7 @@ const DEFAULT_MESSAGES: OrderChatMessage[] = [
 interface OrderChatSheetProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
+  embedded?: boolean;
   activeOrder?: DriverOrder | null;
   driverName?: string;
   clientName?: string;
@@ -80,6 +76,7 @@ interface OrderChatSheetProps {
 export function OrderChatSheet({
   isOpen,
   onOpenChange,
+  embedded = false,
   activeOrder,
   driverName = "Lucas Motomensajero",
   clientName,
@@ -228,31 +225,46 @@ export function OrderChatSheet({
 
   const isClientViewer = effectiveRole === "client";
   const displayDestAddress = deliveryAddress || activeOrder?.deliveryAddress || "Tucumán 2130, Rosario";
+  const backButtonLabel = embedded ? "Volver al pedido" : "Volver a la lista de pedidos";
 
-  return (
-    <Sheet open={isOpen} onOpenChange={onOpenChange}>
-      <SheetContent className="w-full sm:max-w-md bg-slate-900 border-l border-slate-800 text-slate-100 p-0 flex flex-col h-full">
+  const chatContent = (
+    <>
         {/* Header Scoped: Diferenciado según el perfil del usuario */}
-        <SheetHeader className="p-4 border-b border-slate-800 flex flex-row items-center justify-between gap-2">
+        <SheetHeader
+          className={`flex flex-row items-center justify-between gap-2 border-b p-4 ${
+            embedded ? "border-slate-100 bg-white" : "border-slate-800"
+          }`}
+        >
           <div className="flex items-center gap-2">
             {onBackToOrdersHub && (
               <button
                 type="button"
                 onClick={onBackToOrdersHub}
-                className="w-8 h-8 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white flex items-center justify-center shrink-0 border border-slate-700 transition-all"
-                title="Volver a la lista de pedidos"
+                aria-label={backButtonLabel}
+                className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border transition-all ${
+                  embedded
+                    ? "border-slate-200 text-slate-600 hover:bg-slate-100"
+                    : "border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white"
+                }`}
+                title={backButtonLabel}
               >
-                <ArrowLeft className="w-4 h-4 text-emerald-400" />
+                <ArrowLeft className={`h-4 w-4 ${embedded ? "text-blue-600" : "text-emerald-400"}`} />
               </button>
             )}
-            <div className={`w-9 h-9 rounded-2xl flex items-center justify-center shrink-0 shadow-md ${
-              isClientViewer ? "bg-blue-500/20 text-blue-400" : "bg-emerald-500/20 text-emerald-400"
-            }`}>
+            <div
+              className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl shadow-md ${
+                embedded
+                  ? "bg-blue-50 text-blue-600"
+                  : isClientViewer
+                  ? "bg-blue-500/20 text-blue-400"
+                  : "bg-emerald-500/20 text-emerald-400"
+              }`}
+            >
               {isClientViewer ? <Bike className="w-5 h-5" /> : <User className="w-5 h-5" />}
             </div>
             <div className="text-left">
               <div className="flex items-center gap-1.5">
-                <SheetTitle className="text-sm font-black text-white">
+                <SheetTitle className={`text-sm font-black ${embedded ? "text-slate-900" : "text-white"}`}>
                   {isClientViewer
                     ? `Chat con tu Repartidor`
                     : `Chat con el Cliente`}
@@ -263,11 +275,11 @@ export function OrderChatSheet({
                 <span className="text-[10px] text-slate-400 font-medium">
                   Pedido #{orderId}
                 </span>
-                {(activeOrder?.ticketId || (activeOrder as any)?.ticket_id) && (
+                {!embedded && (activeOrder?.ticketId || (activeOrder as any)?.ticket_id) && (
                   <button
                     type="button"
                     onClick={() => setIsTicketModalOpen(true)}
-                    className="text-[9.5px] font-bold text-blue-400 hover:text-blue-300 bg-blue-500/10 border border-blue-500/30 px-1.5 py-0.2 rounded-md flex items-center gap-1 transition-all"
+                    className="flex items-center gap-1 rounded-md border border-blue-200 bg-blue-50 px-1.5 py-0.5 text-[9.5px] font-bold text-blue-700 transition-all hover:bg-blue-100"
                     title="Ver Ticket Digital Cobro Fácil"
                   >
                     🧾 Ticket #{activeOrder.ticketId || (activeOrder as any).ticket_id} ↗
@@ -276,127 +288,96 @@ export function OrderChatSheet({
               </div>
             </div>
           </div>
-          <Badge className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[9px] font-black py-0.5">
+          <Badge
+            className={`border py-0.5 text-[9px] font-black ${
+              embedded
+                ? "border-blue-100 bg-blue-50 text-blue-700"
+                : "border-emerald-500/30 bg-emerald-500/20 text-emerald-400"
+            }`}
+          >
             EN VIVO
           </Badge>
         </SheetHeader>
 
         {/* Tarjeta de Estado del Reparto (Estilo Uber Eats / Rappi) */}
-        <div className={`px-4 py-2.5 border-b flex items-center justify-between ${
-          isClientViewer ? "bg-blue-950/30 border-blue-500/20" : "bg-emerald-950/30 border-emerald-500/20"
-        }`}>
+        <div
+          className={`flex items-center justify-between border-b px-4 py-2.5 ${
+            embedded
+              ? "border-blue-100 bg-blue-50/70"
+              : isClientViewer
+              ? "border-blue-500/20 bg-blue-950/30"
+              : "border-emerald-500/20 bg-emerald-950/30"
+          }`}
+        >
           <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-8 h-8 rounded-xl bg-slate-800/90 text-white flex items-center justify-center font-bold text-sm shrink-0 shadow-sm">
+            <div
+              className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-sm font-bold shadow-sm ${
+                embedded ? "bg-white text-blue-700" : "bg-slate-800/90 text-white"
+              }`}
+            >
               {isClientViewer ? "🛵" : "👤"}
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-1.5">
-                <span className="text-xs font-black text-white truncate">
+                <span className={`truncate text-xs font-black ${embedded ? "text-slate-900" : "text-white"}`}>
                   {isClientViewer ? driverName : (clientName || activeOrder?.clientName || "Familia Gómez")}
                 </span>
-                <span className="text-[9px] bg-emerald-500/20 text-emerald-300 px-1.5 py-0.2 rounded-full font-bold shrink-0">
+                <span
+                  className={`shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-bold ${
+                    embedded ? "bg-blue-100 text-blue-700" : "bg-emerald-500/20 text-emerald-300"
+                  }`}
+                >
                   {isClientViewer ? "En viaje" : "Esperando entrega"}
                 </span>
               </div>
-              <p className="text-[10px] text-slate-400 font-medium truncate">
+              <p className={`truncate text-[10px] font-medium ${embedded ? "text-slate-600" : "text-slate-400"}`}>
                 {isClientViewer ? `Entrega en: ${displayDestAddress}` : `Destino: ${displayDestAddress}`}
               </p>
             </div>
           </div>
           <div className="text-right shrink-0 pl-2">
-            <span className="text-xs font-black text-emerald-400">12-15 min</span>
-            <span className="block text-[9px] text-slate-400 font-medium">GPS activo</span>
+            <span className={`text-xs font-black ${embedded ? "text-blue-700" : "text-emerald-400"}`}>
+              12-15 min
+            </span>
+            <span className={`block text-[9px] font-medium ${embedded ? "text-slate-500" : "text-slate-400"}`}>
+              GPS activo
+            </span>
           </div>
         </div>
 
         {/* Barra de perfil activo (Auditoría de Identidad) */}
-        <div className="px-4 py-1.5 bg-slate-950/80 border-b border-slate-800/80 flex items-center justify-between text-[11px] text-slate-400">
+        <div
+          className={`flex items-center justify-between border-b px-4 py-1.5 text-[11px] ${
+            embedded
+              ? "border-slate-100 bg-white text-slate-500"
+              : "border-slate-800/80 bg-slate-950/80 text-slate-400"
+          }`}
+        >
           <div className="flex items-center gap-1.5">
-            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+            <ShieldCheck className={`h-3.5 w-3.5 ${embedded ? "text-blue-600" : "text-emerald-400"}`} />
             <span>
               Conectado como:{" "}
-              <strong className="text-white">
+              <strong className={embedded ? "text-slate-900" : "text-white"}>
                 {getMyAuthorName()} ({isClientViewer ? "Comprador" : "Repartidor"})
               </strong>
             </span>
           </div>
-          <span className="text-[10px] text-slate-500">Cobro Fácil Sync</span>
+          <span className={`text-[10px] ${embedded ? "text-slate-400" : "text-slate-500"}`}>Cobro Fácil Sync</span>
         </div>
 
-        {/* Lista de Mensajes: Tu mensaje a la derecha, otros a la izquierda */}
-        <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-3.5">
-          {messages.map((m) => {
-            const isSystem = (m.authorRole as string) === "system";
-            if (isSystem) {
-              return (
-                <div key={m.id} className="flex flex-col items-center my-2 w-full">
-                  <div className="w-full bg-amber-950/50 border border-amber-500/50 rounded-2xl p-3 shadow-lg flex flex-col gap-1.5 text-center">
-                    <div className="flex items-center justify-center gap-1.5 text-[10.5px] font-black text-amber-400 uppercase tracking-wider">
-                      <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
-                      <span>{m.authorName || "Custodio del Sistema"}</span>
-                      <span className="text-slate-400 font-normal">· {m.timestamp}</span>
-                    </div>
-                    <p className="text-[12px] text-amber-100 font-medium leading-snug">{m.content}</p>
-                  </div>
-                </div>
-              );
-            }
-
-            const isMe = m.authorRole === effectiveRole;
-            const isDriver = m.authorRole === "driver";
-            const isClient = m.authorRole === "client";
-            const isCompany = m.authorRole === "company";
-
-            return (
-              <div
-                key={m.id}
-                className={`flex flex-col ${isMe ? "items-end" : "items-start"}`}
-              >
-                {/* Remitente y Hora */}
-                <div className="flex items-center gap-1.5 mb-1 px-1 text-[10px]">
-                  {isDriver && (
-                    <span className="font-bold text-emerald-400 flex items-center gap-1">
-                      <Truck className="w-3 h-3" /> {m.authorName} {isMe ? "(Tú)" : "(Repartidor)"}
-                    </span>
-                  )}
-                  {isClient && (
-                    <span className="font-bold text-blue-400 flex items-center gap-1">
-                      <User className="w-3 h-3" /> {m.authorName} {isMe ? "(Tú)" : "(Cliente)"}
-                    </span>
-                  )}
-                  {isCompany && (
-                    <span className="font-bold text-amber-400 flex items-center gap-1">
-                      <Store className="w-3 h-3" /> {m.authorName}
-                    </span>
-                  )}
-                  <span className="text-slate-500">{m.timestamp}</span>
-                </div>
-
-                {/* Burbuja del Mensaje */}
-                <div
-                  className={`p-3 rounded-2xl text-xs max-w-[85%] leading-relaxed shadow-md ${
-                    isMe
-                      ? effectiveRole === "driver"
-                        ? "bg-emerald-600 text-white rounded-br-xs"
-                        : "bg-blue-600 text-white rounded-br-xs"
-                      : isCompany
-                      ? "bg-slate-800 border border-amber-500/30 text-amber-100 rounded-bl-xs"
-                      : isDriver
-                      ? "bg-emerald-950/80 border border-emerald-500/40 text-emerald-100 rounded-bl-xs"
-                      : "bg-blue-950/80 border border-blue-500/40 text-blue-100 rounded-bl-xs"
-                  }`}
-                >
-                  <p>{m.content}</p>
-                </div>
-              </div>
-            );
-          })}
-        </div>
+        <OrderChatMessageList
+          messages={messages}
+          effectiveRole={effectiveRole}
+          embedded={embedded}
+          scrollRef={scrollRef}
+        />
 
         {/* Input de Mensaje Scoped a la Cuenta Actual */}
         <form
           onSubmit={handleSendMessage}
-          className="p-3 border-t border-slate-800 bg-slate-950 flex items-center gap-2"
+          className={`flex items-center gap-2 border-t p-3 ${
+            embedded ? "border-slate-200 bg-white" : "border-slate-800 bg-slate-950"
+          }`}
         >
           <Input
             value={inputText}
@@ -406,13 +387,17 @@ export function OrderChatSheet({
                 ? `Escribir mensaje a ${driverName}...`
                 : `Escribir mensaje al cliente (${clientName || activeOrder?.clientName || "Cliente"})...`
             }
-            className="bg-slate-900 border-slate-800 text-white placeholder:text-slate-500 rounded-xl text-xs h-10 focus:ring-emerald-500 focus:border-emerald-500"
+            className={
+              embedded
+                ? "h-10 rounded-xl border-slate-200 bg-white text-xs text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:ring-blue-500"
+                : "h-10 rounded-xl border-slate-800 bg-slate-900 text-xs text-white placeholder:text-slate-500 focus:border-emerald-500 focus:ring-emerald-500"
+            }
           />
           <Button
             type="submit"
             disabled={!inputText.trim() || isSending}
             className={`h-10 w-10 p-0 rounded-xl text-white shrink-0 shadow-lg active:scale-95 transition-all ${
-              isClientViewer
+              embedded || isClientViewer
                 ? "bg-blue-600 hover:bg-blue-700 shadow-blue-600/20 disabled:opacity-40"
                 : "bg-emerald-500 hover:bg-emerald-600 shadow-emerald-500/20 disabled:opacity-40"
             }`}
@@ -423,11 +408,24 @@ export function OrderChatSheet({
         </form>
 
         {/* Modal Ticket Digital Cobro Fácil */}
-        <ModalTicketDigital
-          isOpen={isTicketModalOpen}
-          onOpenChange={setIsTicketModalOpen}
-          order={activeOrder}
-        />
+        {!embedded && (
+          <ModalTicketDigital
+            isOpen={isTicketModalOpen}
+            onOpenChange={setIsTicketModalOpen}
+            order={activeOrder}
+          />
+        )}
+    </>
+  );
+
+  if (embedded) {
+    return <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-white">{chatContent}</div>;
+  }
+
+  return (
+    <Sheet open={isOpen} onOpenChange={onOpenChange}>
+      <SheetContent className="flex h-full w-full flex-col border-l border-slate-800 bg-slate-900 p-0 text-slate-100 sm:max-w-md">
+        {chatContent}
       </SheetContent>
     </Sheet>
   );

@@ -11,6 +11,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ModalTicketDigital } from "@/components/ModalTicketDigital";
+import { OrderChatSheet } from "../../repartidor/ui/OrderChatSheet";
 import {
   Truck,
   Store,
@@ -27,19 +28,18 @@ interface CentroPedidosClienteSheetProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   orders: any[];
-  onSelectOrderChat: (order: any) => void;
 }
 
 export function CentroPedidosClienteSheet({
   isOpen,
   onOpenChange,
   orders = [],
-  onSelectOrderChat,
 }: CentroPedidosClienteSheetProps) {
   const [selectedTicketOrder, setSelectedTicketOrder] = useState<any | null>(null);
   const [isTicketModalOpen, setIsTicketModalOpen] = useState(false);
   const [retryingId, setRetryingId] = useState<string | null>(null);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+  const [isChatOpen, setIsChatOpen] = useState(false);
   const [orderToCancel, setOrderToCancel] = useState<any | null>(null);
   const { toast } = useToast();
 
@@ -90,6 +90,7 @@ export function CentroPedidosClienteSheet({
   const handleOpenChange = (open: boolean) => {
     if (!open) {
       setSelectedOrderId(null);
+      setIsChatOpen(false);
       setOrderToCancel(null);
     }
     onOpenChange(open);
@@ -124,6 +125,7 @@ export function CentroPedidosClienteSheet({
 
       window.dispatchEvent(new CustomEvent("rf-orders-updated"));
       setSelectedOrderId(null);
+      setIsChatOpen(false);
       setOrderToCancel(null);
       toast({ title: "Pedido cancelado" });
     } catch (e) {
@@ -144,6 +146,7 @@ export function CentroPedidosClienteSheet({
         overlayClassName="bg-slate-950/45 backdrop-blur-sm"
         className="fixed bottom-0 left-0 top-auto flex max-h-[72dvh] w-full max-w-none translate-x-0 translate-y-0 flex-col gap-0 overflow-hidden rounded-t-3xl rounded-b-none border border-slate-200 bg-white p-0 text-slate-900 shadow-2xl shadow-slate-900/20 sm:bottom-auto sm:left-1/2 sm:top-1/2 sm:w-[calc(100vw-2rem)] sm:max-w-xl sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-3xl"
       >
+        {!isChatOpen && (
         <DialogHeader className="shrink-0 flex-row items-center justify-between gap-3 border-b border-slate-100 bg-white px-5 py-4 pr-12 text-left">
           {selectedOrder ? (
             <>
@@ -198,9 +201,28 @@ export function CentroPedidosClienteSheet({
             </>
           )}
         </DialogHeader>
+        )}
 
-        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto bg-slate-50/70 p-4 sm:p-5">
-          {selectedOrder && (
+        <div
+          className={
+            isChatOpen
+              ? "min-h-0 flex-1 overflow-hidden bg-white"
+              : "min-h-0 flex-1 space-y-4 overflow-y-auto bg-slate-50/70 p-4 sm:p-5"
+          }
+        >
+          {isChatOpen && selectedOrder && (
+            <OrderChatSheet
+              embedded
+              isOpen={isChatOpen}
+              onOpenChange={setIsChatOpen}
+              activeOrder={selectedOrder}
+              viewerRole="client"
+              deliveryAddress={selectedOrder.deliveryAddress}
+              onBackToOrdersHub={() => setIsChatOpen(false)}
+            />
+          )}
+
+          {selectedOrder && !isChatOpen && (
             <div className="space-y-3">
               <div className="space-y-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
                 <div className="flex min-w-0 items-center justify-between gap-2">
@@ -289,7 +311,7 @@ export function CentroPedidosClienteSheet({
                   type="button"
                   onClick={() => {
                     setOrderToCancel(null);
-                    onSelectOrderChat(selectedOrder);
+                    setIsChatOpen(true);
                   }}
                   aria-label="Abrir chat"
                   className="h-10 flex-1 rounded-xl bg-blue-600 text-xs font-bold text-white shadow-md shadow-blue-600/20 hover:bg-blue-700"

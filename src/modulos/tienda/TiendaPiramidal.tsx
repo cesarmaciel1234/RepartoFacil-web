@@ -356,11 +356,6 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
         isOpen={isOrdersHubOpen}
         onOpenChange={setIsOrdersHubOpen}
         orders={clientOrdersList}
-        onSelectOrderChat={(order) => {
-          setSelectedChatOrder(order);
-          setIsOrdersHubOpen(false);
-          setIsOrderChatOpen(true);
-        }}
       />
 
       {/* ─── Chat Tripartito Privado del Pedido Seleccionado ─── */}
