@@ -97,6 +97,22 @@ refleja la última instantánea del TPV: esta verificación no reserva ni descue
 inventario, por lo que ventas simultáneas pueden agotarlo antes de preparar el
 pedido. La tarifa y la ganancia se recalculan en servidor.
 
+### Cambios acordados de pedidos
+
+El lápiz para proponer cambios todavía no está implementado. En el código local
+de Cobro Fácil, la aceptación parcial puede procesar solo algunos artículos sin
+actualizar los artículos ni el total del pedido; no usarla como sustituto de
+la confirmación del comprador. Además, las rutas de Reparto Fácil del CRM están
+excluidas de los controles generales de sesión y rol. Antes de habilitar edición
+se deben proteger y aislar esas operaciones por comercio.
+
+El flujo previsto es: propuesta del comercio con artículos y total validados;
+confirmación o rechazo explícito del comprador; y, solo después de confirmar,
+aceptación del comercio. Un rechazo conserva el pedido original y permite otra
+propuesta. La confirmación bloquea nuevas ediciones; las transiciones deben ser
+atómicas y evitar que una propuesta pendiente genere ticket o descuente stock.
+Probar ambos sistemas con datos aislados antes de publicar.
+
 ### Ventas Web, cobros y cartera
 
 En Cobro Fácil, `Web` identifica las ventas originadas en la tienda para

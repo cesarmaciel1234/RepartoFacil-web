@@ -1,2 +1,2 @@
-export const APP_VERSION = "5.13";
-export const APP_RELEASE = "v5.13-acceso-version";
+export const APP_VERSION = "5.14";
+export const APP_RELEASE = "v5.14-cabecera-tienda";

@@ -108,20 +108,20 @@ export function CatalogoEmpresaTienda({
         </div>
 
         <div className="px-4 pb-4">
-          <div className="-mt-9 flex items-end gap-3">
+          <div className="flex items-start gap-3">
             {company.logoUrl ? (
               <img
                 src={company.logoUrl}
                 alt=""
-                className="h-[72px] w-[72px] shrink-0 rounded-2xl border-4 border-white bg-white object-cover shadow-md"
+                className="relative -mt-9 h-[72px] w-[72px] shrink-0 rounded-2xl border-4 border-white bg-white object-cover shadow-md"
               />
             ) : (
-              <div className="flex h-[72px] w-[72px] shrink-0 items-center justify-center rounded-2xl border-4 border-white bg-gradient-to-br from-blue-600 to-blue-800 text-2xl font-black text-white shadow-md">
+              <div className="relative -mt-9 flex h-[72px] w-[72px] shrink-0 items-center justify-center rounded-2xl border-4 border-white bg-gradient-to-br from-blue-600 to-blue-800 text-2xl font-black text-white shadow-md">
                 {company.name.charAt(0)}
               </div>
             )}
-            <div className="min-w-0 pb-1">
-              <h1 className="truncate text-lg font-black text-slate-900 sm:text-xl">
+            <div className="min-w-0 pt-2">
+              <h1 className="break-words text-lg font-black text-slate-900 sm:text-xl">
                 {company.name}
               </h1>
               <p className="truncate text-xs font-medium text-slate-500">
