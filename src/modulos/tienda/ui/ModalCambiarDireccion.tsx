@@ -101,7 +101,7 @@ export function ModalCambiarDireccion({
                 {step === "map" ? "Ubicación actual" : "Detalles de entrega"}
               </DialogTitle>
               <DialogDescription className="sr-only">
-                Elegí en el mapa dónde recibir tu pedido y completá los detalles de entrega.
+                Elegí una dirección dentro de 1 km de tu ubicación GPS y completá los detalles de entrega.
               </DialogDescription>
             </div>
             <span className="h-10 w-10" aria-hidden="true" />
@@ -123,7 +123,8 @@ export function ModalCambiarDireccion({
                     Indicá dónde recibir tu pedido
                   </h2>
                   <p className="text-sm text-slate-600">
-                    Al continuar, podrás editar la calle y el número.
+                    El domicilio debe quedar dentro de 1 km de tu ubicación GPS.
+                    Luego podrás completar la calle y la altura.
                   </p>
                 </div>
 

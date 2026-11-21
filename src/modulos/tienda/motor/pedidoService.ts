@@ -97,10 +97,24 @@ export async function createOrder(
 
   // Cálculo de tarifa estándar Uber / PedidosYa
   const tarifa = calcularTarifaEnvio(form.deliveryAddress || "");
+  const freeDeliveryThreshold =
+    typeof form.freeDeliveryThreshold === "number" &&
+    Number.isFinite(form.freeDeliveryThreshold) &&
+    form.freeDeliveryThreshold >= 0
+      ? form.freeDeliveryThreshold
+      : 35000;
+  const deliveryFeeOverride =
+    typeof form.deliveryFeeOverride === "number" &&
+    Number.isFinite(form.deliveryFeeOverride) &&
+    form.deliveryFeeOverride >= 0
+      ? form.deliveryFeeOverride
+      : null;
   const deliveryFee =
     form.deliveryType === "delivery" && subtotal > 0
-      ? subtotal >= 35000
+      ? subtotal >= freeDeliveryThreshold
         ? 0
+        : deliveryFeeOverride !== null
+        ? deliveryFeeOverride
         : tarifa.totalDeliveryFee
       : 0;
 

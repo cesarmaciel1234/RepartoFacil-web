@@ -3,8 +3,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { INITIAL_PRODUCTS, type Product } from "@/data/mockProducts";
 import { MOCK_COMPANIES, type CompanyStore } from "@/data/mockCompanies";
-import { haversineKm } from "../../motor/tarifaUberService";
-import type { DeliveryCoordinates } from "../../motor/tipos";
 
 type CatalogProduct = Product & {
   department?: string;
@@ -15,7 +13,6 @@ interface UseCatalogoTiendaParams {
   selectedCompany: CompanyStore | null;
   selectedCategory: string;
   searchQuery: string;
-  deliveryCoordinates: DeliveryCoordinates | null;
 }
 
 function getDepartmentIcon(department: string) {
@@ -38,14 +35,9 @@ export function useCatalogoTienda({
   selectedCompany,
   selectedCategory,
   searchQuery,
-  deliveryCoordinates,
 }: UseCatalogoTiendaParams) {
   const [products, setProducts] = useState<CatalogProduct[]>(INITIAL_PRODUCTS);
   const [companies, setCompanies] = useState<CompanyStore[]>(MOCK_COMPANIES);
-  const [selectedCompanyDistanceKm, setSelectedCompanyDistanceKm] = useState<number | null>(
-    null
-  );
-  const [isCompanyDistanceLoading, setIsCompanyDistanceLoading] = useState(false);
 
   useEffect(() => {
     fetch("/api/cobrofacil/companies")
@@ -81,62 +73,6 @@ export function useCatalogoTienda({
       })
       .catch((error) => console.warn("Error cargando productos de Cobro Fácil:", error));
   }, []);
-
-  const selectedCompanyAddress = selectedCompany?.address;
-  const deliveryLatitude = deliveryCoordinates?.lat;
-  const deliveryLongitude = deliveryCoordinates?.lng;
-
-  useEffect(() => {
-    if (
-      !selectedCompanyAddress ||
-      deliveryLatitude === undefined ||
-      deliveryLongitude === undefined
-    ) {
-      setSelectedCompanyDistanceKm(null);
-      setIsCompanyDistanceLoading(false);
-      return;
-    }
-
-    const controller = new AbortController();
-    const params = new URLSearchParams({
-      format: "jsonv2",
-      q: `${selectedCompanyAddress}, Argentina`,
-      limit: "1",
-    });
-
-    setSelectedCompanyDistanceKm(null);
-    setIsCompanyDistanceLoading(true);
-    fetch(`https://nominatim.openstreetmap.org/search?${params.toString()}`, {
-      signal: controller.signal,
-    })
-      .then((response) => {
-        if (!response.ok) throw new Error(`El servicio respondió ${response.status}`);
-        return response.json();
-      })
-      .then((results) => {
-        const storeLatitude = Number(results?.[0]?.lat);
-        const storeLongitude = Number(results?.[0]?.lon);
-        if (!Number.isFinite(storeLatitude) || !Number.isFinite(storeLongitude)) {
-          setSelectedCompanyDistanceKm(null);
-          return;
-        }
-
-        setSelectedCompanyDistanceKm(
-          haversineKm(deliveryLatitude, deliveryLongitude, storeLatitude, storeLongitude)
-        );
-      })
-      .catch((error) => {
-        if (error.name !== "AbortError") {
-          console.error("Error calculando distancia al comercio:", error);
-          setSelectedCompanyDistanceKm(null);
-        }
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) setIsCompanyDistanceLoading(false);
-      });
-
-    return () => controller.abort();
-  }, [deliveryLatitude, deliveryLongitude, selectedCompanyAddress]);
 
   const activeCompanyCatalog = useMemo(() => {
     if (!selectedCompany) return [];
@@ -221,8 +157,6 @@ export function useCatalogoTienda({
   return {
     products,
     companies,
-    selectedCompanyDistanceKm,
-    isCompanyDistanceLoading,
     companyDepartments,
     filteredProducts,
   };

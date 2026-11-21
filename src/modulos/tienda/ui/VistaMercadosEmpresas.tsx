@@ -1,16 +1,12 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import type { CompanyStore } from "@/data/mockCompanies";
 import { INITIAL_PRODUCTS } from "@/data/mockProducts";
 import type { Product } from "@/data/mockProducts";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import {
-  estimateAddressCoords,
-  haversineKm,
-  MARKET_CENTRAL,
-} from "../motor/tarifaUberService";
+import { haversineKm } from "../motor/tarifaUberService";
 import {
   Search,
   Store,
@@ -40,6 +36,14 @@ interface VistaMercadosEmpresasProps {
   deliveryCoordinates?: { lat: number; lng: number } | null;
 }
 
+interface CompanyCoordinates {
+  lat: number;
+  lng: number;
+}
+
+const COMPANY_COORDINATES_CACHE_KEY = "rf_company_coordinates_v1";
+let lastCompanyGeocodeStartedAt = 0;
+
 function normalizeAddress(address: string) {
   return address
     .normalize("NFD")
@@ -50,33 +54,42 @@ function normalizeAddress(address: string) {
     .trim();
 }
 
-function getCompanyDistanceKm(
-  company: CompanyStore,
-  deliveryAddress: string,
-  deliveryCoordinates?: { lat: number; lng: number } | null
-) {
-  const buyerLocation = deliveryCoordinates || estimateAddressCoords(deliveryAddress).coords;
-  const companyIdentity = normalizeAddress(`${company.id} ${company.name} ${company.address}`);
-  const companyLocation =
-    companyIdentity.includes("frigorifico maciel") ||
-    companyIdentity.includes("empresa prueba") ||
-    companyIdentity.includes("tucuman 2130")
-      ? MARKET_CENTRAL.coords
-      : estimateAddressCoords(company.address).coords;
-
-  if (
-    !deliveryCoordinates &&
-    normalizeAddress(company.address) === normalizeAddress(deliveryAddress)
-  ) {
-    return 0;
-  }
-
-  return haversineKm(
-    buyerLocation.lat,
-    buyerLocation.lng,
-    companyLocation.lat,
-    companyLocation.lng
+function isCompanyCoordinates(value: unknown): value is CompanyCoordinates {
+  if (!value || typeof value !== "object") return false;
+  const coordinates = value as { lat?: unknown; lng?: unknown };
+  return (
+    typeof coordinates.lat === "number" &&
+    typeof coordinates.lng === "number" &&
+    Number.isFinite(coordinates.lat) &&
+    Number.isFinite(coordinates.lng) &&
+    Math.abs(coordinates.lat) <= 90 &&
+    Math.abs(coordinates.lng) <= 180
   );
+}
+
+function readCompanyCoordinatesCache(): Record<string, CompanyCoordinates> {
+  try {
+    const raw = localStorage.getItem(COMPANY_COORDINATES_CACHE_KEY);
+    if (!raw) return {};
+    const parsed: unknown = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
+    return Object.fromEntries(
+      Object.entries(parsed).filter((entry): entry is [string, CompanyCoordinates] =>
+        isCompanyCoordinates(entry[1])
+      )
+    );
+  } catch (error) {
+    console.warn("No se pudo leer la caché de ubicaciones comerciales:", error);
+    return {};
+  }
+}
+
+function saveCompanyCoordinatesCache(cache: Record<string, CompanyCoordinates>) {
+  try {
+    localStorage.setItem(COMPANY_COORDINATES_CACHE_KEY, JSON.stringify(cache));
+  } catch (error) {
+    console.warn("No se pudo guardar la caché de ubicaciones comerciales:", error);
+  }
 }
 
 export function VistaMercadosEmpresas({
@@ -90,11 +103,122 @@ export function VistaMercadosEmpresas({
   showCategories = true,
   emptyTitle,
   emptyDescription,
-  deliveryAddress = "Tucumán 2130, Rosario",
+  deliveryAddress = "",
   deliveryCoordinates,
 }: VistaMercadosEmpresasProps) {
   const [internalSearch, setInternalSearch] = useState("");
   const [selectedCat, setSelectedCat] = useState<string>("todos");
+  const [companyDistances, setCompanyDistances] = useState<Record<string, number | null>>({});
+  const [isResolvingCompanyLocations, setIsResolvingCompanyLocations] = useState(false);
+
+  useEffect(() => {
+    if (!deliveryCoordinates) {
+      setCompanyDistances({});
+      setIsResolvingCompanyLocations(false);
+      return;
+    }
+
+    let cancelled = false;
+    const controller = new AbortController();
+
+    const resolveCompanyDistances = async () => {
+      setIsResolvingCompanyLocations(true);
+      const cache = readCompanyCoordinatesCache();
+      const companyLocations = new Map<string, CompanyCoordinates>();
+      const addresses = new Map<string, string>();
+
+      for (const company of companies) {
+        const addressKey = normalizeAddress(company.address || "");
+        if (isCompanyCoordinates(company.coordinates)) {
+          companyLocations.set(company.id, company.coordinates);
+        } else if (addressKey && isCompanyCoordinates(cache[addressKey])) {
+          companyLocations.set(company.id, cache[addressKey]);
+        } else if (addressKey) {
+          addresses.set(addressKey, company.address);
+        }
+      }
+
+      const publishDistances = () => {
+        const distances: Record<string, number | null> = {};
+        for (const company of companies) {
+          const location = companyLocations.get(company.id);
+          distances[company.id] = location
+            ? haversineKm(
+                deliveryCoordinates.lat,
+                deliveryCoordinates.lng,
+                location.lat,
+                location.lng
+              )
+            : null;
+        }
+        if (!cancelled) setCompanyDistances(distances);
+      };
+
+      publishDistances();
+      for (const [addressKey, address] of addresses) {
+        if (cancelled) return;
+
+        const waitMs = Math.max(0, 1000 - (Date.now() - lastCompanyGeocodeStartedAt));
+        if (waitMs > 0) await new Promise((resolve) => setTimeout(resolve, waitMs));
+        if (cancelled) return;
+        lastCompanyGeocodeStartedAt = Date.now();
+
+        try {
+          const params = new URLSearchParams({
+            format: "jsonv2",
+            q: `${address}, Argentina`,
+            limit: "1",
+          });
+          const response = await fetch(
+            `https://nominatim.openstreetmap.org/search?${params.toString()}`,
+            { signal: controller.signal, headers: { "Accept-Language": "es" } }
+          );
+          if (!response.ok) {
+            throw new Error(`El servicio respondió ${response.status}`);
+          }
+          const results = await response.json();
+          const latitude = Number(results?.[0]?.lat);
+          const longitude = Number(results?.[0]?.lon);
+          if (
+            !Number.isFinite(latitude) ||
+            !Number.isFinite(longitude) ||
+            Math.abs(latitude) > 90 ||
+            Math.abs(longitude) > 180
+          ) {
+            continue;
+          }
+
+          const coordinates = { lat: latitude, lng: longitude };
+          cache[addressKey] = coordinates;
+          for (const company of companies) {
+            if (normalizeAddress(company.address || "") === addressKey) {
+              companyLocations.set(company.id, coordinates);
+            }
+          }
+          saveCompanyCoordinatesCache(cache);
+          publishDistances();
+        } catch (error) {
+          if (!controller.signal.aborted) {
+            console.error("No se pudo calcular la distancia de un comercio:", error);
+          }
+        }
+      }
+
+      if (!cancelled) setIsResolvingCompanyLocations(false);
+    };
+
+    void resolveCompanyDistances().catch((error) => {
+      if (!controller.signal.aborted) {
+        console.error("No se pudieron ordenar los comercios por cercanía:", error);
+      }
+      if (!cancelled) setIsResolvingCompanyLocations(false);
+    });
+
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+  }, [companies, deliveryCoordinates?.lat, deliveryCoordinates?.lng]);
 
   const searchTerm = externalSearch !== undefined ? externalSearch : internalSearch;
   const handleSearchChange = (val: string) => {
@@ -151,13 +275,24 @@ export function VistaMercadosEmpresas({
           comp.badges.some((badge) => /off|promo|descuento|oferta|gratis/i.test(badge))),
     };
   }).filter((item) => item.isVisible);
+  const sortedFiltered = [...filtered].sort((first, second) => {
+    const firstDistance = companyDistances[first.comp.id] ?? null;
+    const secondDistance = companyDistances[second.comp.id] ?? null;
+    if (firstDistance === null) return secondDistance === null ? 0 : 1;
+    if (secondDistance === null) return -1;
+    return firstDistance - secondDistance || first.comp.name.localeCompare(second.comp.name);
+  });
   const productResults = filtered.flatMap(({ comp, matchingProducts }) =>
     matchingProducts.map((product) => ({
       company: comp,
       product,
-      distanceKm: getCompanyDistanceKm(comp, deliveryAddress, deliveryCoordinates),
+      distanceKm: companyDistances[comp.id] ?? null,
     }))
-  );
+  ).sort((first, second) => {
+    if (first.distanceKm === null) return second.distanceKm === null ? 0 : 1;
+    if (second.distanceKm === null) return -1;
+    return first.distanceKm - second.distanceKm;
+  });
   const showProductResults = Boolean(term && productResults.length > 0);
 
   return (
@@ -224,6 +359,14 @@ export function VistaMercadosEmpresas({
         </>
       )}
 
+      {deliveryCoordinates && (
+        <p className="text-xs font-medium text-slate-500" aria-live="polite">
+          {isResolvingCompanyLocations
+            ? "Calculando distancias para mostrar primero los comercios más cercanos..."
+            : `Comercios ordenados por cercanía a ${deliveryAddress || "tu domicilio"}.`}
+        </p>
+      )}
+
       {/* ─── 3. Listado de Locales / Empresas sobre Fondo Blanco Limpio ─── */}
       <div className="divide-y divide-slate-100 bg-white rounded-3xl border border-slate-200/80 shadow-xs overflow-hidden">
         {showProductResults ? (
@@ -268,13 +411,15 @@ export function VistaMercadosEmpresas({
                     title="Distancia aproximada desde tu ubicación"
                   >
                     <MapPin className="h-3 w-3 text-blue-600" />
-                    ~{distanceKm.toFixed(1)} km
+                    {distanceKm === null
+                      ? "Distancia no disponible"
+                      : `~${distanceKm.toFixed(1)} km`}
                   </div>
                 </div>
               </button>
             ))}
           </div>
-        ) : filtered.map(({ comp, matchingProducts }) => (
+        ) : sortedFiltered.map(({ comp, matchingProducts }) => (
           <div
             key={comp.id}
             onClick={() => onSelectCompany(comp, term)}
@@ -301,7 +446,7 @@ export function VistaMercadosEmpresas({
 
                   {/* Fila 2: Categoría y dirección */}
                   <span className="text-xs text-slate-500 block font-medium mt-0.5 truncate">
-                    {comp.category} · {comp.address}
+                    {comp.category} · {comp.address || "Dirección no configurada"}
                   </span>
 
                   {/* Fila 3: Tiempo de entrega */}
@@ -309,6 +454,20 @@ export function VistaMercadosEmpresas({
                     <Clock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                     <span>
                       {comp.deliveryTimeMin}-{comp.deliveryTimeMax} min
+                    </span>
+                  </div>
+                  <div
+                    className="flex items-center gap-1.5 mt-1 text-xs font-medium text-slate-600"
+                    title="Distancia aproximada desde tu domicilio"
+                  >
+                    <MapPin className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                    <span>
+                      {companyDistances[comp.id] === null ||
+                      companyDistances[comp.id] === undefined
+                        ? isResolvingCompanyLocations
+                          ? "Calculando distancia..."
+                          : "Distancia no disponible"
+                        : `~${companyDistances[comp.id]?.toFixed(1)} km`}
                     </span>
                   </div>
 

@@ -31,7 +31,6 @@ import {
   Compass,
   Bike,
   History,
-  MapPin,
 } from "lucide-react";
 import { DriverProfile } from "@/modulos/repartidor/motor/tipos";
 import {
@@ -70,10 +69,12 @@ export function SidebarGeneral({
   onLogout,
 }: SidebarGeneralProps) {
   const formatMoney = (val: number) => "$" + val.toLocaleString("es-AR");
+  const isDriverMode = currentMode === "driver";
 
   const [clientProfile, setClientProfile] = useState<ClientProfile | null>(null);
   const [driverProfileLocal, setDriverProfileLocal] = useState<DriverProfile | null>(driverProfile || null);
   const [isClientAuthOpen, setIsClientAuthOpen] = useState(false);
+  const activeDriverProfile = driverProfile || driverProfileLocal;
 
   useEffect(() => {
     setClientProfile(loadClientProfile());
@@ -95,13 +96,32 @@ export function SidebarGeneral({
   }, []);
 
   const userName =
-    currentMode === "driver" && (driverProfile || driverProfileLocal)
-      ? (driverProfile || driverProfileLocal)!.firstName
+    isDriverMode && activeDriverProfile
+      ? activeDriverProfile.firstName
       : clientProfile
       ? clientProfile.displayName
       : "Cliente Reparto Fácil";
 
   const userInitial = userName.charAt(0).toUpperCase();
+  const driverStatusLabel =
+    activeDriverProfile?.availabilityStatus === "Available"
+      ? "Disponible"
+      : activeDriverProfile?.availabilityStatus === "Busy"
+      ? "En reparto"
+      : activeDriverProfile?.availabilityStatus === "Offline"
+      ? "Desconectado"
+      : "Estado sin configurar";
+  const driverVehicleLabel =
+    activeDriverProfile?.vehicleType === "Motorcycle"
+      ? "Motocicleta"
+      : activeDriverProfile?.vehicleType === "Bicycle"
+      ? "Bicicleta"
+      : activeDriverProfile?.vehicleType === "Car"
+      ? "Auto"
+      : "Sin configurar";
+  const driverIdLabel = activeDriverProfile?.id
+    ? `#${activeDriverProfile.id.slice(-8).toUpperCase()}`
+    : "Sin asignar";
 
   const handleCloseSession = () => {
     onOpenChange(false);
@@ -114,7 +134,7 @@ export function SidebarGeneral({
           body: JSON.stringify({
             action: "driver_disconnected",
             driverId: driverProfileLocal.id,
-            driverName: driverProfileLocal.name || "Lucas Motomensajero",
+            driverName: driverProfileLocal.firstName || "Repartidor",
           }),
         }).catch(() => {});
       }
@@ -139,7 +159,11 @@ export function SidebarGeneral({
       <Sheet open={isOpen} onOpenChange={onOpenChange}>
         <SheetContent
           side="left"
-          className="w-[85vw] max-w-xs bg-slate-950 border-r border-slate-800 text-slate-100 p-0 flex flex-col justify-between"
+          className={`w-[85vw] max-w-xs border-r p-0 flex flex-col justify-between ${
+            isDriverMode
+              ? "bg-white border-slate-200 text-slate-900"
+              : "bg-slate-950 border-slate-800 text-slate-100"
+          }`}
         >
           <div
             style={{
@@ -149,19 +173,39 @@ export function SidebarGeneral({
             className="overflow-y-auto p-5 space-y-6"
           >
             {/* 1. Header Perfil (Estilo DiDi / PedidosYa - Captura 1) */}
-            <div className="flex items-center gap-3 pb-4 border-b border-slate-800/80">
-              <div className="w-14 h-14 rounded-full bg-slate-800 border-2 border-emerald-500/40 flex items-center justify-center font-black text-xl text-white shadow-lg shrink-0">
+            <div
+              className={`flex items-center gap-3 ${
+                isDriverMode
+                  ? "rounded-3xl border border-yellow-200 bg-gradient-to-br from-yellow-50 via-white to-white p-4 shadow-sm"
+                  : "pb-4 border-b border-slate-800/80"
+              }`}
+            >
+              <div
+                className={`w-14 h-14 rounded-2xl flex items-center justify-center font-black text-xl shadow-sm shrink-0 ${
+                  isDriverMode
+                    ? "bg-[#FFE600] border border-yellow-500 text-[#2D3277]"
+                    : "rounded-full bg-slate-800 border-2 border-emerald-500/40 text-white shadow-lg"
+                }`}
+              >
                 {userInitial}
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-1.5">
-                  <span className="font-black text-base text-white truncate block">
+                  <span
+                    className={`font-black text-base truncate block ${
+                      isDriverMode ? "text-slate-900" : "text-white"
+                    }`}
+                  >
                     {userName}
                   </span>
                 </div>
-                <span className="text-xs text-slate-400 block truncate">
+                <span
+                  className={`text-xs block truncate ${
+                    isDriverMode ? "text-slate-500" : "text-slate-400"
+                  }`}
+                >
                   {currentMode === "driver"
-                    ? "Repartidor Activo · En Turno"
+                    ? "Perfil de repartidor"
                     : clientProfile
                     ? `Comprador · ${clientProfile.displayName || "Cliente Registrado"}`
                     : "Comprador · Ecosistema Reparto Fácil"}
@@ -170,12 +214,12 @@ export function SidebarGeneral({
                   <Badge
                     className={
                       currentMode === "driver"
-                        ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[9px] font-bold py-0"
+                        ? "bg-yellow-100 text-[#2D3277] border border-yellow-300 text-[9px] font-bold py-0"
                         : "bg-blue-500/20 text-blue-400 border border-blue-500/30 text-[9px] font-bold py-0"
                     }
                   >
                     {currentMode === "driver"
-                      ? "Modo Conductor"
+                      ? driverStatusLabel
                       : clientProfile
                       ? "Cliente Registrado"
                       : "Modo Tienda"}
@@ -199,8 +243,30 @@ export function SidebarGeneral({
           {currentMode === "driver" ? (
             /* ─── VISTA EXCLUSIVA REPARTIDOR (Solo herramientas de trabajo) ─── */
             <div className="space-y-4">
+              {onOpenWallet && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onOpenChange(false);
+                    onOpenWallet();
+                  }}
+                  className="w-full rounded-3xl border border-yellow-300 bg-[#FFE600] p-4 text-left shadow-sm transition hover:bg-yellow-300 active:scale-[0.99]"
+                >
+                  <span className="flex items-center justify-between text-[10px] font-extrabold uppercase tracking-wider text-[#2D3277]">
+                    Ganancias disponibles
+                    <ChevronRight className="h-4 w-4" />
+                  </span>
+                  <span className="mt-1 block text-2xl font-black tracking-tight text-[#2D3277]">
+                    {formatMoney(walletBalance)}
+                  </span>
+                  <span className="mt-1 block text-[11px] font-semibold text-slate-700">
+                    Ver movimientos y efectivo rendido
+                  </span>
+                </button>
+              )}
+
               <div className="space-y-2">
-                <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider block">
+                <span className="text-[10px] font-bold text-yellow-800 uppercase tracking-wider block">
                   Herramientas de Repartidor
                 </span>
                 <div className="grid grid-cols-3 gap-2">
@@ -211,12 +277,12 @@ export function SidebarGeneral({
                       onOpenChange(false);
                       if (onOpenOrders) onOpenOrders();
                     }}
-                    className="flex flex-col items-center justify-center p-2.5 rounded-2xl bg-slate-900 border border-slate-800 hover:border-emerald-500/50 hover:bg-slate-850 transition-all text-center group"
+                    className="flex flex-col items-center justify-center p-2.5 rounded-2xl bg-white border border-slate-200 hover:border-yellow-400 hover:bg-yellow-50 transition-all text-center group"
                   >
-                    <div className="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center mb-1">
+                    <div className="w-8 h-8 rounded-xl bg-yellow-100 text-[#2D3277] flex items-center justify-center mb-1">
                       <Truck className="w-4 h-4" />
                     </div>
-                    <span className="text-[11px] font-bold text-slate-200">Mi Ruta</span>
+                    <span className="text-[11px] font-bold text-slate-800">Mi Ruta</span>
                   </button>
 
                   {/* Mi Billetera */}
@@ -226,12 +292,12 @@ export function SidebarGeneral({
                       onOpenChange(false);
                       if (onOpenWallet) onOpenWallet();
                     }}
-                    className="flex flex-col items-center justify-center p-2.5 rounded-2xl bg-slate-900 border border-slate-800 hover:border-emerald-500/50 hover:bg-slate-850 transition-all text-center group"
+                    className="flex flex-col items-center justify-center p-2.5 rounded-2xl bg-white border border-slate-200 hover:border-yellow-400 hover:bg-yellow-50 transition-all text-center group"
                   >
-                    <div className="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center mb-1">
+                    <div className="w-8 h-8 rounded-xl bg-yellow-100 text-[#2D3277] flex items-center justify-center mb-1">
                       <Wallet className="w-4 h-4" />
                     </div>
-                    <span className="text-[11px] font-bold text-slate-200">Billetera</span>
+                    <span className="text-[11px] font-bold text-slate-800">Billetera</span>
                   </button>
 
                   {/* Historial de Entregas */}
@@ -241,24 +307,24 @@ export function SidebarGeneral({
                       onOpenChange(false);
                       if (onOpenWallet) onOpenWallet();
                     }}
-                    className="flex flex-col items-center justify-center p-2.5 rounded-2xl bg-slate-900 border border-slate-800 hover:border-emerald-500/50 hover:bg-slate-850 transition-all text-center group"
+                    className="flex flex-col items-center justify-center p-2.5 rounded-2xl bg-white border border-slate-200 hover:border-yellow-400 hover:bg-yellow-50 transition-all text-center group"
                   >
-                    <div className="w-8 h-8 rounded-xl bg-slate-800 text-slate-300 group-hover:text-emerald-400 flex items-center justify-center mb-1">
+                    <div className="w-8 h-8 rounded-xl bg-yellow-50 text-slate-500 group-hover:text-[#2D3277] flex items-center justify-center mb-1">
                       <History className="w-4 h-4" />
                     </div>
-                    <span className="text-[11px] font-bold text-slate-200">Historial</span>
+                    <span className="text-[11px] font-bold text-slate-800">Historial</span>
                   </button>
 
                   {/* Mapa GPS */}
                   <button
                     type="button"
                     onClick={() => onOpenChange(false)}
-                    className="flex flex-col items-center justify-center p-2.5 rounded-2xl bg-slate-900 border border-slate-800 hover:border-blue-500/50 hover:bg-slate-850 transition-all text-center group"
+                    className="flex flex-col items-center justify-center p-2.5 rounded-2xl bg-white border border-slate-200 hover:border-yellow-400 hover:bg-yellow-50 transition-all text-center group"
                   >
-                    <div className="w-8 h-8 rounded-xl bg-slate-800 text-slate-300 group-hover:text-blue-400 flex items-center justify-center mb-1">
+                    <div className="w-8 h-8 rounded-xl bg-yellow-50 text-slate-500 group-hover:text-[#2D3277] flex items-center justify-center mb-1">
                       <Navigation className="w-4 h-4" />
                     </div>
-                    <span className="text-[11px] font-bold text-slate-200">Mapa GPS</span>
+                    <span className="text-[11px] font-bold text-slate-800">Mapa GPS</span>
                   </button>
 
                   {/* Soporte Chofer */}
@@ -266,12 +332,12 @@ export function SidebarGeneral({
                     href="https://wa.me/5493415551234?text=Hola,%20solicito%20soporte%20operativo%20de%20reparto"
                     target="_blank"
                     rel="noreferrer"
-                    className="flex flex-col items-center justify-center p-2.5 rounded-2xl bg-slate-900 border border-slate-800 hover:border-green-500/50 hover:bg-slate-850 transition-all text-center group"
+                    className="flex flex-col items-center justify-center p-2.5 rounded-2xl bg-white border border-slate-200 hover:border-yellow-400 hover:bg-yellow-50 transition-all text-center group"
                   >
-                    <div className="w-8 h-8 rounded-xl bg-slate-800 text-slate-300 group-hover:text-green-400 flex items-center justify-center mb-1">
+                    <div className="w-8 h-8 rounded-xl bg-yellow-50 text-slate-500 group-hover:text-[#2D3277] flex items-center justify-center mb-1">
                       <Headphones className="w-4 h-4" />
                     </div>
-                    <span className="text-[11px] font-bold text-slate-200">Soporte</span>
+                    <span className="text-[11px] font-bold text-slate-800">Soporte</span>
                   </a>
 
                   {/* Cobro Fácil QR / TPV */}
@@ -279,48 +345,45 @@ export function SidebarGeneral({
                     href="https://cobrofacil.onrender.com"
                     target="_blank"
                     rel="noreferrer"
-                    className="flex flex-col items-center justify-center p-2.5 rounded-2xl bg-slate-900 border border-slate-800 hover:border-blue-500/50 hover:bg-slate-850 transition-all text-center group"
+                    className="flex flex-col items-center justify-center p-2.5 rounded-2xl bg-white border border-slate-200 hover:border-yellow-400 hover:bg-yellow-50 transition-all text-center group"
                   >
-                    <div className="w-8 h-8 rounded-xl bg-slate-800 text-slate-300 group-hover:text-blue-400 flex items-center justify-center mb-1">
+                    <div className="w-8 h-8 rounded-xl bg-yellow-50 text-slate-500 group-hover:text-[#2D3277] flex items-center justify-center mb-1">
                       <QrCode className="w-4 h-4" />
                     </div>
-                    <span className="text-[11px] font-bold text-slate-200">CobroFácil</span>
+                    <span className="text-[11px] font-bold text-slate-800">CobroFácil</span>
                   </a>
                 </div>
               </div>
 
               {/* Ficha Operativa del Repartidor */}
-              <div className="space-y-2 pt-2 border-t border-slate-800/80">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                  Estado Operativo & Vehículo
+              <div className="space-y-2 pt-3 border-t border-slate-200">
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                  Información del repartidor
                 </span>
 
-                <div className="p-3 rounded-2xl bg-slate-900 border border-slate-800 space-y-2">
+                <div className="p-3 rounded-2xl bg-white border border-slate-200 space-y-2 shadow-sm">
                   <div className="flex items-center justify-between text-xs">
-                    <span className="text-slate-400 flex items-center gap-1.5 font-medium">
-                      <Bike className="w-3.5 h-3.5 text-emerald-400" />
+                    <span className="text-slate-500 flex items-center gap-1.5 font-medium">
+                      <Bike className="w-3.5 h-3.5 text-yellow-700" />
                       Vehículo:
                     </span>
-                    <span className="text-white font-bold">Moto 110cc · Al día</span>
+                    <span className="text-slate-900 font-bold">{driverVehicleLabel}</span>
                   </div>
 
-                  <div className="flex items-center justify-between text-xs border-t border-slate-800/60 pt-2">
-                    <span className="text-slate-400 flex items-center gap-1.5 font-medium">
-                      <MapPin className="w-3.5 h-3.5 text-red-400" />
-                      Zona asignada:
+                  <div className="flex items-center justify-between text-xs border-t border-slate-100 pt-2">
+                    <span className="text-slate-500 flex items-center gap-1.5 font-medium">
+                      <ShieldCheck className="w-3.5 h-3.5 text-yellow-700" />
+                      Estado:
                     </span>
-                    <span className="text-white font-bold">Rosario Centro</span>
+                    <span className="text-slate-900 font-bold">{driverStatusLabel}</span>
                   </div>
 
-                  <div className="flex items-center justify-between text-xs border-t border-slate-800/60 pt-2">
-                    <span className="text-slate-400 flex items-center gap-1.5 font-medium">
-                      <ShieldCheck className="w-3.5 h-3.5 text-blue-400" />
-                      Servidor Cloud:
+                  <div className="flex items-center justify-between text-xs border-t border-slate-100 pt-2">
+                    <span className="text-slate-500 flex items-center gap-1.5 font-medium">
+                      <User className="w-3.5 h-3.5 text-yellow-700" />
+                      ID de repartidor:
                     </span>
-                    <span className="text-emerald-400 font-bold flex items-center gap-1">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                      Conectado
-                    </span>
+                    <span className="text-slate-900 font-bold">{driverIdLabel}</span>
                   </div>
                 </div>
 
@@ -329,18 +392,18 @@ export function SidebarGeneral({
                   href="https://cobrofacil.onrender.com"
                   target="_blank"
                   rel="noreferrer"
-                  className="p-3 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-between text-left hover:border-blue-500/40 transition-all block"
+                  className="p-3 rounded-2xl bg-white border border-slate-200 flex items-center justify-between text-left hover:border-yellow-400 hover:bg-yellow-50 transition-all block"
                 >
                   <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-xl bg-blue-500/20 text-blue-400 flex items-center justify-center">
+                    <div className="w-8 h-8 rounded-xl bg-yellow-100 text-[#2D3277] flex items-center justify-center">
                       <ExternalLink className="w-4 h-4" />
                     </div>
                     <div>
-                      <div className="text-xs font-bold text-white">Cobro Fácil Cloud</div>
-                      <div className="text-[10px] text-slate-400">Base de datos PostgreSQL central</div>
+                      <div className="text-xs font-bold text-slate-900">Cobro Fácil Cloud</div>
+                      <div className="text-[10px] text-slate-500">Base de datos PostgreSQL central</div>
                     </div>
                   </div>
-                  <ChevronRight className="w-4 h-4 text-slate-500" />
+                  <ChevronRight className="w-4 h-4 text-slate-400" />
                 </a>
               </div>
             </div>
@@ -500,7 +563,13 @@ export function SidebarGeneral({
         </div>
 
           {/* 4. Footer con Cerrar Sesión y Actualizar Caché PWA */}
-          <div className="p-4 border-t border-slate-800 bg-slate-900/60 space-y-2">
+          <div
+            className={`p-4 border-t space-y-2 ${
+              isDriverMode
+                ? "border-slate-200 bg-slate-50"
+                : "border-slate-800 bg-slate-900/60"
+            }`}
+          >
             <Button
               type="button"
               variant="outline"
@@ -517,10 +586,18 @@ export function SidebarGeneral({
                   window.location.href = window.location.origin + "/?v=" + Date.now();
                 }
               }}
-              className="w-full h-10 rounded-2xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 hover:text-emerald-200 border border-emerald-500/30 font-bold text-xs flex items-center justify-center gap-2 transition-all"
+              className={`w-full h-10 rounded-2xl font-bold text-xs flex items-center justify-center gap-2 transition-all border ${
+                isDriverMode
+                  ? "bg-yellow-100 hover:bg-yellow-200 text-[#2D3277] border-yellow-300"
+                  : "bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 hover:text-emerald-200 border-emerald-500/30"
+              }`}
               title="Borrar caché guardada offline y recargar última versión v5.9"
             >
-              <RefreshCw className="w-3.5 h-3.5 text-emerald-400" />
+              <RefreshCw
+                className={`w-3.5 h-3.5 ${
+                  isDriverMode ? "text-yellow-800" : "text-emerald-400"
+                }`}
+              />
               <span>Actualizar a v5.9 (Limpiar Caché)</span>
             </Button>
 
@@ -528,9 +605,17 @@ export function SidebarGeneral({
               type="button"
               variant="ghost"
               onClick={handleCloseSession}
-              className="w-full h-11 rounded-2xl bg-red-500/10 hover:bg-red-500/20 text-red-300 hover:text-red-200 border border-red-500/30 font-bold text-xs flex items-center justify-center gap-2 transition-all"
+              className={`w-full h-11 rounded-2xl border font-bold text-xs flex items-center justify-center gap-2 transition-all ${
+                isDriverMode
+                  ? "bg-red-50 hover:bg-red-100 text-red-700 border-red-200"
+                  : "bg-red-500/10 hover:bg-red-500/20 text-red-300 hover:text-red-200 border-red-500/30"
+              }`}
             >
-              <LogOut className="w-4 h-4 text-red-400" />
+              <LogOut
+                className={`w-4 h-4 ${
+                  isDriverMode ? "text-red-600" : "text-red-400"
+                }`}
+              />
               <span>
                 {currentMode === "driver"
                   ? "Cerrar Sesión Repartidor"

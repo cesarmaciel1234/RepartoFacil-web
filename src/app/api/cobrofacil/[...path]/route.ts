@@ -27,6 +27,41 @@ function getProductImage(name: string): string {
   return "https://images.unsplash.com/photo-1544025162-d76694265947?w=600&auto=format&fit=crop&q=80";
 }
 
+function getCompanyLocation(row: Record<string, any>) {
+  const details =
+    row.company_data && typeof row.company_data === "object" ? row.company_data : {};
+  const address = [
+    details.direccion_comercial,
+    details.direccion,
+    details.address,
+    details.domicilio,
+    details.ubicacion,
+  ].find((value) => typeof value === "string" && value.trim());
+  const parseCoordinate = (value: unknown) => {
+    if (
+      (typeof value !== "string" && typeof value !== "number") ||
+      (typeof value === "string" && !value.trim())
+    ) {
+      return undefined;
+    }
+    const coordinate = Number(value);
+    return Number.isFinite(coordinate) ? coordinate : undefined;
+  };
+  const latitude = parseCoordinate(details.latitud ?? details.latitude ?? details.lat);
+  const longitude = parseCoordinate(details.longitud ?? details.longitude ?? details.lng);
+
+  return {
+    address: typeof address === "string" ? address.trim() : "",
+    coordinates:
+      latitude !== undefined &&
+      longitude !== undefined &&
+      Math.abs(latitude) <= 90 &&
+      Math.abs(longitude) <= 180
+        ? { lat: latitude, lng: longitude }
+        : undefined,
+  };
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ path: string[] }> }
@@ -239,7 +274,7 @@ export async function GET(
       let dbEmpresas: any[] = [];
       try {
         dbEmpresas = await queryDb(
-          "SELECT id, nombre, slug, cuit FROM empresas WHERE activo = 1 ORDER BY id ASC"
+          "SELECT id, nombre, slug, cuit, to_jsonb(e) AS company_data FROM empresas e WHERE activo = 1 ORDER BY id ASC"
         );
       } catch (err: any) {
         console.warn("[CobroFacil query empresas warning]:", err.message);
@@ -256,6 +291,7 @@ export async function GET(
         const slug = (row.slug || "").toLowerCase().trim();
         const isMaciel = slug === "maciel" || row.id === 1;
         const isPrueba = slug === "prueba" || row.id === 2;
+        const companyLocation = getCompanyLocation(row);
 
         if (isMaciel) {
           return {
@@ -272,7 +308,10 @@ export async function GET(
             deliveryFee: 1605,
             freeDeliveryThreshold: 35000,
             badges: ["Sincronizado Cobro Fácil TPV", "MACIEL - DESKTOP-7Q2Q4VD", "Mismo precio que en local"],
-            address: "Tucumán 2130, Rosario",
+            address: companyLocation.address || "Tucumán 2130, Rosario",
+            ...(companyLocation.coordinates
+              ? { coordinates: companyLocation.coordinates }
+              : {}),
             phone: "+54 9 341 555-1234",
             cobroFacilApiEndpoint: "https://cobrofacil.onrender.com",
             isOpen: true,
@@ -295,7 +334,10 @@ export async function GET(
             deliveryFee: 1500,
             freeDeliveryThreshold: 20000,
             badges: ["Sandbox Cobro Fácil", "Empresa Prueba", "Entorno Seguro"],
-            address: "Tucumán 2130, Rosario",
+            address: companyLocation.address || "Tucumán 2130, Rosario",
+            ...(companyLocation.coordinates
+              ? { coordinates: companyLocation.coordinates }
+              : {}),
             phone: "+54 9 341 555-9999",
             cobroFacilApiEndpoint: "https://cobrofacil.onrender.com",
             isOpen: true,
@@ -316,7 +358,10 @@ export async function GET(
           deliveryFee: 1500,
           freeDeliveryThreshold: 25000,
           badges: ["Comercio Verificado", "Cobro Fácil PRO", "Sincronizado"],
-          address: "Tucumán 2130, Rosario",
+          address: companyLocation.address,
+          ...(companyLocation.coordinates
+            ? { coordinates: companyLocation.coordinates }
+            : {}),
           phone: "+54 9 341 555-0000",
           cobroFacilApiEndpoint: "https://cobrofacil.onrender.com",
           isOpen: true,

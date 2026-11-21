@@ -19,6 +19,8 @@ export interface CheckoutFormData {
   selectedBranch: string;
   paymentMethod: "efectivo" | "transferencia" | "tarjeta";
   orderNotes: string;
+  deliveryFeeOverride?: number;
+  freeDeliveryThreshold?: number;
   companyId?: string;
   companySlug?: string;
   empresaId?: number;

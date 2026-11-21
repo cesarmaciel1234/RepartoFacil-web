@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { ShoppingBag, Truck, MapPin, Store, ChevronDown, ArrowLeft } from "lucide-react";
 
 interface HeaderTiendaProps {
-  cartItemsCount: number;
+  cartCount: number;
   cartTotal: number;
   deliveryType: "delivery" | "pickup";
   deliveryAddress: string;
@@ -20,7 +20,7 @@ interface HeaderTiendaProps {
 }
 
 export function HeaderTienda({
-  cartItemsCount,
+  cartCount,
   cartTotal,
   deliveryType,
   deliveryAddress,
@@ -73,7 +73,7 @@ export function HeaderTienda({
                 >
                   <MapPin className="w-2.5 h-2.5 text-blue-600 shrink-0" />
                   <span className="truncate max-w-[140px] sm:max-w-[220px]">
-                    {deliveryAddress || "Tucumán 2130, Rosario"}
+                    {deliveryAddress || "Elegí tu dirección"}
                   </span>
                   <ChevronDown className="w-2.5 h-2.5 text-slate-400 group-hover:text-blue-600 shrink-0" />
                 </button>
@@ -92,7 +92,7 @@ export function HeaderTienda({
                 >
                   <MapPin className="w-3.5 h-3.5 text-blue-600 shrink-0" />
                   <span className="font-black text-sm text-slate-900 truncate group-hover:text-blue-600 transition-colors max-w-[160px] sm:max-w-[260px]">
-                    {deliveryAddress || "Tucumán 2130, Rosario"}
+                    {deliveryAddress || "Elegí tu dirección"}
                   </span>
                   <ChevronDown className="w-3.5 h-3.5 text-slate-400 group-hover:text-blue-600 shrink-0" />
                 </button>
@@ -129,9 +129,9 @@ export function HeaderTienda({
           >
             <ShoppingBag className="w-4 h-4" />
             <span className="hidden xs:inline">Carrito</span>
-            {cartItemsCount > 0 && (
+            {cartCount > 0 && (
               <span className="bg-white text-blue-700 text-[10px] font-black w-4 h-4 rounded-full flex items-center justify-center shadow-xs">
-                {cartItemsCount}
+                {cartCount}
               </span>
             )}
             {cartTotal > 0 && (

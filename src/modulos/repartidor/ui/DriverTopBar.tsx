@@ -45,11 +45,11 @@ export function DriverTopBar({
       <button
         type="button"
         onClick={onOpenSidebar}
-        className="pointer-events-auto h-11 w-11 rounded-full bg-slate-900/95 hover:bg-slate-800 border-2 border-emerald-500/50 shadow-2xl shadow-black/80 backdrop-blur-md flex items-center justify-center font-black text-sm text-white active:scale-95 transition-all group"
+        className="pointer-events-auto h-11 w-11 rounded-full bg-[#FFE600] hover:bg-yellow-300 border-2 border-yellow-500 shadow-lg shadow-yellow-500/20 flex items-center justify-center font-black text-sm text-[#2D3277] active:scale-95 transition-all group"
         title="Abrir Menú y Mi Perfil"
       >
         <span className="group-hover:scale-110 transition-transform">{driverInitial}</span>
-        <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-500 border-2 border-slate-950 rounded-full" />
+        <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-500 border-2 border-white rounded-full" />
       </button>
 
       {/* Acciones Derecha: Copiloto IA + Campana Chat Tripartito + Estado Pedido/Perfil */}
@@ -105,13 +105,13 @@ export function DriverTopBar({
           <button
             type="button"
             onClick={onOpenSidebar}
-            className="h-11 px-3 rounded-full bg-slate-900/95 hover:bg-slate-800 border border-slate-700/80 shadow-2xl shadow-black/80 backdrop-blur-md flex items-center gap-2 active:scale-95 transition-all"
+            className="h-11 px-3 rounded-full bg-white hover:bg-yellow-50 border border-yellow-400 shadow-lg shadow-black/10 flex items-center gap-2 active:scale-95 transition-all"
             title="Ver Opciones de Cuenta"
           >
-            <div className="w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-[10px] font-black">
+            <div className="w-6 h-6 rounded-full bg-yellow-100 text-[#2D3277] flex items-center justify-center text-[10px] font-black">
               <Truck className="w-3.5 h-3.5" />
             </div>
-            <span className="text-xs font-bold text-white truncate max-w-[80px] sm:max-w-[120px]">
+            <span className="text-xs font-bold text-slate-900 truncate max-w-[80px] sm:max-w-[120px]">
               {driverProfile.firstName}
             </span>
           </button>

@@ -14,6 +14,7 @@ export interface CompanyStore {
   badges: string[];
   logoUrl?: string;
   address: string;
+  coordinates?: { lat: number; lng: number };
   phone: string;
   cobroFacilApiEndpoint?: string;
   isOpen: boolean;

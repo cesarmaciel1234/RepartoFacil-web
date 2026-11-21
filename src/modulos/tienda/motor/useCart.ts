@@ -6,9 +6,15 @@ import { CartItem } from "./tipos";
 import { useToast } from "@/hooks/use-toast";
 
 const STORAGE_KEY = "rf_cart";
+const DEFAULT_COMPANY_ID = "frigorifico-maciel";
+
+function getCompanyId(product: Product) {
+  return product.companyId || DEFAULT_COMPANY_ID;
+}
 
 export function useCart() {
   const [cart, setCart] = useState<CartItem[]>([]);
+  const [isLoaded, setIsLoaded] = useState(false);
   const { toast } = useToast();
 
   // Carga inicial segura desde localStorage
@@ -21,21 +27,28 @@ export function useCart() {
       }
     } catch (e) {
       console.warn("No se pudo cargar el carrito local:", e);
+    } finally {
+      setIsLoaded(true);
     }
   }, []);
 
   // Persistencia automática ante cambios
   useEffect(() => {
+    if (!isLoaded) return;
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(cart));
     } catch (e) {
       console.warn("No se pudo guardar el carrito local:", e);
     }
-  }, [cart]);
+  }, [cart, isLoaded]);
 
   const addToCart = useCallback((product: Product) => {
     setCart((prev) => {
-      const idx = prev.findIndex((item) => item.product.id === product.id);
+      const idx = prev.findIndex(
+        (item) =>
+          item.product.id === product.id &&
+          getCompanyId(item.product) === getCompanyId(product)
+      );
       if (idx >= 0) {
         const next = [...prev];
         next[idx] = { ...next[idx], quantity: next[idx].quantity + 1 };
@@ -51,11 +64,18 @@ export function useCart() {
     });
   }, [toast]);
 
-  const updateQuantity = useCallback((productId: string, delta: number) => {
+  const updateQuantity = useCallback((
+    productId: string,
+    delta: number,
+    companyId?: string
+  ) => {
     setCart((prev) => {
       return prev
         .map((item) => {
-          if (item.product.id === productId) {
+          if (
+            item.product.id === productId &&
+            (!companyId || getCompanyId(item.product) === companyId)
+          ) {
             const nextQ = item.quantity + delta;
             return nextQ > 0 ? { ...item, quantity: nextQ } : null;
           }
@@ -65,12 +85,22 @@ export function useCart() {
     });
   }, []);
 
-  const removeFromCart = useCallback((productId: string) => {
-    setCart((prev) => prev.filter((item) => item.product.id !== productId));
+  const removeFromCart = useCallback((productId: string, companyId?: string) => {
+    setCart((prev) =>
+      prev.filter(
+        (item) =>
+          item.product.id !== productId ||
+          (!companyId || getCompanyId(item.product) !== companyId)
+      )
+    );
   }, []);
 
   const clearCart = useCallback(() => {
     setCart([]);
+  }, []);
+
+  const clearCompanyCart = useCallback((companyId: string) => {
+    setCart((prev) => prev.filter((item) => getCompanyId(item.product) !== companyId));
   }, []);
 
   const cartTotal = useMemo(() => {
@@ -87,6 +117,7 @@ export function useCart() {
     updateQuantity,
     removeFromCart,
     clearCart,
+    clearCompanyCart,
     cartTotal,
     cartItemsCount,
   };

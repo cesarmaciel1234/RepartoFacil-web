@@ -57,10 +57,17 @@ Invariantes:
 
 - Mantener el acceso abierto al catálogo y al carrito; el login se solicita al
   pagar.
-- El envío gratuito se aplica desde un subtotal de `$35.000`; no debe eliminar
-  la ganancia calculada para el repartidor.
-- `DrawerCarrito`, `ModalCheckout` y `createOrder` deben usar la misma regla de
-  tarifa para la misma dirección y modalidad.
+- El carrito se agrupa por `companyId`. Cada checkout y cada pedido incluyen
+  únicamente los productos del comercio seleccionado; no mezclar tiendas en un
+  mismo pedido.
+- La dirección válida del perfil del cliente es la primera opción en checkout;
+  la dirección seleccionada en la tienda se usa como respaldo.
+- El selector de domicilio requiere GPS y limita el punto marcado a 1 km; este
+  límite no se aplica al listado de comercios, que se ordena por cercanía.
+- El envío gratuito usa el umbral configurado para el comercio y `$35.000` como
+  valor predeterminado. `DrawerCarrito`, `ModalCheckout` y `createOrder` deben
+  mostrar y guardar el mismo costo para el comercio seleccionado.
+- El costo de envío no debe eliminar la ganancia calculada para el repartidor.
 - El cálculo de distancia actual usa aproximaciones para algunas direcciones y
   una distancia predeterminada para el resto; no presentarlo como geocodificación
   GPS precisa.
