@@ -167,6 +167,18 @@ export interface ClientProfile {
   address?: string;
 }
 
+const DEFAULT_CLIENT_PHONE = "+54 9 341 555-1234";
+const DEFAULT_CLIENT_ADDRESSES = new Set(["bv orono 1200 rosario", "tucuman 2130 rosario"]);
+
+function normalizeProfileValue(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
 export function loadClientProfile(): ClientProfile | null {
   if (typeof window === "undefined") return null;
   try {
@@ -188,8 +200,18 @@ export function loadClientProfile(): ClientProfile | null {
       displayName: parsed.displayName || parsed.firstName || "Cliente Frecuente",
       email: parsed.email || "cliente@repartofacil.com",
       role: "Client",
-      phone: parsed.phone || "+54 9 341 555-1234",
-      address: parsed.address || "Tucumán 2130, Rosario",
+      phone:
+        typeof parsed.phone === "string" &&
+        parsed.phone.trim() &&
+        parsed.phone !== DEFAULT_CLIENT_PHONE
+          ? parsed.phone.trim()
+          : undefined,
+      address:
+        typeof parsed.address === "string" &&
+        parsed.address.trim() &&
+        !DEFAULT_CLIENT_ADDRESSES.has(normalizeProfileValue(parsed.address))
+          ? parsed.address.trim()
+          : undefined,
     };
 
     if (!parsed.userId || parsed.id === "cliente-01") {

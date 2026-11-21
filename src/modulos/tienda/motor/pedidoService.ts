@@ -17,10 +17,23 @@ export function loadSavedCustomer(): Partial<CheckoutFormData> {
   try {
     const client = loadClientProfile();
     if (client) {
+      const customerName = client.displayName.trim();
+      const placeholderNames = new Set(["cliente", "cliente frecuente"]);
+      const customerPhone =
+        client.phone === "+54 9 341 555-1234" ? "" : client.phone || "";
+      const deliveryAddress =
+        ["bv. oroño 1200, rosario", "tucumán 2130, rosario"].includes(
+          (client.address || "").trim().toLocaleLowerCase("es-AR")
+        )
+          ? ""
+          : client.address || "";
+
       return {
-        customerName: client.displayName,
-        customerPhone: client.phone || "+54 9 341 555-1234",
-        deliveryAddress: client.address || "Bv. Oroño 1200, Rosario",
+        customerName: placeholderNames.has(customerName.toLocaleLowerCase("es-AR"))
+          ? ""
+          : customerName,
+        customerPhone,
+        deliveryAddress,
         deliveryType: "delivery",
       };
     }

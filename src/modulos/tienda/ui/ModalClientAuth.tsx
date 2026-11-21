@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { User, Lock, ArrowRight, KeyRound, ShoppingBag, AlertCircle, Phone, MapPin } from "lucide-react";
+import { User, Lock, ArrowRight, ShoppingBag, AlertCircle, Phone, MapPin } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useFirestore } from "@/firebase";
 import { doc, setDoc } from "@/firebase/local-firestore";
@@ -28,11 +28,11 @@ export function ModalClientAuth({
   onSuccess,
 }: ModalClientAuthProps) {
   const [tab, setTab] = useState<"login" | "register">("login");
-  const [identifier, setIdentifier] = useState("cliente");
-  const [password, setPassword] = useState("12345678");
+  const [identifier, setIdentifier] = useState("");
+  const [password, setPassword] = useState("");
   const [name, setName] = useState("");
-  const [phone, setPhone] = useState("+54 9 341 555-1234");
-  const [address, setAddress] = useState("Bv. Oroño 1200, Rosario");
+  const [phone, setPhone] = useState("");
+  const [address, setAddress] = useState("");
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -55,37 +55,20 @@ export function ModalClientAuth({
 
     setLoading(true);
     try {
-      let user: any = null;
-      let token = `jwt_token_cliente_${Date.now()}`;
-
-      try {
-        const res = await fetch("/api/auth/login", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email: cleanUser, password }),
-        });
-
-        if (res.ok) {
-          const data = await res.json();
-          user = data.user;
-          token = data.access_token || token;
-        }
-      } catch (netErr) {
-        console.warn("Auth fallback activado por red:", netErr);
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: cleanUser, password }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.detail || "Usuario o contraseña incorrectos");
       }
-
-      // Fallback garantizado para que el cliente nunca quede bloqueado al pagar
-      if (!user) {
-        const namePart = cleanUser === "cliente" ? "Cliente Frecuente" : cleanUser.split("@")[0];
-        const capitalized = namePart.charAt(0).toUpperCase() + namePart.slice(1);
-        user = {
-          id: cleanUser === "cliente" ? "cliente-01" : `cliente-${Date.now()}`,
-          displayName: capitalized,
-          email: cleanUser.includes("@") ? cleanUser : `${cleanUser}@repartofacil.com`,
-          phone: phone || "+54 9 341 555-1234",
-          address: address || "Tucumán 2130, Rosario",
-        };
+      if (!data.user || !data.access_token) {
+        throw new Error("El servicio de autenticación devolvió una respuesta incompleta");
       }
+      const user = data.user;
+      const token = data.access_token;
 
       const userAccountId = user.userId || user.uid || generateUniqueEntityId("usr_cli");
       const clientProfileId = (user.id && user.id !== "cliente-01") ? user.id : generateUniqueEntityId("cli");
@@ -97,8 +80,8 @@ export function ModalClientAuth({
         displayName: user.displayName || user.firstName || "Cliente Frecuente",
         email: user.email,
         role: "Client" as const,
-        phone: user.phone || phone,
-        address: user.address || address,
+        phone: user.phone || phone.trim(),
+        address: user.address || address.trim(),
         createdAt: new Date().toISOString(),
       };
 
@@ -124,7 +107,7 @@ export function ModalClientAuth({
 
       toast({
         title: "¡Sesión iniciada!",
-        description: `Bienvenido, ${clientProfile.displayName}. Tus datos están listos.`,
+        description: "Completá o confirmá tus datos de contacto antes de enviar el pedido.",
       });
 
       if (onSuccess) onSuccess();
@@ -156,51 +139,39 @@ export function ModalClientAuth({
     setLoading(true);
     try {
       const email = identifier.includes("@") ? identifier.trim() : `${identifier.trim()}@repartofacil.com`;
-      let user: any = null;
-      let token = `jwt_token_${Date.now()}`;
-
-      try {
-        const res = await fetch("/api/auth/register", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            email,
-            password,
-            display_name: name.trim(),
-            role: "Client",
-          }),
-        });
-
-        if (res.ok) {
-          const data = await res.json();
-          user = data.user;
-          token = data.access_token || token;
-        }
-      } catch (e) {
-        console.warn("Register network fallback active:", e);
-      }
-
-      if (!user) {
-        user = {
-          id: `cliente-${Date.now()}`,
-          displayName: name.trim(),
+      const res = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
           email,
-          phone,
-          address,
-        };
+          password,
+          display_name: name.trim(),
+          role: "Client",
+          phone: phone.trim(),
+          address: address.trim(),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.detail || "No se pudo crear la cuenta");
       }
-      const userAccountId = generateUniqueEntityId("usr_cli");
-      const clientProfileId = generateUniqueEntityId("cli");
+      if (!data.user || !data.access_token) {
+        throw new Error("El servicio de autenticación devolvió una respuesta incompleta");
+      }
+      const user = data.user;
+      const token = data.access_token;
+      const userAccountId = user.userId || user.uid || generateUniqueEntityId("usr_cli");
+      const clientProfileId = user.id || generateUniqueEntityId("cli");
 
       const clientProfile = {
         id: clientProfileId,
         uid: userAccountId,
         userId: userAccountId,
-        displayName: name.trim(),
+        displayName: user.displayName || name.trim(),
         email,
         role: "Client" as const,
-        phone,
-        address,
+        phone: user.phone || phone.trim(),
+        address: user.address || address.trim(),
         createdAt: new Date().toISOString(),
       };
 
@@ -214,8 +185,8 @@ export function ModalClientAuth({
             displayName: name.trim(),
             email,
             role: "Client",
-            phone,
-            address,
+            phone: phone.trim(),
+            address: address.trim(),
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
           });
@@ -236,13 +207,6 @@ export function ModalClientAuth({
     } finally {
       setLoading(false);
     }
-  };
-
-  const fillDemoCredentials = () => {
-    setTab("login");
-    setIdentifier("cliente");
-    setPassword("12345678");
-    setErrorMsg(null);
   };
 
   return (
@@ -329,15 +293,6 @@ export function ModalClientAuth({
                 />
               </div>
             </div>
-
-            <button
-              type="button"
-              onClick={fillDemoCredentials}
-              className="w-full py-1.5 px-2 rounded-xl bg-slate-950/80 border border-blue-500/30 text-[11px] font-bold text-blue-400 hover:bg-slate-950 flex items-center justify-center gap-1.5 transition-colors"
-            >
-              <KeyRound className="w-3.5 h-3.5 text-blue-400" />
-              <span>Usar cuenta demo: <b>cliente / 12345678</b></span>
-            </button>
 
             <Button
               type="submit"

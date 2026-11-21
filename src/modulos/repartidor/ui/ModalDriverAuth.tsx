@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Truck, ArrowRight, KeyRound, User, Lock, Bike, Car, Sparkles, AlertCircle } from "lucide-react";
+import { Truck, ArrowRight, User, Lock, Bike, Car, Sparkles, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useFirestore } from "@/firebase";
 import { doc, setDoc } from "@/firebase/local-firestore";
@@ -31,8 +31,8 @@ export function ModalDriverAuth({
   onSuccess,
 }: ModalDriverAuthProps) {
   const [tab, setTab] = useState<"login" | "register">("login");
-  const [identifier, setIdentifier] = useState("repartidor");
-  const [password, setPassword] = useState("12345678");
+  const [identifier, setIdentifier] = useState("");
+  const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [vehicle, setVehicle] = useState<"Motorcycle" | "Bicycle" | "Car">("Motorcycle");
   const [loading, setLoading] = useState(false);
@@ -58,35 +58,20 @@ export function ModalDriverAuth({
 
     setLoading(true);
     try {
-      let user: any = null;
-      let token = `jwt_token_driver_${Date.now()}`;
-
-      try {
-        const res = await fetch("/api/auth/login", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email: cleanUser, password }),
-        });
-
-        if (res.ok) {
-          const data = await res.json();
-          user = data.user;
-          token = data.access_token || token;
-        }
-      } catch (netErr) {
-        console.warn("Driver auth fallback activado:", netErr);
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: cleanUser, password }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.detail || "Usuario o contraseña incorrectos");
       }
-
-      // Fallback para repartidor demo
-      if (!user) {
-        const isDemo = cleanUser === "repartidor" || cleanUser.includes("repartidor");
-        user = {
-          id: isDemo ? "repartidor-01" : `driver-${Date.now()}`,
-          displayName: isDemo ? "Lucas Motomensajero" : cleanUser.split("@")[0],
-          email: cleanUser.includes("@") ? cleanUser : `${cleanUser}@repartofacil.com`,
-          role: "Driver",
-        };
+      if (!data.user || !data.access_token) {
+        throw new Error("El servicio de autenticación devolvió una respuesta incompleta");
       }
+      const user = data.user;
+      const token = data.access_token;
 
       // Crear objeto de perfil con rol Driver
       const driverId = user.id || user.uid || "repartidor-01";
@@ -173,6 +158,9 @@ export function ModalDriverAuth({
 
       const data = await res.json();
       const user = data.user;
+      if (!user || !data.access_token) {
+        throw new Error("El servicio de autenticación devolvió una respuesta incompleta");
+      }
       const driverId = user.id || `driver-${Date.now().toString(36)}`;
 
       const profile: DriverProfile = {
@@ -217,13 +205,6 @@ export function ModalDriverAuth({
     } finally {
       setLoading(false);
     }
-  };
-
-  const fillDemoCredentials = () => {
-    setTab("login");
-    setIdentifier("repartidor");
-    setPassword("12345678");
-    setErrorMsg(null);
   };
 
   return (
@@ -311,16 +292,6 @@ export function ModalDriverAuth({
                 />
               </div>
             </div>
-
-            {/* Botón de acceso rápido demo */}
-            <button
-              type="button"
-              onClick={fillDemoCredentials}
-              className="w-full py-1.5 px-2 rounded-xl bg-slate-950/80 border border-emerald-500/30 text-[11px] font-bold text-emerald-400 hover:bg-slate-950 flex items-center justify-center gap-1.5 transition-colors"
-            >
-              <KeyRound className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Usar cuenta demo: <b>repartidor / 12345678</b></span>
-            </button>
 
             <Button
               type="submit"

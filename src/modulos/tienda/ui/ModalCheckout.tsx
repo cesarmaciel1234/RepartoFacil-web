@@ -64,6 +64,8 @@ export function ModalCheckout({
 
   // Cargar datos previos si existen
   useEffect(() => {
+    if (!isOpen) return;
+
     const saved = loadSavedCustomer();
     if (saved) {
       setForm((prev) => ({
@@ -74,13 +76,8 @@ export function ModalCheckout({
         deliveryType: saved.deliveryType || prev.deliveryType,
         selectedBranch: saved.selectedBranch || prev.selectedBranch,
       }));
-    } else if (defaultDeliveryAddress) {
-      setForm((prev) => ({
-        ...prev,
-        deliveryAddress: defaultDeliveryAddress,
-      }));
     }
-  }, [defaultDeliveryAddress]);
+  }, [defaultDeliveryAddress, isOpen]);
 
   // Cálculo de tarifa estándar Uber / PedidosYa
   const tarifa = useMemo(

@@ -3,7 +3,13 @@
 import React from "react";
 import type { CartItem } from "../motor/tipos";
 import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { ShoppingBag, Plus, Minus, Trash2, ArrowRight, ShieldCheck, Truck } from "lucide-react";
 import { calcularTarifaEnvio } from "../motor/tarifaUberService";
 
@@ -60,9 +66,9 @@ export function DrawerCarrito({
             </div>
             <div>
               <SheetTitle className="text-base font-black text-slate-900">Tu pedido</SheetTitle>
-              <p className="text-[11px] font-medium text-slate-500">
+              <SheetDescription className="text-[11px] font-medium text-slate-500">
                 {itemsCount} {itemsCount === 1 ? "producto" : "productos"} en tu carrito
-              </p>
+              </SheetDescription>
             </div>
           </div>
           {cart.length > 0 && (
