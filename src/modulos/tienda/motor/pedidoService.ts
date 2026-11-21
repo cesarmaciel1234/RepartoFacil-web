@@ -6,6 +6,14 @@ import { loadClientProfile, getOrCreateActiveClientIdentity } from "@/modulos/re
 
 const ORDERS_STORAGE_KEY = "rf_orders_history";
 const CUSTOMER_STORAGE_KEY = "rf_customer_data";
+const PLACEHOLDER_CUSTOMER_NAMES = new Set(["cliente", "cliente frecuente"]);
+const PLACEHOLDER_CUSTOMER_PHONE = "+54 9 341 555-1234";
+const PLACEHOLDER_CUSTOMER_ADDRESSES = new Set([
+  "bv. oroño 1200, rosario",
+  "bv orono 1200 rosario",
+  "tucumán 2130, rosario",
+  "tucuman 2130, rosario",
+]);
 const PAYMENT_METHOD_MAP: Record<CheckoutFormData["paymentMethod"], OrderData["paymentMethod"]> = {
   efectivo: "cash",
   transferencia: "transfer",
@@ -18,18 +26,17 @@ export function loadSavedCustomer(): Partial<CheckoutFormData> {
     const client = loadClientProfile();
     if (client) {
       const customerName = client.displayName.trim();
-      const placeholderNames = new Set(["cliente", "cliente frecuente"]);
       const customerPhone =
-        client.phone === "+54 9 341 555-1234" ? "" : client.phone || "";
+        client.phone === PLACEHOLDER_CUSTOMER_PHONE ? "" : client.phone || "";
       const deliveryAddress =
-        ["bv. oroño 1200, rosario", "tucumán 2130, rosario"].includes(
+        PLACEHOLDER_CUSTOMER_ADDRESSES.has(
           (client.address || "").trim().toLocaleLowerCase("es-AR")
         )
           ? ""
           : client.address || "";
 
       return {
-        customerName: placeholderNames.has(customerName.toLocaleLowerCase("es-AR"))
+        customerName: PLACEHOLDER_CUSTOMER_NAMES.has(customerName.toLocaleLowerCase("es-AR"))
           ? ""
           : customerName,
         customerPhone,
@@ -39,7 +46,25 @@ export function loadSavedCustomer(): Partial<CheckoutFormData> {
     }
 
     const raw = localStorage.getItem(CUSTOMER_STORAGE_KEY);
-    return raw ? JSON.parse(raw) : {};
+    if (!raw) return {};
+
+    const saved = JSON.parse(raw) as Partial<CheckoutFormData>;
+    const customerName = saved.customerName?.trim() || "";
+    const customerPhone = saved.customerPhone?.trim() || "";
+    const deliveryAddress = saved.deliveryAddress?.trim() || "";
+    return {
+      ...saved,
+      customerName: PLACEHOLDER_CUSTOMER_NAMES.has(customerName.toLocaleLowerCase("es-AR"))
+        ? ""
+        : customerName,
+      customerPhone:
+        customerPhone === PLACEHOLDER_CUSTOMER_PHONE ? "" : customerPhone,
+      deliveryAddress: PLACEHOLDER_CUSTOMER_ADDRESSES.has(
+        deliveryAddress.toLocaleLowerCase("es-AR")
+      )
+        ? ""
+        : deliveryAddress,
+    };
   } catch {
     return {};
   }

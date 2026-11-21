@@ -332,7 +332,6 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
         onOpenChange={setIsCheckoutOpen}
         cartTotal={cartTotal}
         isSubmitting={isSubmittingOrder}
-        defaultDeliveryAddress={deliveryAddress}
         onConfirmOrder={handleConfirmOrder}
         orderConfirmed={orderConfirmed}
         onCloseConfirmed={() => setOrderConfirmed(null)}
