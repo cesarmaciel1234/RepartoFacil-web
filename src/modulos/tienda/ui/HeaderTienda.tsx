@@ -59,25 +59,9 @@ export function HeaderTienda({
           {/* Selector de Dirección (Home) o Nombre del Comercio (Dentro de la tienda) */}
           <div className="min-w-0">
             {selectedCompanyName ? (
-              <div>
-                <div className="flex items-center gap-1 text-left">
-                  <span className="font-black text-sm text-slate-900 truncate max-w-[170px] sm:max-w-[280px]">
-                    {selectedCompanyName}
-                  </span>
-                </div>
-                <button
-                  type="button"
-                  onClick={onChangeAddress}
-                  className="text-[11px] text-slate-500 hover:text-blue-600 font-semibold flex items-center gap-1 truncate group cursor-pointer transition-colors"
-                  title="Cambiar dirección de entrega"
-                >
-                  <MapPin className="w-2.5 h-2.5 text-blue-600 shrink-0" />
-                  <span className="truncate max-w-[140px] sm:max-w-[220px]">
-                    {deliveryAddress || "Elegí tu dirección"}
-                  </span>
-                  <ChevronDown className="w-2.5 h-2.5 text-slate-400 group-hover:text-blue-600 shrink-0" />
-                </button>
-              </div>
+              <span className="block max-w-[170px] truncate text-sm font-black text-slate-900 sm:max-w-[280px]">
+                {selectedCompanyName}
+              </span>
             ) : (
               /* En la Home: muestra la dirección de entrega limpia en fondo blanco */
               <div>

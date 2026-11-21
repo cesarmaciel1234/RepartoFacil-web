@@ -16,7 +16,7 @@ checkout y seguimiento de pedidos.
 ---
 
 ## 2. Componentes Principales
-- `HeaderTienda.tsx`: Dirección de entrega, carrito y acceso al seguimiento en vivo.
+- `HeaderTienda.tsx`: Dirección de entrega en las vistas de comercios, nombre del local en su catálogo, carrito y seguimiento en vivo.
 - `NavegacionTienda.tsx`: Barra inferior para Inicio, Súper, Promociones, Pedidos y Perfil.
 - `VistaMercadosEmpresas.tsx`: Descubrimiento de comercios y tarjetas de productos en búsqueda.
 - `FiltroCategorias.tsx` y `TarjetaProducto.tsx`: Filtros de catálogo y acciones de producto.
