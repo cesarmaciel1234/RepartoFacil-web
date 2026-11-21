@@ -8,6 +8,13 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { haversineKm } from "../motor/tarifaUberService";
 import {
+  isCompanyCoordinates,
+  normalizeCompanyAddress,
+  readCompanyCoordinatesCache,
+  saveCompanyCoordinatesCache,
+  type CompanyCoordinates,
+} from "../motor/ubicacionComercio";
+import {
   Search,
   Store,
   Star,
@@ -36,61 +43,7 @@ interface VistaMercadosEmpresasProps {
   deliveryCoordinates?: { lat: number; lng: number } | null;
 }
 
-interface CompanyCoordinates {
-  lat: number;
-  lng: number;
-}
-
-const COMPANY_COORDINATES_CACHE_KEY = "rf_company_coordinates_v1";
 let lastCompanyGeocodeStartedAt = 0;
-
-function normalizeAddress(address: string) {
-  return address
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .replace(/[^\w\s]/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-function isCompanyCoordinates(value: unknown): value is CompanyCoordinates {
-  if (!value || typeof value !== "object") return false;
-  const coordinates = value as { lat?: unknown; lng?: unknown };
-  return (
-    typeof coordinates.lat === "number" &&
-    typeof coordinates.lng === "number" &&
-    Number.isFinite(coordinates.lat) &&
-    Number.isFinite(coordinates.lng) &&
-    Math.abs(coordinates.lat) <= 90 &&
-    Math.abs(coordinates.lng) <= 180
-  );
-}
-
-function readCompanyCoordinatesCache(): Record<string, CompanyCoordinates> {
-  try {
-    const raw = localStorage.getItem(COMPANY_COORDINATES_CACHE_KEY);
-    if (!raw) return {};
-    const parsed: unknown = JSON.parse(raw);
-    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
-    return Object.fromEntries(
-      Object.entries(parsed).filter((entry): entry is [string, CompanyCoordinates] =>
-        isCompanyCoordinates(entry[1])
-      )
-    );
-  } catch (error) {
-    console.warn("No se pudo leer la caché de ubicaciones comerciales:", error);
-    return {};
-  }
-}
-
-function saveCompanyCoordinatesCache(cache: Record<string, CompanyCoordinates>) {
-  try {
-    localStorage.setItem(COMPANY_COORDINATES_CACHE_KEY, JSON.stringify(cache));
-  } catch (error) {
-    console.warn("No se pudo guardar la caché de ubicaciones comerciales:", error);
-  }
-}
 
 export function VistaMercadosEmpresas({
   companies,
@@ -128,7 +81,7 @@ export function VistaMercadosEmpresas({
       const addresses = new Map<string, string>();
 
       for (const company of companies) {
-        const addressKey = normalizeAddress(company.address || "");
+        const addressKey = normalizeCompanyAddress(company.address || "");
         if (isCompanyCoordinates(company.coordinates)) {
           companyLocations.set(company.id, company.coordinates);
         } else if (addressKey && isCompanyCoordinates(cache[addressKey])) {
@@ -191,7 +144,7 @@ export function VistaMercadosEmpresas({
           const coordinates = { lat: latitude, lng: longitude };
           cache[addressKey] = coordinates;
           for (const company of companies) {
-            if (normalizeAddress(company.address || "") === addressKey) {
+            if (normalizeCompanyAddress(company.address || "") === addressKey) {
               companyLocations.set(company.id, coordinates);
             }
           }

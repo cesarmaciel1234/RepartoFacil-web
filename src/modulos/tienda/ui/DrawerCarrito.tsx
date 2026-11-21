@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import type { CompanyStore } from "@/data/mockCompanies";
 import type { CartItem } from "../motor/tipos";
 import { Button } from "@/components/ui/button";
@@ -17,13 +17,20 @@ import {
   Bike,
   Clock3,
   Minus,
+  MapPin,
   Plus,
   ShoppingBag,
   ShieldCheck,
   Trash2,
   Truck,
 } from "lucide-react";
-import { calcularTarifaEnvio } from "../motor/tarifaUberService";
+import { calcularTarifaEnvio, haversineKm } from "../motor/tarifaUberService";
+import {
+  COMPANY_COORDINATES_UPDATED_EVENT,
+  isCompanyCoordinates,
+  normalizeCompanyAddress,
+  readCompanyCoordinatesCache,
+} from "../motor/ubicacionComercio";
 
 const FREE_DELIVERY_THRESHOLD = 35000;
 
@@ -43,6 +50,7 @@ interface DrawerCarritoProps {
   activeCompanyCartId: string | null;
   deliveryType: "delivery" | "pickup";
   deliveryAddress: string;
+  deliveryCoordinates: { lat: number; lng: number } | null;
   onSelectCompanyCart: (companyId: string | null) => void;
   onUpdateQuantity: (productId: string, delta: number, companyId: string) => void;
   onRemoveItem: (productId: string, companyId: string) => void;
@@ -59,6 +67,7 @@ export function DrawerCarrito({
   activeCompanyCartId,
   deliveryType,
   deliveryAddress,
+  deliveryCoordinates,
   onSelectCompanyCart,
   onUpdateQuantity,
   onRemoveItem,
@@ -67,6 +76,7 @@ export function DrawerCarrito({
   onProceedToPayment,
   onContinueShopping,
 }: DrawerCarritoProps) {
+  const [companyDistances, setCompanyDistances] = useState<Record<string, number | null>>({});
   const formatMoney = (value: number) => "$" + value.toLocaleString("es-AR");
   const activeCart = companyCarts.find(
     (companyCart) => companyCart.companyId === activeCompanyCartId
@@ -83,6 +93,50 @@ export function DrawerCarrito({
         : activeCart?.company?.deliveryFee ?? calculatedDeliveryFee
       : 0;
   const finalTotal = activeTotal + deliveryFee;
+
+  useEffect(() => {
+    if (!deliveryCoordinates) {
+      setCompanyDistances({});
+      return;
+    }
+
+    const updateCompanyDistances = () => {
+      const cache = readCompanyCoordinatesCache();
+      const distances: Record<string, number | null> = {};
+
+      for (const companyCart of companyCarts) {
+        const company = companyCart.company;
+        const addressKey = normalizeCompanyAddress(company?.address || "");
+        const coordinates = isCompanyCoordinates(company?.coordinates)
+          ? company.coordinates
+          : cache[addressKey];
+        distances[companyCart.companyId] = coordinates
+          ? haversineKm(
+              deliveryCoordinates.lat,
+              deliveryCoordinates.lng,
+              coordinates.lat,
+              coordinates.lng
+            )
+          : null;
+      }
+
+      setCompanyDistances(distances);
+    };
+
+    updateCompanyDistances();
+    if (!isOpen) return;
+
+    window.addEventListener(COMPANY_COORDINATES_UPDATED_EVENT, updateCompanyDistances);
+    return () =>
+      window.removeEventListener(COMPANY_COORDINATES_UPDATED_EVENT, updateCompanyDistances);
+  }, [companyCarts, deliveryCoordinates?.lat, deliveryCoordinates?.lng, isOpen]);
+
+  const distanceLabel = (companyId: string) => {
+    if (!deliveryCoordinates) return "Elegí tu ubicación";
+    const distance = companyDistances[companyId];
+    if (distance !== null && distance !== undefined) return `~${distance.toFixed(1)} km`;
+    return "Distancia no disponible";
+  };
 
   return (
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
@@ -206,6 +260,13 @@ export function DrawerCarrito({
                         ? formatMoney(companyCart.company.deliveryFee)
                         : "Envío calculado al pagar"}
                     </span>
+                    <span
+                      className="flex items-center gap-1"
+                      title="Distancia aproximada desde tu ubicación"
+                    >
+                      <MapPin className="h-3.5 w-3.5 text-blue-600" />
+                      {distanceLabel(companyCart.companyId)}
+                    </span>
                   </div>
 
                   <div className="mt-2 flex justify-end">
@@ -248,6 +309,13 @@ export function DrawerCarrito({
                           {activeCart.company.deliveryTimeMax} min
                         </span>
                       )}
+                      <span
+                        className="flex items-center gap-1"
+                        title="Distancia aproximada desde tu ubicación"
+                      >
+                        <MapPin className="h-3.5 w-3.5 text-blue-600" />
+                        {distanceLabel(activeCart.companyId)}
+                      </span>
                       <span className="flex items-center gap-1">
                         <Bike className="h-3.5 w-3.5 text-slate-400" />
                         {deliveryFee === 0 ? "Envío gratis" : formatMoney(deliveryFee)}

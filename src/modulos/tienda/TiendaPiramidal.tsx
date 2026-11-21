@@ -486,6 +486,7 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
         activeCompanyCartId={activeCartCompanyId}
         deliveryType="delivery"
         deliveryAddress={deliveryAddress}
+        deliveryCoordinates={deliveryCoordinates}
         onSelectCompanyCart={setActiveCartCompanyId}
         onUpdateQuantity={updateDrawerQuantity}
         onRemoveItem={removeDrawerItem}
