@@ -591,14 +591,14 @@ export function SidebarGeneral({
                   ? "bg-yellow-100 hover:bg-yellow-200 text-[#2D3277] border-yellow-300"
                   : "bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 hover:text-emerald-200 border-emerald-500/30"
               }`}
-              title="Borrar caché guardada offline y recargar última versión v5.9"
+              title="Borrar caché guardada offline y recargar última versión v5.10"
             >
               <RefreshCw
                 className={`w-3.5 h-3.5 ${
                   isDriverMode ? "text-yellow-800" : "text-emerald-400"
                 }`}
               />
-              <span>Actualizar a v5.9 (Limpiar Caché)</span>
+              <span>Actualizar a v5.10 (Limpiar Caché)</span>
             </Button>
 
             <Button

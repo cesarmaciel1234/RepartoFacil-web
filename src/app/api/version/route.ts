@@ -5,8 +5,8 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   return NextResponse.json({
     app: "Reparto Fácil",
-    version: "5.9",
-    release: "v5.9-white-blue-order-chat",
+    version: "5.10",
+    release: "v5.10-driver-yellow-packed-flow",
     status: "online",
     timestamp: new Date().toISOString(),
     features: [
@@ -16,6 +16,8 @@ export async function GET() {
       "Sincronización automática de inventario TPV Cobro Fácil",
       "Chat tripartito y telemetría de repartidor",
       "Chat de pedidos activos integrado y carrito blanco/azul",
+      "Perfil de repartidor blanco y amarillo",
+      "Pedidos embalados visibles en la ruta del repartidor asignado",
     ],
   });
 }
