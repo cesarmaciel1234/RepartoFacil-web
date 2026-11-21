@@ -134,7 +134,17 @@ export async function createOrder(
   // 1. Guardar datos de cliente para compras futuras
   saveCustomerData(form);
 
-  // 2. Persistencia en historial local (alimenta el radar del repartidor)
+  // 2. Persistencia central: no confirmar un pedido que no llegó al servidor
+  const response = await fetch("/api/orders", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(newOrder),
+  });
+  if (!response.ok) {
+    throw new Error(`No se pudo registrar el pedido en el servidor (HTTP ${response.status}).`);
+  }
+
+  // 3. Persistencia en historial local (alimenta la vista inmediata del comprador)
   try {
     const existing: any[] = JSON.parse(localStorage.getItem(ORDERS_STORAGE_KEY) || "[]");
     existing.unshift(newOrder);
@@ -146,21 +156,7 @@ export async function createOrder(
     console.warn("Error guardando en historial local:", e);
   }
 
-  // 3. Persistencia en base de datos PostgreSQL de Cobro Fácil (crm-libro-local)
-  try {
-    const res = await fetch("/api/orders", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(newOrder),
-    });
-    if (!res.ok) {
-      console.warn("Aviso guardando orden en PostgreSQL:", res.status);
-    }
-  } catch (err) {
-    console.warn("Error enviando pedido a /api/orders:", err);
-  }
-
-  // 4. Persistencia en Firestore / backend si está activo
+  // 4. Persistencia adicional en Firestore / backend si está activo
   try {
     if (firestoreInstance) {
       addDocumentNonBlocking(collection(firestoreInstance, "orders"), newOrder);

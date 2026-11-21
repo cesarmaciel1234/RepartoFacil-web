@@ -29,6 +29,7 @@ import {
 import { useFirestore } from "@/firebase";
 import { ShoppingBag, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
 
 interface TiendaPiramidalProps {
   onSwitchToDriver: () => void;
@@ -36,6 +37,7 @@ interface TiendaPiramidalProps {
 
 export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
   const firestore = useFirestore();
+  const { toast } = useToast();
   const {
     cart,
     addToCart,
@@ -168,6 +170,14 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
       setIsCheckoutOpen(false);
       setOrderConfirmed(newOrder);
       clearCart();
+    } catch (error) {
+      console.error("No se pudo confirmar el pedido:", error);
+      toast({
+        title: "No se pudo registrar el pedido",
+        description:
+          "Tu carrito sigue guardado. Estamos teniendo un problema al registrar pedidos; intentá nuevamente más tarde.",
+        variant: "destructive",
+      });
     } finally {
       setIsSubmittingOrder(false);
     }

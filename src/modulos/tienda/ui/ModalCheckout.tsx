@@ -35,7 +35,7 @@ interface ModalCheckoutProps {
   cartTotal: number;
   isSubmitting: boolean;
   defaultDeliveryAddress?: string;
-  onConfirmOrder: (formData: CheckoutFormData) => void;
+  onConfirmOrder: (formData: CheckoutFormData) => Promise<void>;
   orderConfirmed: OrderData | null;
   onCloseConfirmed: () => void;
 }
@@ -97,9 +97,9 @@ export function ModalCheckout({
 
   const finalTotal = cartTotal + deliveryFee;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    onConfirmOrder(form);
+    await onConfirmOrder(form);
   };
 
   return (
