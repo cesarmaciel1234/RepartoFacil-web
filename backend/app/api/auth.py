@@ -193,4 +193,9 @@ def login(request: LoginRequest, db: Session = Depends(get_db)):
 
 @router.get("/me")
 def me(user: LocalUser = Depends(get_current_user)):
-    return user_data(user)
+    try:
+        return user_data(user)
+    except Exception as e:
+        import logging
+        logging.error(f"Error en /api/auth/me: {e}")
+        raise HTTPException(status_code=500, detail="Error interno del servidor")

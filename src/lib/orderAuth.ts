@@ -24,7 +24,7 @@ export async function authenticateOrderUser(
     const response = await fetch(`${backend}/api/auth/me`, {
       headers: { Authorization: authorization },
       cache: "no-store",
-      signal: AbortSignal.timeout(10000),
+      signal: AbortSignal.timeout(30000),
     });
     if (response.status === 401 || response.status === 403) {
       return { response: NextResponse.json({ error: "La sesión no es válida o expiró." }, { status: 401 }) };
