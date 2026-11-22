@@ -1,6 +1,6 @@
 // Se conserva la caché durante la migración: las versiones antiguas eliminan las demás.
 const CACHE_NAME = "repartofacil-v5.10";
-const RELEASE = "v5.16-mensajes-pedidos";
+const RELEASE = "v5.17-empresa-resenas";
 
 const STATIC_PRECACHE = [
   "/manifest.webmanifest",

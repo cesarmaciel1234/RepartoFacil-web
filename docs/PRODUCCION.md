@@ -118,6 +118,30 @@ anteriores, porque no existe un registro histórico de lectura. La lectura se
 guarda por cuenta y pedido al abrir el chat visible; los mensajes posteriores
 siguen pendientes. Las conversaciones se paginan de 50 en 50.
 
+### Ficha de empresa y reseñas
+
+Antes de desplegar cualquiera de los dos clientes, aplicar y verificar
+`scripts/repartofacil-empresas-resenas.sql` en la base PostgreSQL compartida.
+No usar la base de producción para datos de prueba. El CRM requiere esas tablas
+para la ficha; la web las consulta para el catálogo y las reseñas.
+
+La ficha es pública y se guarda por `empresa_id`, separada de la configuración
+privada del CRM. Solo el administrador de la empresa de la sesión puede editarla.
+Se comparte una dirección y un horario informativo por empresa; el horario no
+altera automáticamente la disponibilidad. El WhatsApp usa código de país y solo
+números. Si cambia la dirección sin cambiar las coordenadas, estas se descartan.
+Los comercios se actualizan cada 60 segundos mientras la tienda está abierta,
+al volver a primer plano y al reconectar. Si falla la red, se informa que la
+copia puede estar desactualizada. Los comercios de prueba excluidos por el
+catálogo existente continúan excluidos.
+
+Un comprador autenticado puede dejar una reseña pública de 1 a 5 estrellas por
+cada pedido propio entregado con empresa identificada. La inserción y la
+restricción de una reseña por pedido se verifican en PostgreSQL. El promedio
+se calcula desde reseñas reales; las listas muestran hasta 50, sin datos de
+identidad del comprador. Las reseñas existentes no pueden editarse ni borrarse
+desde esta versión.
+
 El proxy de autenticación espera hasta 60 segundos para permitir el arranque en
 frío del backend; no reintenta registros automáticamente. Esto no evita la pérdida
 de cuentas en SQLite efímero. En el perfil del comprador y el menú del repartidor,

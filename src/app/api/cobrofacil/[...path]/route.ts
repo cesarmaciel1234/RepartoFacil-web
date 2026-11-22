@@ -288,7 +288,15 @@ export async function GET(
   if (pathStr === "companies") {
     try {
       const dbEmpresas = await queryDb(
-        "SELECT id, nombre, slug, cuit, to_jsonb(e) AS company_data FROM empresas e WHERE activo = 1 ORDER BY id ASC"
+        `SELECT e.id, e.nombre, e.slug, e.cuit, to_jsonb(e) AS company_data,
+          to_jsonb(p) AS public_profile, r.promedio, r.cantidad
+         FROM public.empresas e
+         LEFT JOIN public.repartofacil_empresa_perfiles p ON p.empresa_id = e.id
+         LEFT JOIN (
+           SELECT empresa_id, AVG(estrellas) AS promedio, COUNT(*) AS cantidad
+           FROM public.repartofacil_resenas GROUP BY empresa_id
+         ) r ON r.empresa_id = e.id
+         WHERE e.activo = 1 ORDER BY e.id ASC`
       );
 
       let sucursales: any[] = [];
@@ -324,9 +332,13 @@ export async function GET(
         .map((row: any) => {
           const details: Record<string, any> =
             row.company_data && typeof row.company_data === "object" ? row.company_data : {};
+          const profile: Record<string, unknown> =
+            row.public_profile && typeof row.public_profile === "object" ? row.public_profile : {};
           const slug = (row.slug || "").toLowerCase().trim();
           const isMaciel = slug === "maciel" || Number(row.id) === 1;
-          const companyLocation = getCompanyLocation(row);
+          const companyLocation = getCompanyLocation({
+            company_data: Object.keys(profile).length ? profile : details,
+          });
 
           // Los ids históricos se conservan porque los pedidos ya guardados los referencian
           const id = isMaciel
@@ -343,19 +355,19 @@ export async function GET(
           const categorySlug = (CATEGORY_SLUGS as readonly string[]).includes(rawSlug)
             ? rawSlug
             : inferCategorySlug(`${category} ${row.nombre || ""}`);
-          const rating = Number(pick(details, ["rating", "calificacion", "puntuacion"]));
+          const rating = Number(row.promedio);
           const badges = pick(details, ["badges", "etiquetas", "promociones"]);
           const isOpenValue = pick(details, ["abierto", "is_open", "isOpen"]);
 
           return {
             id,
-            name: String(pick(details, ["nombre_fantasia", "nombre_comercial"]) || row.nombre || `Empresa ${row.id}`),
+            name: String(profile.nombre || pick(details, ["nombre_fantasia", "nombre_comercial"]) || row.nombre || `Empresa ${row.id}`),
             slug: slug || String(row.id),
             empresa_id: row.id,
             category,
             categorySlug,
             rating: Number.isFinite(rating) && rating > 0 ? rating : 0,
-            ratingCount: toNumber(pick(details, ["rating_count", "cantidad_calificaciones"]), 0),
+            ratingCount: toNumber(row.cantidad, 0),
             deliveryTimeMin: toNumber(pick(details, ["tiempo_entrega_min", "delivery_time_min"]), 20),
             deliveryTimeMax: toNumber(pick(details, ["tiempo_entrega_max", "delivery_time_max"]), 40),
             deliveryFee: toNumber(pick(details, ["costo_envio", "delivery_fee"]), 1500),
@@ -369,7 +381,9 @@ export async function GET(
             logoUrl: pick(details, ["logo_url", "logo", "logoUrl", "imagen"]) || undefined,
             address: companyLocation.address,
             ...(companyLocation.coordinates ? { coordinates: companyLocation.coordinates } : {}),
-            phone: String(pick(details, ["telefono", "celular", "whatsapp", "phone"]) || ""),
+            phone: String(Object.keys(profile).length ? profile.whatsapp || "" : pick(details, ["telefono", "celular", "whatsapp", "phone"]) || ""),
+            description: String(profile.descripcion || ""),
+            openingHours: String(profile.horario || ""),
             cobroFacilApiEndpoint: "https://cobrofacil.onrender.com",
             isOpen:
               isOpenValue === undefined

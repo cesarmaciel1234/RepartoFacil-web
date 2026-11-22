@@ -25,7 +25,13 @@ checkout y seguimiento de pedidos.
 - `DrawerCarrito.tsx`, `ModalCheckout.tsx`: Revisión del carrito y confirmación de compra.
 - `ModalCambiarDireccion.tsx`, `ModalClientAuth.tsx`: Flujos de dirección e identidad del comprador.
 - `CentroPedidosClienteSheet.tsx`: Detalle y seguimiento de pedidos activos.
-- `MensajesClienteSheet.tsx`: Conversaciones del comprador, incluidas las finalizadas.
+- `MensajesClienteSheet.tsx`: Lista y chat del comprador en una misma ventana;
+  al volver conserva la lista, la paginación y su posición de desplazamiento.
+- `ResenaPedidoDialog.tsx`: consulta y registra una reseña pública para un pedido
+  entregado, validada por el servidor para la cuenta autenticada.
+
+En la pantalla de perfil, el acceso de repartidor se muestra cuando no hay una
+sesión de comprador activa; la tienda sigue disponible para navegar sin sesión.
 
 ---
 

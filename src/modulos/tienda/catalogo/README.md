@@ -14,12 +14,13 @@ Inicio, Súper, Promociones y el catálogo de un comercio.
   de comercios y productos, con su fecha de actualización.
 - `pantallas/CatalogoEmpresaTienda.tsx`: presenta el catálogo del comercio
   seleccionado y emite acciones por callbacks.
+- `pantallas/ResenasComercio.tsx`: consulta y muestra reseñas públicas verificadas.
 
 ## Contrato
 
 El hook recibe comercio, categoría, texto de búsqueda y coordenadas de entrega.
-Retorna comercios/productos y resultados derivados. La pantalla no realiza
-peticiones ni decide cómo se sincroniza el catálogo.
+Retorna comercios/productos y resultados derivados. La pantalla no decide cómo
+se sincroniza el catálogo; la ventana de reseñas consulta su propia lista.
 
 Al agregar una capacidad de catálogo, mantener su obtención/transformación en el
 hook y su presentación en la pantalla; la selección de navegación permanece en
@@ -31,3 +32,7 @@ parcial de productos no reemplaza la última copia completa. Si el almacenamient
 falla, se informa en pantalla. El navegador no garantiza actualización cuando la
 aplicación está cerrada; las imágenes solo estarán disponibles offline si el
 service worker pudo guardarlas previamente.
+
+Los datos públicos de la ficha llegan de Cobro Fácil cada 60 segundos, al
+reconectar y al volver a primer plano. Una ficha abierta se reemplaza al recibir
+el catálogo nuevo. El horario es informativo, no controla la apertura.

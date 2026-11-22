@@ -8,6 +8,7 @@ import type { CartItem } from "../../motor/tipos";
 import { isCompanyCoordinates } from "../../motor/ubicacionComercio";
 import { FiltroCategorias } from "../../ui/FiltroCategorias";
 import { TarjetaProducto } from "../../ui/TarjetaProducto";
+import { ResenasComercio } from "./ResenasComercio";
 import {
   ArrowLeft,
   Bike,
@@ -59,6 +60,7 @@ export function CatalogoEmpresaTienda({
   onBackToStores,
 }: CatalogoEmpresaTiendaProps) {
   const [linkCopied, setLinkCopied] = useState(false);
+  const [reviewsOpen, setReviewsOpen] = useState(false);
   const mapQuery = isCompanyCoordinates(company.coordinates)
     ? `${company.coordinates.lat},${company.coordinates.lng}`
     : company.address || company.name;
@@ -131,21 +133,25 @@ export function CatalogoEmpresaTienda({
             </div>
           </div>
 
+          {company.description && <p className="mt-3 text-sm text-slate-600">{company.description}</p>}
+          {company.openingHours && <p className="mt-1 text-xs text-slate-600">Horario: {company.openingHours}</p>}
+
           <div className="mt-3 flex flex-wrap items-center gap-2 text-xs font-semibold text-slate-600">
             <span
               className={`rounded-full px-2.5 py-1 font-black ${
                 isClosed || companyCached ? "bg-slate-100 text-slate-500" : "bg-emerald-50 text-emerald-700"
               }`}
             >
-              {companyCached ? "Estado sin actualizar" : isClosed ? "Cerrado" : "Abierto ahora"}
+              {companyCached ? "Estado sin actualizar" : isClosed ? "Cerrado" : company.openingHours ? "Horario informado" : "Abierto ahora"}
             </span>
-            <span className="flex items-center gap-1 rounded-full bg-slate-50 px-2.5 py-1 font-extrabold text-slate-900">
+            <button type="button" disabled={!company.empresa_id} onClick={() => setReviewsOpen(true)}
+              className="flex items-center gap-1 rounded-full bg-slate-50 px-2.5 py-1 font-extrabold text-slate-900">
               <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
               {company.rating > 0 ? company.rating.toFixed(1) : "Nuevo"}
               {company.ratingCount ? (
                 <span className="font-medium text-slate-400">({company.ratingCount})</span>
               ) : null}
-            </span>
+            </button>
             <span className="flex items-center gap-1 rounded-full bg-slate-50 px-2.5 py-1">
               <Clock className="h-3.5 w-3.5 text-slate-400" />
               {company.deliveryTimeMin}-{company.deliveryTimeMax} min
@@ -163,13 +169,23 @@ export function CatalogoEmpresaTienda({
               <MapPin className="h-3.5 w-3.5" />
               Ubicación
             </a>
-            {company.phone && (
+            {company.phone && !companyCached && (
               <a
                 href={`tel:${company.phone.replace(/[^\d+]/g, "")}`}
                 className="flex items-center gap-1 rounded-full bg-slate-50 px-2.5 py-1 font-bold text-blue-600 hover:text-blue-700"
               >
                 <Phone className="h-3.5 w-3.5" />
                 Llamar
+              </a>
+            )}
+            {company.phone && !companyCached && /^\d{7,15}$/.test(company.phone) && (
+              <a
+                href={`https://wa.me/${company.phone}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1 rounded-full bg-green-50 px-2.5 py-1 font-bold text-green-700 hover:text-green-800"
+              >
+                WhatsApp
               </a>
             )}
           </div>
@@ -188,6 +204,9 @@ export function CatalogoEmpresaTienda({
           )}
         </div>
       </section>
+      {company.empresa_id && (
+        <ResenasComercio empresaId={company.empresa_id} open={reviewsOpen} onOpenChange={setReviewsOpen} />
+      )}
 
       {catalogStatus === "error" && catalogSize > 0 && (
         <div

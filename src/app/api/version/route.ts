@@ -21,6 +21,7 @@ export async function GET() {
       "Pedidos embalados visibles en la ruta del repartidor asignado",
       "Actualización transitoria del repartidor y catálogo offline del comprador",
       "Autorización de pedidos y verificación de precios en servidor",
+      "Ficha pública del comercio y reseñas de pedidos entregados",
     ],
   });
 }

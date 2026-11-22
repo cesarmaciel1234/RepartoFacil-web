@@ -18,6 +18,7 @@ import { AppVersion } from "@/components/AppVersion";
 
 interface PerfilClienteProps {
   clientProfile: ClientProfile | null;
+  isClientAuthenticated: boolean;
   deliveryAddress: string;
   onLogin: () => void;
   onLogout: () => void;
@@ -27,6 +28,7 @@ interface PerfilClienteProps {
 
 export function PerfilCliente({
   clientProfile,
+  isClientAuthenticated,
   deliveryAddress,
   onLogin,
   onLogout,
@@ -101,20 +103,22 @@ export function PerfilCliente({
       </section>
 
       <div className="space-y-3">
-        <button
-          type="button"
-          onClick={onSwitchToDriver}
-          className="flex w-full items-center gap-3 rounded-2xl border border-blue-100 bg-blue-50/70 p-4 text-left transition-colors hover:bg-blue-100/70"
-        >
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white">
-            <Truck className="h-5 w-5" />
-          </span>
-          <span className="flex-1">
-            <span className="block font-bold text-slate-900">Conectarse como repartidor</span>
-            <span className="block text-xs text-slate-600">Ver pedidos disponibles y repartir</span>
-          </span>
-          <ChevronRight className="h-4 w-4 text-blue-600" />
-        </button>
+        {!isClientAuthenticated && (
+          <button
+            type="button"
+            onClick={onSwitchToDriver}
+            className="flex w-full items-center gap-3 rounded-2xl border border-blue-100 bg-blue-50/70 p-4 text-left transition-colors hover:bg-blue-100/70"
+          >
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white">
+              <Truck className="h-5 w-5" />
+            </span>
+            <span className="flex-1">
+              <span className="block font-bold text-slate-900">Conectarse como repartidor</span>
+              <span className="block text-xs text-slate-600">Ver pedidos disponibles y repartir</span>
+            </span>
+            <ChevronRight className="h-4 w-4 text-blue-600" />
+          </button>
+        )}
 
         <a
           href="https://wa.me/5491100000000"

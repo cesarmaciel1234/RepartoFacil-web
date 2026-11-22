@@ -74,6 +74,30 @@ function nodes(tree) {
 const uiComponents = new Proxy({}, { get: (_, name) => name });
 const icons = new Proxy({}, { get: (_, name) => name });
 
+test("el acceso de repartidor solo aparece sin sesión activa de comprador", () => {
+  const harness = componentHarness("src/modulos/tienda/pantallas/PerfilCliente.tsx", {
+    "lucide-react": icons,
+    "@/components/AppVersion": { AppVersion: "AppVersion" },
+  });
+  let switched = false;
+  const props = {
+    clientProfile: null, isClientAuthenticated: false, deliveryAddress: "",
+    onSwitchToDriver: () => { switched = true; }, onLogin() {}, onLogout() {}, onEditAddress() {},
+  };
+  const driverButton = () => nodes(harness.render("PerfilCliente", props))
+    .find((node) => node.type === "button" && node.props.onClick === props.onSwitchToDriver);
+  assert.ok(driverButton());
+  driverButton().props.onClick();
+  assert.equal(switched, true);
+  props.clientProfile = { id: "cliente-1", displayName: "Ana" };
+  assert.ok(driverButton(), "un perfil guardado sin sesión no impide elegir repartidor");
+  props.isClientAuthenticated = true;
+  assert.equal(driverButton(), undefined);
+  props.clientProfile = null;
+  props.isClientAuthenticated = false;
+  assert.ok(driverButton(), "la opción vuelve a aparecer al cerrar sesión");
+});
+
 test("checkout oculta datos registrados, pide solo lo que falta y conserva la dirección editable", async () => {
   let profile = { id: "cliente-1" };
   let saved = { customerName: "Ana", customerPhone: "", deliveryAddress: "Calle 123" };

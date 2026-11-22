@@ -14,9 +14,10 @@ const componentExports = {};
 vm.runInNewContext(compiled, {
   exports: componentExports,
   require(name) {
-    if (name === "react") return { __esModule: true, default: {}, useState: (value) => [value, () => {}], useMemo: (fn) => fn() };
+    if (name === "react") return { __esModule: true, default: {}, useState: (value) => [value, () => {}], useMemo: (fn) => fn(), useCallback: (fn) => fn };
     if (name === "react/jsx-runtime") return { jsx, jsxs: jsx, Fragment: "fragment" };
     if (name === "lucide-react" || name === "@/components/ui/button" || name === "@/components/ModalTicketDigital") return ui;
+    if (name === "../ui/ResenaPedidoDialog") return ui;
     throw new Error(`Dependencia inesperada: ${name}`);
   },
 });
@@ -58,4 +59,18 @@ test("Pedidos separa los activos del historial y abre el pedido seleccionado", (
   nodes(section).find((node) => node.type === "button").props.onClick();
   assert.equal(selected, active);
   assert.match(text(tree), /pedido-entregado/);
+});
+
+test("solo los pedidos entregados ofrecen calificar al comercio", () => {
+  const tree = componentExports.HistorialPedidosTienda({
+    orders: [
+      { id: "entregado", status: "Delivered" },
+      { id: "cancelado", status: "cancelled" },
+      { id: "activo", status: "Assigned" },
+    ],
+  });
+  const cards = nodes(tree).filter((node) => node.type === "article");
+  assert.equal(cards.length, 2);
+  assert.match(text(cards[0]), /Calificar comercio/);
+  assert.doesNotMatch(text(cards[1]), /Calificar comercio/);
 });

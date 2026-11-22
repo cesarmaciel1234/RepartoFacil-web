@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { CheckCircle2, Clock3, MessageSquare, Package, ReceiptText, Truck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ModalTicketDigital } from "@/components/ModalTicketDigital";
+import { ResenaPedidoDialog } from "../ui/ResenaPedidoDialog";
 
 type FiltroHistorial = "all" | "delivered" | "cancelled";
 
@@ -29,6 +30,8 @@ export function HistorialPedidosTienda({
 }: HistorialPedidosTiendaProps) {
   const [filter, setFilter] = useState<FiltroHistorial>("all");
   const [ticketOrder, setTicketOrder] = useState<any | null>(null);
+  const [reviewOrder, setReviewOrder] = useState<{ id: string } | null>(null);
+  const closeReview = useCallback(() => setReviewOrder(null), []);
 
   const historyOrders = useMemo(
     () =>
@@ -236,6 +239,12 @@ export function HistorialPedidosTienda({
                       Ver comprobante
                     </Button>
                   )}
+                  {isDelivered && (
+                    <Button type="button" variant="outline" onClick={() => setReviewOrder({ id: String(order.id) })}
+                      className="h-9 rounded-xl border-amber-200 text-xs font-bold text-amber-700 hover:bg-amber-50">
+                      Calificar comercio
+                    </Button>
+                  )}
                 </div>
               </article>
             );
@@ -250,6 +259,7 @@ export function HistorialPedidosTienda({
         }}
         order={ticketOrder}
       />
+      <ResenaPedidoDialog order={reviewOrder} onClose={closeReview} />
     </section>
   );
 }

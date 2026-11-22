@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { MessageSquare, ChevronRight } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -8,22 +8,28 @@ import { authHeaders } from "@/lib/clientAuth";
 import type { CachedClientOrder } from "../pedidos/cachePedidosCliente";
 import { filterClientOrders } from "../pedidos/cachePedidosCliente";
 import { getOrCreateActiveClientIdentity } from "../../repartidor/motor/driverService";
+import { OrderChatSheet } from "../../repartidor/ui/OrderChatSheet";
 
 interface MensajesClienteSheetProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  onSelectOrder: (order: CachedClientOrder) => void;
   unread: Record<string, number>;
   unreadError: boolean;
 }
 
 const PAGE_SIZE = 50;
 
-export function MensajesClienteSheet({ isOpen, onOpenChange, onSelectOrder, unread, unreadError }: MensajesClienteSheetProps) {
+export function MensajesClienteSheet({ isOpen, onOpenChange, unread, unreadError }: MensajesClienteSheetProps) {
   const [orders, setOrders] = useState<CachedClientOrder[]>([]);
+  const [selectedOrder, setSelectedOrder] = useState<CachedClientOrder | null>(null);
   const [loading, setLoading] = useState(false);
   const [hasMore, setHasMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const selectedButton = useRef<HTMLButtonElement | null>(null);
+
+  useEffect(() => {
+    if (!isOpen) setSelectedOrder(null);
+  }, [isOpen]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -104,16 +110,23 @@ export function MensajesClienteSheet({ isOpen, onOpenChange, onSelectOrder, unre
     }
   };
 
+  const returnToConversations = () => {
+    setSelectedOrder(null);
+    requestAnimationFrame(() => {
+      if (selectedButton.current?.isConnected) selectedButton.current.focus();
+    });
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="fixed bottom-0 left-0 top-auto flex max-h-[72dvh] w-full max-w-none translate-x-0 translate-y-0 flex-col gap-0 overflow-hidden rounded-t-3xl rounded-b-none bg-white p-0 sm:bottom-auto sm:left-1/2 sm:top-1/2 sm:max-w-xl sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-3xl">
-        <DialogHeader className="border-b border-slate-100 px-5 py-4 pr-12 text-left">
+      <DialogContent className="fixed bottom-0 left-0 top-auto flex h-[min(72dvh,640px)] w-full max-w-none translate-x-0 translate-y-0 flex-col gap-0 overflow-hidden rounded-t-3xl rounded-b-none bg-white p-0 sm:bottom-auto sm:left-1/2 sm:top-1/2 sm:max-w-xl sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-3xl">
+        <DialogHeader className={selectedOrder ? "sr-only" : "border-b border-slate-100 px-5 py-4 pr-12 text-left"}>
           <DialogTitle className="text-sm font-black text-slate-900">Mensajes</DialogTitle>
           <DialogDescription className="text-xs text-slate-500">
             Una conversación por pedido, compartida con la empresa y el repartidor.
           </DialogDescription>
         </DialogHeader>
-        <div className="min-h-0 flex-1 overflow-y-auto bg-slate-50 p-4">
+        <div hidden={!!selectedOrder} className="min-h-0 flex-1 overflow-y-auto bg-slate-50 p-4">
           {error && <p role="alert" className="mb-3 rounded-xl bg-amber-50 p-3 text-xs text-amber-950">{error}</p>}
           {unreadError && <p role="status" className="mb-3 rounded-xl bg-amber-50 p-3 text-xs text-amber-950">No se pudo actualizar el contador de mensajes nuevos.</p>}
           {!loading && !error && orders.length === 0 && (
@@ -126,7 +139,10 @@ export function MensajesClienteSheet({ isOpen, onOpenChange, onSelectOrder, unre
           {orders.length > 0 && (
             <div className="divide-y divide-slate-100 overflow-hidden rounded-2xl border border-slate-200 bg-white">
               {orders.map((order) => (
-                <button key={order.id} type="button" onClick={() => onSelectOrder(order)}
+                <button key={order.id} type="button" onClick={(event) => {
+                  selectedButton.current = event.currentTarget;
+                  setSelectedOrder(order);
+                }}
                   className="flex w-full items-center gap-3 p-3 text-left hover:bg-blue-50">
                   <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-blue-50 text-blue-600">
                     <MessageSquare className="h-5 w-5" />
@@ -158,6 +174,19 @@ export function MensajesClienteSheet({ isOpen, onOpenChange, onSelectOrder, unre
             </Button>
           )}
         </div>
+        {isOpen && selectedOrder && (
+          <OrderChatSheet
+            isOpen
+            embedded
+            onOpenChange={onOpenChange}
+            activeOrder={{ id: selectedOrder.id, status: selectedOrder.status }}
+            viewerRole="client"
+            conversationTitle={String(selectedOrder.branch || selectedOrder.sucursal_origen || selectedOrder.companyName || "Comercio")}
+            onBackToOrdersHub={returnToConversations}
+            backButtonLabel="Volver a mensajes"
+            reserveCloseButton
+          />
+        )}
       </DialogContent>
     </Dialog>
   );

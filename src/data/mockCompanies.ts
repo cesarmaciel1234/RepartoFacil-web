@@ -16,6 +16,8 @@ export interface CompanyStore {
   address: string;
   coordinates?: { lat: number; lng: number };
   phone: string;
+  description?: string;
+  openingHours?: string;
   cobroFacilApiEndpoint?: string;
   isOpen: boolean;
   sucursales?: { id: number; nombre: string }[];

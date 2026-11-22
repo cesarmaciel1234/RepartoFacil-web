@@ -268,11 +268,18 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
       );
       if (!currentCoordinates) setIsAddressModalOpen(true);
     };
+    const syncClientProfileFromStorage = (event: StorageEvent) => {
+      if (event.key === null || event.key === "repartofacil_client_user" || event.key === "repartofacil_client_token") {
+        setClientProfile(loadClientProfile());
+      }
+    };
     window.addEventListener("repartofacil-auth", syncAuth);
     window.addEventListener("repartofacil-client-auth", syncAuth);
+    window.addEventListener("storage", syncClientProfileFromStorage);
     return () => {
       window.removeEventListener("repartofacil-auth", syncAuth);
       window.removeEventListener("repartofacil-client-auth", syncAuth);
+      window.removeEventListener("storage", syncClientProfileFromStorage);
     };
   }, []);
 
@@ -532,6 +539,7 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
         {activeBottomTab === "profile" ? (
           <PerfilCliente
             clientProfile={clientProfile}
+            isClientAuthenticated={!!clientProfile && !!authHeaders("Client").Authorization}
             deliveryAddress={deliveryAddress}
             onLogin={() => setIsClientAuthOpen(true)}
             onLogout={() => {
@@ -760,11 +768,6 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
         onOpenChange={setIsMessagesOpen}
         unread={unread}
         unreadError={unreadError}
-        onSelectOrder={(order) => {
-          setSelectedChatOrder(order);
-          setIsMessagesOpen(false);
-          setIsOrderChatOpen(true);
-        }}
       />
 
       {/* ─── Chat Tripartito Privado del Pedido Seleccionado ─── */}

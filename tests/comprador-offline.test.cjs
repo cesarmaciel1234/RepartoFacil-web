@@ -79,6 +79,8 @@ test("el catálogo restaura datos sin conexión y los actualiza al reconectar", 
   let cursor = 0;
   let mounted = false;
   let currentPrice = 250;
+  let currentCompany = company;
+  let interval;
   const react = {
     useState(initial) {
       const index = cursor++;
@@ -93,7 +95,7 @@ test("el catálogo restaura datos sin conexión y los actualiza al reconectar", 
   };
   const fakeWindow = {
     setTimeout, clearTimeout,
-    setInterval: () => 1,
+    setInterval: (callback, delay) => { assert.equal(delay, 60000); interval = callback; return 1; },
     clearInterval() {},
     addEventListener: (name, fn) => { listeners[name] = fn; },
     removeEventListener() {},
@@ -106,7 +108,7 @@ test("el catálogo restaura datos sin conexión y los actualiza al reconectar", 
   const fetch = async (url) => {
     if (!navigator.onLine) throw new Error("offline");
     const body = url.endsWith("/companies")
-      ? { empresas: [company] }
+      ? { empresas: [currentCompany] }
       : { products: [{ ...product, price: currentPrice }], warnings: [] };
     return { ok: true, json: async () => body };
   };
@@ -157,5 +159,10 @@ test("el catálogo restaura datos sin conexión y los actualiza al reconectar", 
   assert.equal(render().productsStatus, "ready");
   assert.equal(render().filteredProducts[0].price, 310);
   assert.equal(catalog.readProductsCache().data[0].price, 310);
+  currentCompany = { ...company, address: "Nueva dirección", phone: "5493411234567" };
+  interval();
+  await new Promise(setImmediate);
+  assert.equal(render().companies[0].address, "Nueva dirección");
+  assert.equal(render().companies[0].phone, "5493411234567");
   cleanup();
 });

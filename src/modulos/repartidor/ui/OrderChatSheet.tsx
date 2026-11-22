@@ -17,7 +17,6 @@ import {
   Bike,
   ArrowLeft,
 } from "lucide-react";
-import { DriverOrder } from "../motor/tipos";
 import { loadClientProfile, loadDriverProfile } from "../motor/driverService";
 import { ModalTicketDigital } from "@/components/ModalTicketDigital";
 import { OrderChatMessageList } from "./OrderChatMessageList";
@@ -39,13 +38,23 @@ interface OrderChatSheetProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   embedded?: boolean;
-  activeOrder?: DriverOrder | null;
+  activeOrder?: {
+    id: string;
+    status?: string;
+    clientName?: string;
+    deliveryAddress?: string;
+    ticketId?: string;
+    ticket_id?: string;
+  } | null;
   driverName?: string;
   clientName?: string;
   viewerRole?: "client" | "driver";
   defaultRole?: "client" | "driver"; // compatibilidad
   deliveryAddress?: string;
   onBackToOrdersHub?: () => void;
+  backButtonLabel?: string;
+  conversationTitle?: string;
+  reserveCloseButton?: boolean;
 }
 
 export function OrderChatSheet({
@@ -59,6 +68,9 @@ export function OrderChatSheet({
   defaultRole = "client",
   deliveryAddress,
   onBackToOrdersHub,
+  backButtonLabel: customBackButtonLabel,
+  conversationTitle,
+  reserveCloseButton = false,
 }: OrderChatSheetProps) {
   // El rol real del usuario que visualiza el chat
   const effectiveRole: "client" | "driver" = viewerRole || defaultRole;
@@ -269,23 +281,24 @@ export function OrderChatSheet({
 
   const isClientViewer = effectiveRole === "client";
   const displayDestAddress = deliveryAddress || activeOrder?.deliveryAddress || "Tucumán 2130, Rosario";
-  const backButtonLabel = isDriverViewer ? "Volver a mensajes" : embedded ? "Volver al pedido" : "Volver a mensajes";
+  const backButtonLabel = customBackButtonLabel || (isDriverViewer ? "Volver a mensajes" : embedded ? "Volver al pedido" : "Volver a mensajes");
 
   const chatContent = (
     <>
         {/* Header Scoped: Diferenciado según el perfil del usuario */}
         <SheetHeader
-          className={`flex flex-row items-center justify-between gap-2 border-b p-4 ${
+          className={`flex flex-row items-center justify-between gap-2 border-b p-4 ${reserveCloseButton ? "pr-12" : ""} ${
             embedded || isDriverViewer
               ? "border-slate-100 bg-white"
               : "border-slate-800 bg-slate-900"
           }`}
         >
-          <div className="flex items-center gap-2">
+          <div className="flex min-w-0 items-center gap-2">
             {onBackToOrdersHub && (
               <button
                 type="button"
                 onClick={onBackToOrdersHub}
+                autoFocus={reserveCloseButton}
                 aria-label={backButtonLabel}
                 className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border transition-all ${
                   isDriverViewer
@@ -316,21 +329,22 @@ export function OrderChatSheet({
             >
               {isClientViewer ? <Bike className="w-5 h-5" /> : <User className="w-5 h-5" />}
             </div>
-            <div className="text-left">
+            <div className="min-w-0 text-left">
               <div className="flex items-center gap-1.5">
                 {embedded ? (
-                  <h2 className="text-sm font-black text-slate-900">
-                    {isClientViewer ? "Chat del pedido" : "Chat con el Cliente"}
+                  <h2 className="truncate text-sm font-black text-slate-900">
+                    {conversationTitle || (isClientViewer ? "Chat del pedido" : "Chat con el Cliente")}
                   </h2>
                 ) : (
                   <SheetTitle className={`text-sm font-black ${isDriverViewer ? "text-slate-900" : "text-white"}`}>
-                    {isClientViewer ? "Chat del pedido" : "Chat con el Cliente"}
+                    {conversationTitle || (isClientViewer ? "Chat del pedido" : "Chat con el Cliente")}
                   </SheetTitle>
                 )}
               </div>
-              <div className="flex items-center gap-2 mt-0.5">
+              <div className="mt-0.5 flex min-w-0 items-center gap-2">
                 <span
-                  className={`text-[10px] font-medium ${
+                  title={`Pedido #${orderId}`}
+                  className={`truncate text-[10px] font-medium ${
                     embedded || isDriverViewer ? "text-slate-500" : "text-slate-400"
                   }`}
                 >
@@ -354,7 +368,7 @@ export function OrderChatSheet({
             </div>
           </div>
           <Badge
-            className={`border py-0.5 text-[9px] font-black ${
+            className={`shrink-0 border py-0.5 text-[9px] font-black ${
               isDriverViewer
                 ? "border-yellow-300 bg-yellow-100 text-yellow-900"
                 : embedded
