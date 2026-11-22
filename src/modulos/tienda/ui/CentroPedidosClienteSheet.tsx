@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -32,6 +32,7 @@ interface CentroPedidosClienteSheetProps {
   orders: any[];
   ordersCached?: boolean;
   ordersSavedAt?: string | null;
+  initialOrderId?: string | null;
 }
 
 export function CentroPedidosClienteSheet({
@@ -40,6 +41,7 @@ export function CentroPedidosClienteSheet({
   orders = [],
   ordersCached = false,
   ordersSavedAt = null,
+  initialOrderId = null,
 }: CentroPedidosClienteSheetProps) {
   const [selectedTicketOrder, setSelectedTicketOrder] = useState<any | null>(null);
   const [isTicketModalOpen, setIsTicketModalOpen] = useState(false);
@@ -49,6 +51,9 @@ export function CentroPedidosClienteSheet({
   const [orderToCancel, setOrderToCancel] = useState<any | null>(null);
   const { toast } = useToast();
 
+  useEffect(() => {
+    if (isOpen) setSelectedOrderId(initialOrderId);
+  }, [isOpen, initialOrderId]);
   const getInitials = (text: string) => {
     const clean = (text || "CF").replace(/[^a-zA-Z0-9ÁÉÍÓÚáéíóúñÑ\s]/g, "").trim();
     const parts = clean.split(/\s+/).filter(Boolean);
@@ -88,7 +93,7 @@ export function CentroPedidosClienteSheet({
     selectedOrder?.status === "Assigned" ||
     selectedOrder?.status === "Picked Up" ||
     selectedOrder?.status === "In Transit";
-  const selectedOrderDriverName = selectedOrder?.driverName || "Lucas Motomensajero";
+  const selectedOrderDriverName = selectedOrder?.driverName || "Repartidor";
   const selectedOrderItems =
     selectedOrder && Array.isArray(selectedOrder.items) ? selectedOrder.items : [];
   const selectedOrderHasTicket = Boolean(selectedOrder?.ticketId || selectedOrder?.ticket_id);

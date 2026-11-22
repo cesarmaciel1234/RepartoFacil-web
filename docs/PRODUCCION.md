@@ -83,6 +83,41 @@ sin revisar las demás rutas heredadas del backend y resolver la reserva de stoc
 Los pedidos antiguos creados con identidades invitadas no pueden
 asociarse automáticamente de forma segura a una cuenta.
 
+### Mensajería por pedido
+
+Cada pedido tiene un chat grupal para comprador, comercio y repartidor asignado.
+El repartidor solo puede acceder durante la entrega; al entregar o cancelar se
+retira de su bandeja y la API de la tienda deja de permitirle leer o enviar
+mensajes. En el CRM, chat, lista, ticket y acciones del pedido exigen sesión y
+empresa propietaria; el despliegue de ambos componentes debe ser coordinado.
+Aceptar o rechazar requiere un pedido pendiente; embalar no reabre pedidos
+entregados o cancelados. El custodio manual solo libera una asignación que
+no haya sido retirada. Estas reglas usan bloqueo transaccional del pedido y
+se validan con PostgreSQL aislado antes de publicar. Los pedidos antiguos sin `empresa_id` no son
+accesibles desde el chat del CRM hasta identificar y asignar su propietario de
+forma segura. El comprador y el comercio conservan la conversación.
+El botón Mensajes del comprador
+muestra el número de mensajes no leídos y Pedidos contiene el seguimiento activo.
+El contador incluye mensajes del comercio, repartidor y sistema, no los propios.
+Se actualiza mientras la aplicación está abierta; no son notificaciones push.
+Si no se puede consultar, se indica el error en vez de mostrar cero.
+El repartidor consulta sus conversaciones en línea y no utiliza la caché local
+compartida antigua; si falla la consulta se indica el error. El cambio no borra
+copias antiguas ya guardadas en los dispositivos. Al cambiar de sesión se cierra
+el chat abierto y se descartan respuestas pendientes de la sesión anterior.
+Las pruebas de la web verifican con PostgreSQL aislado que un envío concurrente
+espera al bloqueo de entrega y se rechaza si el pedido ya fue entregado. Las
+pruebas aisladas del CRM comprueban concurrencia de aceptación y aislamiento
+del chat en PostgreSQL, además de casos de sesión y transición en SQLite.
+
+Antes de desplegar esta función, aplicar una sola vez
+`scripts/repartofacil-chat-lecturas.sql` a la base PostgreSQL compartida y
+verificar permisos e índices. No ejecutar la migración contra producción como
+parte de una prueba. La primera vez se consideran no leídos los mensajes
+anteriores, porque no existe un registro histórico de lectura. La lectura se
+guarda por cuenta y pedido al abrir el chat visible; los mensajes posteriores
+siguen pendientes. Las conversaciones se paginan de 50 en 50.
+
 El proxy de autenticación espera hasta 60 segundos para permitir el arranque en
 frío del backend; no reintenta registros automáticamente. Esto no evita la pérdida
 de cuentas en SQLite efímero. En el perfil del comprador y el menú del repartidor,
@@ -102,9 +137,10 @@ pedido. La tarifa y la ganancia se recalculan en servidor.
 El lápiz para proponer cambios todavía no está implementado. En el código local
 de Cobro Fácil, la aceptación parcial puede procesar solo algunos artículos sin
 actualizar los artículos ni el total del pedido; no usarla como sustituto de
-la confirmación del comprador. Además, las rutas de Reparto Fácil del CRM están
-excluidas de los controles generales de sesión y rol. Antes de habilitar edición
-se deben proteger y aislar esas operaciones por comercio.
+la confirmación del comprador. Las rutas de Reparto Fácil del CRM están
+excluidas de los controles generales de sesión y rol: las rutas de pedidos y
+chat incorporan controles propios en los cambios locales. Antes de habilitar
+edición se deben proteger y aislar también las operaciones nuevas por comercio.
 
 El flujo previsto es: propuesta del comercio con artículos y total validados;
 confirmación o rechazo explícito del comprador; y, solo después de confirmar,

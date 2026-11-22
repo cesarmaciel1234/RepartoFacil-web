@@ -223,6 +223,108 @@ test("la mensajería rechaza a quien no pertenece al pedido y usa la identidad d
   assert.equal(inserted[6], "buyer-1");
 });
 
+test("los mensajes nuevos y la lectura pertenecen al comprador autenticado", async () => {
+  const { auth } = setup();
+  const queries = [];
+  const queryDb = async (sql, values) => {
+    queries.push({ sql, values });
+    if (sql.includes("COUNT(*)")) return [{ order_id: "order-1", unread: 2 }];
+    return [{ id: "m1", order_id: "order-1", author_role: "store", author_name: "Comercio", content: "Hola", timestamp_str: "12:00" }];
+  };
+  const unread = load("src/app/api/chat/unread/route.ts", {
+    "next/server": next, "@/lib/orderAuth": auth, "@/lib/db": { queryDb },
+  });
+  assert.equal((await unread.GET(request("driver"))).status, 403);
+  const result = await unread.GET(request("buyer"));
+  assert.equal(result.body.total, 2);
+  assert.equal(queries[0].values[0], "buyer-1");
+  assert.match(queries[0].sql, /author_role.*<> 'client'/);
+  const chat = load("src/app/api/chat/[orderId]/route.ts", {
+    "next/server": next, "@/lib/orderAuth": auth, "@/lib/db": { queryDb },
+  });
+  const params = { params: Promise.resolve({ orderId: "order-1" }) };
+  const read = await chat.GET(request("buyer", {}, "read=1"), params);
+  assert.equal(read.body.messages[0].authorRole, "company");
+  assert.match(queries[1].sql, /INSERT INTO repartofacil_chat_lecturas/);
+  assert.equal(queries[1].values[1], "buyer-1");
+  await chat.GET(request("driver", {}, "read=1"), params);
+  assert.doesNotMatch(queries[2].sql, /INSERT INTO repartofacil_chat_lecturas/);
+  assert.match(queries[2].sql, /p\.repartidor_id = \$2.*assigned.*ready/);
+});
+
+test("las conversaciones anteriores usan un cursor propio del comprador", async () => {
+  let executed;
+  const { api } = setup(async (sql, values) => { executed = { sql, values }; return []; });
+  assert.equal((await api.GET(request("driver", {}, "view=client_conversations&before=otro"))).status, 400);
+  assert.equal((await api.GET(request("buyer", {}, "before=otro"))).status, 400);
+  assert.equal((await api.GET(request("buyer", {}, "view=client_conversations&before=order-50"))).status, 200);
+  assert.equal(executed.values[0], "buyer-1");
+  assert.equal(executed.values[1], "order-50");
+  assert.match(executed.sql, /WHERE previous\.id = \$2 AND \(previous\.cliente_id = \$1 OR previous\.cliente_usuario_id = \$1\)/);
+  assert.match(executed.sql, /MAX\(m\.created_at\)/);
+});
+
+test("lecturas y separación del repartidor en PostgreSQL aislado", {
+  skip: !process.env.RF_PGLITE_MODULE,
+}, async () => {
+  const { PGlite } = require(process.env.RF_PGLITE_MODULE);
+  const db = new PGlite();
+  try {
+    await db.exec(`
+      CREATE TABLE repartofacil_pedidos (
+        id text PRIMARY KEY, cliente_id text, cliente_usuario_id text, repartidor_id text,
+        estado text, created_at timestamptz, updated_at timestamptz, items jsonb
+      );
+      CREATE TABLE repartofacil_chat_mensajes (
+        id text PRIMARY KEY, order_id text, author_role text, author_name text,
+        content text, timestamp_str text, created_at timestamptz
+      );
+    `);
+    await db.exec(fs.readFileSync(path.join(process.cwd(), "scripts/repartofacil-chat-lecturas.sql"), "utf8"));
+    await db.exec(`
+      INSERT INTO repartofacil_pedidos VALUES ('order-1', 'buyer-1', 'buyer-1', 'driver-1',
+        'Assigned', '2026-01-01 10:00:00+00', NOW(), '[]');
+      INSERT INTO repartofacil_chat_mensajes VALUES
+        ('a', 'order-1', 'store', 'Comercio', 'Primero', '10:00', '2026-01-01 10:01:00+00'),
+        ('b', 'order-1', 'client', 'Comprador', 'Respuesta', '10:00', '2026-01-01 10:01:00+00');
+    `);
+    const queryDb = async (sql, values) => (await db.query(sql, values)).rows;
+    const { auth } = setup(queryDb);
+    const deps = { "next/server": next, "@/lib/orderAuth": auth, "@/lib/db": { queryDb } };
+    const unread = load("src/app/api/chat/unread/route.ts", deps);
+    const chat = load("src/app/api/chat/[orderId]/route.ts", deps);
+    const params = { params: Promise.resolve({ orderId: "order-1" }) };
+    assert.equal((await unread.GET(request("buyer"))).body.total, 1);
+    assert.equal((await chat.GET(request("driver"), params)).body.messages.length, 2);
+    assert.equal((await chat.GET(request("buyer", {}, "read=1"), params)).body.messages.length, 2);
+    assert.equal((await unread.GET(request("buyer"))).body.total, 0);
+    await db.exec(`INSERT INTO repartofacil_chat_mensajes VALUES
+      ('0', 'order-1', 'driver', 'Repartidor', 'Nuevo', '10:00', '2026-01-01 09:59:00+00')`);
+    assert.equal((await unread.GET(request("buyer"))).body.total, 1);
+    await db.exec("UPDATE repartofacil_pedidos SET estado = 'Delivered' WHERE id = 'order-1'");
+    assert.equal((await chat.GET(request("driver"), params)).status, 404);
+    assert.equal((await chat.POST(request("driver", { content: "No permitido" }), params)).status, 404);
+    assert.equal((await chat.GET(request("buyer", {}, "read=1"), params)).body.messages.length, 3);
+    assert.equal((await unread.GET(request("buyer"))).body.total, 0);
+
+    await db.exec(`INSERT INTO repartofacil_pedidos
+      SELECT 'other-' || g, 'buyer-1', 'buyer-1', NULL, 'Delivered',
+        '2025-01-01 00:00:00+00'::timestamptz, NOW(), '[]'::jsonb
+      FROM generate_series(1, 51) g`);
+    const { api } = setup(queryDb);
+    const first = await api.GET(request("buyer", {}, "view=client_conversations"));
+    assert.equal(first.status, 200);
+    assert.equal(first.body.length, 50);
+    const lastId = first.body[49].id;
+    const second = await api.GET(request("buyer", {}, `view=client_conversations&before=${lastId}`));
+    assert.equal(second.status, 200);
+    assert.equal(second.body.length, 2);
+    assert.equal(new Set([...first.body, ...second.body].map((order) => order.id)).size, 52);
+  } finally {
+    await db.close();
+  }
+});
+
 test("el proxy reenvía cambios de perfil con la sesión y no inventa éxitos", async () => {
   const requests = [];
   const proxy = load("src/app/api/db/[...path]/route.ts", { "next/server": next }, {

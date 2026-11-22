@@ -3,7 +3,7 @@
 import React from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ShoppingBag, Truck, MapPin, Store, ChevronDown, ArrowLeft } from "lucide-react";
+import { ShoppingBag, MessageSquare, MapPin, ChevronDown, ArrowLeft } from "lucide-react";
 
 interface HeaderTiendaProps {
   cartCount: number;
@@ -16,7 +16,8 @@ interface HeaderTiendaProps {
   onOpenCart: () => void;
   onSwitchToDriver: () => void;
   onOpenOrderChat?: () => void;
-  activeOrdersCount?: number;
+  unreadCount?: number;
+  unreadError?: boolean;
 }
 
 export function HeaderTienda({
@@ -30,7 +31,8 @@ export function HeaderTienda({
   onOpenCart,
   onSwitchToDriver,
   onOpenOrderChat,
-  activeOrdersCount = 0,
+  unreadCount = 0,
+  unreadError = false,
 }: HeaderTiendaProps) {
   const formatMoney = (val: number) => "$" + val.toLocaleString("es-AR");
 
@@ -85,24 +87,24 @@ export function HeaderTienda({
           </div>
         </div>
 
-        {/* Lado Derecho: El Camioncito (Envíos en Curso) + El Carrito arriba */}
+        {/* Mensajes y carrito */}
         <div className="flex items-center gap-2 shrink-0">
-          {/* Botón El Camioncito - Centro de Pedidos y Envíos en Curso */}
           <Button
             onClick={onOpenOrderChat || onSwitchToDriver}
             size="sm"
             variant="outline"
             className="border-slate-200 bg-white hover:bg-blue-50 text-slate-700 hover:text-blue-700 rounded-full text-xs font-bold px-3 h-9 flex items-center gap-1.5 shadow-xs relative active:scale-95 transition-all"
-            title="Pedidos en vivo y seguimiento de envíos"
+            title={unreadError ? "No se pudieron actualizar los mensajes nuevos" : "Mensajes"}
+            aria-label={unreadError ? "Mensajes, no se pudo actualizar el contador" : `Mensajes${unreadCount ? `, ${unreadCount} nuevos` : ""}`}
           >
-            <Truck className="w-4 h-4 text-blue-600" />
-            <span className="hidden sm:inline">Envíos</span>
-            {activeOrdersCount > 0 && (
-              <span className="bg-blue-600 text-white text-[10px] font-black px-1.5 py-0.2 rounded-full min-w-4 text-center">
-                {activeOrdersCount}
+            <MessageSquare className="w-4 h-4 text-blue-600" />
+            <span className="hidden sm:inline">Mensajes</span>
+            {unreadCount > 0 && (
+              <span className="min-w-4 rounded-full bg-blue-600 px-1.5 text-center text-[10px] font-black text-white">
+                {unreadCount > 99 ? "99+" : unreadCount}
               </span>
             )}
-            <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse" />
+            {unreadError && <span aria-hidden="true" className="font-black text-amber-700">!</span>}
           </Button>
 
           {/* Botón El Carrito */}

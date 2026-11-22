@@ -34,6 +34,7 @@
   - `motor/useDriverOrders.ts`: Unifica los pedidos de Firestore y `localStorage`, expone `handleTakeOrder()`, `handleCompleteDelivery()` y `wallet`, y reacciona al evento `rf-orders-updated` y `rf-wallet-updated`.
   - `motor/driverService.ts`: Persiste pedidos y perfiles locales.
   - `motor/driverPendingActions.ts`: Encola asignaciones y entregas hasta la confirmación del servidor; evita acreditar dos veces una entrega en el mismo dispositivo.
+  - `motor/useDriverChatSummaries.ts`: Consulta y ordena conversaciones autorizadas del repartidor; no usa el historial local compartido.
   - `motor/walletService.ts`: Administra `rf_driver_wallet`, acreditando las ganancias y registrando efectivo en mano.
   - `motor/useDriverGps.ts`: Monitorea la posición del GPS con `navigator.geolocation.watchPosition` de alta precisión.
 - **Flujo de ejecución:**
@@ -55,3 +56,4 @@
 2. **Confirmación del servidor:** No considerar asignado o entregado un pedido pendiente.
 3. **Cartera local:** Acreditar cada entrega confirmada como máximo una vez en el dispositivo.
 4. **Límite de líneas:** Ningún archivo debe exceder las 500 líneas de código.
+5. **Chat por asignación:** No mostrar al repartidor mensajes locales antiguos sin comprobar su acceso en el servidor; cerrar el chat al cambiar de sesión o finalizar la entrega.

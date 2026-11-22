@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 function accessCondition(user: OrderUser, parameter: string): string {
   return user.role === "Client"
     ? `(p.cliente_id = ${parameter} OR p.cliente_usuario_id = ${parameter})`
-    : `p.repartidor_id = ${parameter}`;
+    : `(p.repartidor_id = ${parameter} AND LOWER(TRIM(p.estado)) IN ('assigned', 'picked up', 'in transit', 'ready', 'embalado'))`;
 }
 
 export async function GET(
@@ -18,12 +18,23 @@ export async function GET(
   try {
     const auth = await authenticateOrderUser(request, ["Client", "Driver"]);
     if (auth.response) return auth.response;
+    const markRead = auth.user.role === "Client" && request.nextUrl?.searchParams.get("read") === "1";
     const rows = await queryDb(
-      `SELECT m.id, m.order_id, m.author_role, m.author_name, m.content, m.timestamp_str, m.created_at
+      `${markRead ? `WITH visible_messages AS MATERIALIZED (
+         SELECT m.* FROM repartofacil_pedidos p
+         JOIN repartofacil_chat_mensajes m ON m.order_id = p.id
+         WHERE p.id = $1 AND ${accessCondition(auth.user, "$2")}
+       ), mark_read AS (
+         INSERT INTO repartofacil_chat_lecturas (usuario_id, mensaje_id)
+         SELECT $2, id FROM visible_messages WHERE LOWER(COALESCE(author_role, '')) <> 'client'
+         ON CONFLICT (usuario_id, mensaje_id) DO NOTHING
+         RETURNING mensaje_id
+       )` : ""}
+       SELECT m.id, m.order_id, m.author_role, m.author_name, m.content, m.timestamp_str, m.created_at
        FROM repartofacil_pedidos p
-       LEFT JOIN repartofacil_chat_mensajes m ON m.order_id = p.id
+       LEFT JOIN ${markRead ? "visible_messages" : "repartofacil_chat_mensajes"} m ON m.order_id = p.id
        WHERE p.id = $1 AND ${accessCondition(auth.user, "$2")}
-       ORDER BY m.created_at ASC`,
+       ORDER BY m.created_at ASC, m.id ASC`,
       [orderId, auth.user.id]
     );
     if (rows.length === 0) return NextResponse.json({ error: "Conversación no disponible." }, { status: 404 });
@@ -31,10 +42,11 @@ export async function GET(
     const messages = rows.filter((r: any) => r.id !== null).map((r: any) => ({
       id: r.id,
       orderId: r.order_id,
-      authorRole: r.author_role,
+      authorRole: r.author_role === "store" ? "company" : r.author_role,
       authorName: r.author_name,
       content: r.content,
       timestamp: r.timestamp_str,
+      createdAt: r.created_at,
     }));
 
     return NextResponse.json({ success: true, orderId, messages });

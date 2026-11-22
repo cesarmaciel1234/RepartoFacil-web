@@ -96,6 +96,11 @@ export async function GET(request: NextRequest) {
     const empresaIdParam = searchParams.get("empresa_id") || searchParams.get("companyId");
     const driverIdParam = searchParams.get("repartidor_id") || searchParams.get("driverId");
     const viewParam = searchParams.get("view"); // 'driver_active' | 'driver_available' | 'driver_history'
+    const before = searchParams.get("before");
+
+    if (before && (auth.user.role !== "Client" || viewParam !== "client_conversations" || before.length > 200)) {
+      return NextResponse.json({ error: "Paginación no válida." }, { status: 400 });
+    }
 
     let query = "SELECT * FROM repartofacil_pedidos WHERE ";
     const values: any[] = [auth.user.id];
@@ -149,7 +154,19 @@ export async function GET(request: NextRequest) {
       idx++;
     }
 
-    query += " ORDER BY created_at DESC LIMIT 50";
+    const conversationView = auth.user.role === "Client" && viewParam === "client_conversations";
+    const activity = (alias: string) =>
+      `GREATEST(${alias}.created_at, COALESCE((SELECT MAX(m.created_at) FROM repartofacil_chat_mensajes m WHERE m.order_id = ${alias}.id), ${alias}.created_at))`;
+    if (before) {
+      query += ` AND (${activity("repartofacil_pedidos")}, id) < (
+        SELECT ${activity("previous")}, previous.id FROM repartofacil_pedidos previous
+        WHERE previous.id = $${idx} AND (previous.cliente_id = $1 OR previous.cliente_usuario_id = $1)
+      )`;
+      values.push(before);
+    }
+    query += conversationView
+      ? ` ORDER BY ${activity("repartofacil_pedidos")} DESC, id DESC LIMIT 50`
+      : " ORDER BY created_at DESC, id DESC LIMIT 50";
 
     const rows = await queryDb(query, values);
     const orders = rows.map(mapDbRowToOrder);

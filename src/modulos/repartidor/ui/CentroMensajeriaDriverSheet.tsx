@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useMemo } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import {
@@ -11,21 +11,13 @@ import {
   Sparkles,
 } from "lucide-react";
 import { DriverOrder } from "../motor/tipos";
-import { authHeaders } from "@/lib/clientAuth";
+import { useDriverChatSummaries } from "../motor/useDriverChatSummaries";
 
 interface CentroMensajeriaDriverSheetProps {
   isOpen: boolean;
   orders: DriverOrder[];
   onSelectOrderChat: (order: DriverOrder) => void;
   onSelectCopilot: () => void;
-}
-
-interface ChatConversationSummary {
-  order: DriverOrder;
-  lastMessage: string;
-  lastSender: string;
-  lastTime: string;
-  timestampMs: number;
 }
 
 export function CentroMensajeriaDriverSheet({
@@ -35,94 +27,7 @@ export function CentroMensajeriaDriverSheet({
   onSelectCopilot,
 }: CentroMensajeriaDriverSheetProps) {
   const [searchFilter, setSearchFilter] = useState("");
-  const [chatSummaries, setChatSummaries] = useState<ChatConversationSummary[]>([]);
-
-  // Cargar últimos mensajes y ordenar: el más nuevo se posiciona primero (Estilo WhatsApp)
-  useEffect(() => {
-    if (!isOpen) return;
-
-    const loadSummaries = () => {
-      const summaries: ChatConversationSummary[] = orders.map((order) => {
-        let lastMessage = "Toca para abrir canal directo y coordinar entrega.";
-        let lastSender = "Sistema";
-        let lastTime = "Reciente";
-        let timestampMs = order.updatedAt
-          ? new Date(order.updatedAt).getTime()
-          : order.createdAt
-          ? new Date(order.createdAt).getTime()
-          : Date.now();
-
-        try {
-          const raw = localStorage.getItem(`rf_chat_${order.id}`);
-          if (raw) {
-            const msgs = JSON.parse(raw);
-            if (Array.isArray(msgs) && msgs.length > 0) {
-              const latest = msgs[msgs.length - 1];
-              lastMessage = latest.content || lastMessage;
-              lastSender =
-                latest.authorRole === "driver"
-                  ? "Tú"
-                  : latest.authorRole === "client"
-                  ? "Cliente"
-                  : latest.authorName || "Frigorífico Maciel";
-              lastTime = latest.timestamp || lastTime;
-              if (latest.id && latest.id.startsWith("msg-")) {
-                const parsedId = Number(latest.id.replace("msg-", ""));
-                if (!isNaN(parsedId)) timestampMs = parsedId;
-              }
-            }
-          }
-        } catch {}
-
-        return {
-          order,
-          lastMessage,
-          lastSender,
-          lastTime,
-          timestampMs,
-        };
-      });
-
-      // Ordenar: el más nuevo se posiciona primero
-      summaries.sort((a, b) => b.timestampMs - a.timestampMs);
-      setChatSummaries(summaries);
-    };
-
-    const syncDbChats = async () => {
-      let changed = false;
-      await Promise.all(
-        orders.map(async (order) => {
-          try {
-            const resp = await fetch(`/api/chat/${order.id}`, { headers: authHeaders("Driver") });
-            const data = await resp.json();
-            if (data && data.success && Array.isArray(data.messages) && data.messages.length > 0) {
-              const currentRaw = localStorage.getItem(`rf_chat_${order.id}`);
-              const newRaw = JSON.stringify(data.messages);
-              if (currentRaw !== newRaw) {
-                localStorage.setItem(`rf_chat_${order.id}`, newRaw);
-                changed = true;
-              }
-            }
-          } catch {}
-        })
-      );
-      if (changed) {
-        loadSummaries();
-      }
-    };
-
-    loadSummaries();
-    syncDbChats();
-    const interval = setInterval(() => {
-      loadSummaries();
-      syncDbChats();
-    }, 3000);
-    window.addEventListener("storage", loadSummaries);
-    return () => {
-      clearInterval(interval);
-      window.removeEventListener("storage", loadSummaries);
-    };
-  }, [isOpen, orders]);
+  const { summaries: chatSummaries, error } = useDriverChatSummaries(isOpen, orders);
 
   // Filtrado por buscador
   const filteredConversations = useMemo(() => {
@@ -163,6 +68,7 @@ export function CentroMensajeriaDriverSheet({
         </div>
 
         {/* Lista de Conversaciones (Tipo WhatsApp - El nuevo primero) */}
+        {error && <p role="status" className="bg-amber-50 px-3 py-2 text-xs text-amber-950">{error}</p>}
         <div className="min-h-0 flex-1 overflow-y-auto divide-y divide-slate-100">
           {filteredConversations.length === 0 && !showCopilotContact ? (
             <div className="py-16 text-center space-y-3 px-6">

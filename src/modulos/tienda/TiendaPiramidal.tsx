@@ -19,6 +19,8 @@ import { ModalCheckout } from "./ui/ModalCheckout";
 import { ModalCambiarDireccion } from "./ui/ModalCambiarDireccion";
 import { ModalClientAuth } from "./ui/ModalClientAuth";
 import { CentroPedidosClienteSheet } from "./ui/CentroPedidosClienteSheet";
+import { MensajesClienteSheet } from "./ui/MensajesClienteSheet";
+import { useMensajesNoLeidos } from "./pedidos/hooks/useMensajesNoLeidos";
 import { OrderChatSheet } from "../repartidor/ui/OrderChatSheet";
 import { InicioTienda } from "./pantallas/InicioTienda";
 import { SupermercadosTienda } from "./pantallas/SupermercadosTienda";
@@ -110,6 +112,8 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
   const [isClientAuthOpen, setIsClientAuthOpen] = useState(false);
   const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
   const [isOrdersHubOpen, setIsOrdersHubOpen] = useState(false);
+  const [isMessagesOpen, setIsMessagesOpen] = useState(false);
+  const [activeOrderId, setActiveOrderId] = useState<string | null>(null);
   const [isOrderChatOpen, setIsOrderChatOpen] = useState(false);
   const [selectedChatOrder, setSelectedChatOrder] = useState<any>(null);
   const [clientProfile, setClientProfile] = useState<ClientProfile | null>(null);
@@ -226,11 +230,12 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
           0
         )
       : 0;
-  const { clientOrdersList, activeOrdersCount, ordersCached, ordersSavedAt } = usePedidosCliente({
+  const { clientOrdersList, ordersCached, ordersSavedAt } = usePedidosCliente({
     selectedChatOrder,
     setSelectedChatOrder,
     orderConfirmed,
   });
+  const { unread, unreadTotal, unreadError } = useMensajesNoLeidos();
 
   // Cargar y sincronizar dirección de entrega del cliente
   useEffect(() => {
@@ -502,8 +507,9 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
           setIsCartOpen(true);
         }}
         onSwitchToDriver={onSwitchToDriver}
-        onOpenOrderChat={() => setIsOrdersHubOpen(true)}
-        activeOrdersCount={activeOrdersCount}
+        onOpenOrderChat={() => setIsMessagesOpen(true)}
+        unreadCount={unreadTotal}
+        unreadError={unreadError}
       />
 
       {/* ─── Contenido Principal ─── */}
@@ -539,6 +545,10 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
           <HistorialPedidosTienda
             orders={clientOrdersList}
             onGoToHome={() => setActiveBottomTab("home")}
+            onSelectActiveOrder={(order) => {
+              setActiveOrderId(String(order.id));
+              setIsOrdersHubOpen(true);
+            }}
             onSelectOrderChat={(order) => {
               setSelectedChatOrder(order);
               setIsOrderChatOpen(true);
@@ -742,6 +752,19 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
         orders={clientOrdersList}
         ordersCached={ordersCached}
         ordersSavedAt={ordersSavedAt}
+        initialOrderId={activeOrderId}
+      />
+
+      <MensajesClienteSheet
+        isOpen={isMessagesOpen}
+        onOpenChange={setIsMessagesOpen}
+        unread={unread}
+        unreadError={unreadError}
+        onSelectOrder={(order) => {
+          setSelectedChatOrder(order);
+          setIsMessagesOpen(false);
+          setIsOrderChatOpen(true);
+        }}
       />
 
       {/* ─── Chat Tripartito Privado del Pedido Seleccionado ─── */}
@@ -753,7 +776,7 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
         deliveryAddress={deliveryAddress}
         onBackToOrdersHub={() => {
           setIsOrderChatOpen(false);
-          setIsOrdersHubOpen(true);
+          setIsMessagesOpen(true);
         }}
       />
     </div>

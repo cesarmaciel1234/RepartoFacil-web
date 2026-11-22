@@ -84,6 +84,12 @@ export function RepartidorPiramidal({ onSwitchToStore }: RepartidorPiramidalProp
     syncPending,
   } = useDriverOrders(driverProfile?.id);
 
+  useEffect(() => {
+    if (selectedDriverChatOrder && !myActiveOrders.some((order) => order.id === selectedDriverChatOrder.id)) {
+      setSelectedDriverChatOrder(null);
+    }
+  }, [selectedDriverChatOrder, myActiveOrders]);
+
   // Heartbeat de telemetría y presencia para el Custodio del Sistema
   useEffect(() => {
     if (!driverProfile?.id || myActiveOrders.length === 0) return;

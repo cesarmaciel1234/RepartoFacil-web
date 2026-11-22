@@ -9,7 +9,8 @@ checkout y seguimiento de pedidos.
 ## 1. Qué hace
 - Mantiene elementos reutilizables del catálogo y la navegación principal.
 - Presenta el carrito y los formularios transitorios de dirección, autenticación y checkout.
-- Muestra el panel del camioncito para consultar pedidos activos y abrir su chat.
+- El botón superior abre conversaciones por pedido con contador de mensajes nuevos.
+- La pantalla Pedidos muestra una sección de pedidos en curso, incluso cuando está vacía, y abre el detalle y seguimiento de los pedidos activos.
 - Deja el historial completo en `pantallas/HistorialPedidosTienda.tsx`, como módulo
   de navegación independiente.
 - El perfil del comprador muestra la versión instalada y si coincide con la publicada.
@@ -17,13 +18,14 @@ checkout y seguimiento de pedidos.
 ---
 
 ## 2. Componentes Principales
-- `HeaderTienda.tsx`: Dirección de entrega en las vistas de comercios, nombre del local en su catálogo, carrito y seguimiento en vivo.
+- `HeaderTienda.tsx`: Dirección, nombre del local, carrito y acceso a mensajes.
 - `NavegacionTienda.tsx`: Barra inferior para Inicio, Súper, Promociones, Pedidos y Perfil.
 - `VistaMercadosEmpresas.tsx`: Descubrimiento de comercios y tarjetas de productos en búsqueda.
 - `FiltroCategorias.tsx` y `TarjetaProducto.tsx`: Filtros de catálogo y acciones de producto.
 - `DrawerCarrito.tsx`, `ModalCheckout.tsx`: Revisión del carrito y confirmación de compra.
 - `ModalCambiarDireccion.tsx`, `ModalClientAuth.tsx`: Flujos de dirección e identidad del comprador.
-- `CentroPedidosClienteSheet.tsx`: Detalle y seguimiento de pedidos activos; no renderiza historial.
+- `CentroPedidosClienteSheet.tsx`: Detalle y seguimiento de pedidos activos.
+- `MensajesClienteSheet.tsx`: Conversaciones del comprador, incluidas las finalizadas.
 
 ---
 
@@ -31,7 +33,8 @@ checkout y seguimiento de pedidos.
 1. `TiendaPiramidal` selecciona la pantalla y conecta sus callbacks.
 2. El usuario agrega productos desde las tarjetas al hook `motor/useCart.ts`.
 3. `DrawerCarrito` abre `ModalCheckout` al continuar con la compra.
-4. `CentroPedidosClienteSheet` muestra pedidos activos; el historial usa su propia pantalla.
+4. `HistorialPedidosTienda` muestra pedidos activos y anteriores; el detalle activo
+   usa `CentroPedidosClienteSheet`. Los mensajes se abren desde el botón superior.
 
 ---
 

@@ -35,7 +35,8 @@ tienda/
 │   ├── PerfilCliente.tsx
 │   └── tipos.ts
 └── ui/
-    ├── CentroPedidosClienteSheet.tsx # Seguimiento de pedidos activos
+    ├── CentroPedidosClienteSheet.tsx # Detalle de pedidos activos
+    ├── MensajesClienteSheet.tsx # Conversaciones del comprador por pedido
     ├── DrawerCarrito.tsx
     ├── FiltroCategorias.tsx
     ├── HeaderTienda.tsx
@@ -72,7 +73,7 @@ carga ni el filtrado del catálogo ni la sincronización periódica de pedidos.
 
 Las pantallas usan los componentes de `ui/`; el orquestador los conecta con los
 hooks y servicios del dominio. El panel `CentroPedidosClienteSheet` es únicamente
-para pedidos activos. El historial completo vive en `pantallas/HistorialPedidosTienda.tsx`.
+para pedidos activos. El seguimiento y el historial viven en `pantallas/HistorialPedidosTienda.tsx`.
 
 ## Flujos principales
 
@@ -112,8 +113,9 @@ mostrar la distancia aproximada al comercio.
 - Se puede recorrer el catálogo y armar un carrito sin iniciar sesión; el acceso
   se solicita al pagar.
 - La moneda y las fechas visibles se formatean con configuración `es-AR`.
-- El panel del camión muestra pedidos activos; el botón inferior Pedidos abre el
-  historial completo.
+- El botón superior abre mensajes por pedido; Pedidos muestra los pedidos en
+  curso y el historial. El contador numérico representa mensajes no leídos,
+  no pedidos activos.
 - La distancia se presenta como aproximada y usa coordenadas elegidas cuando
   existen.
 - El carrito conserva su persistencia y el envío gratis no elimina la ganancia

@@ -2,17 +2,19 @@
 
 **Ubicación:** `src/modulos/tienda/pedidos/`
 
-Este dominio sincroniza los pedidos del comprador y deriva cuántos siguen activos.
+Este dominio sincroniza los pedidos del comprador y los mensajes no leídos.
 
 ## Estructura
 
 - `hooks/usePedidosCliente.ts`: combina el historial local filtrado por cliente
   con la API y escucha eventos de actualización.
+- `hooks/useMensajesNoLeidos.ts`: consulta el contador autenticado y avisa si
+  no se puede actualizar.
 - `cachePedidosCliente.ts`: conserva la última respuesta válida por identificador
   de comprador para consultarla sin conexión.
-- `../pantallas/HistorialPedidosTienda.tsx`: historial completo como pantalla.
-- `../ui/CentroPedidosClienteSheet.tsx`: seguimiento de pedidos activos desde el
-  botón del camión.
+- `../pantallas/HistorialPedidosTienda.tsx`: pedidos activos e historial.
+- `../ui/CentroPedidosClienteSheet.tsx`: detalle de pedidos activos.
+- `../ui/MensajesClienteSheet.tsx`: conversaciones por pedido, con paginación.
 
 ## Separación de responsabilidades
 

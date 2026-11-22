@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
-import { CheckCircle2, Clock3, MessageSquare, Package, ReceiptText } from "lucide-react";
+import { CheckCircle2, Clock3, MessageSquare, Package, ReceiptText, Truck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ModalTicketDigital } from "@/components/ModalTicketDigital";
 
@@ -11,6 +11,7 @@ interface HistorialPedidosTiendaProps {
   orders: any[];
   onGoToHome: () => void;
   onSelectOrderChat: (order: any) => void;
+  onSelectActiveOrder: (order: any) => void;
 }
 
 const deliveredStatuses = new Set(["delivered"]);
@@ -24,6 +25,7 @@ export function HistorialPedidosTienda({
   orders,
   onGoToHome,
   onSelectOrderChat,
+  onSelectActiveOrder,
 }: HistorialPedidosTiendaProps) {
   const [filter, setFilter] = useState<FiltroHistorial>("all");
   const [ticketOrder, setTicketOrder] = useState<any | null>(null);
@@ -36,6 +38,10 @@ export function HistorialPedidosTienda({
       }),
     [orders]
   );
+  const activeOrders = orders.filter((order) => {
+    const status = String(order.status || "").toLowerCase();
+    return !deliveredStatuses.has(status) && !cancelledStatuses.has(status);
+  });
   const deliveredCount = historyOrders.filter((order) =>
     deliveredStatuses.has(String(order.status || "").toLowerCase())
   ).length;
@@ -64,10 +70,46 @@ export function HistorialPedidosTienda({
     <section className="mx-auto w-full max-w-3xl space-y-5">
       <header className="space-y-1">
         <p className="text-xs font-bold uppercase tracking-wider text-blue-600">Tu actividad</p>
-        <h1 className="text-2xl font-black text-slate-900">Historial de pedidos</h1>
-        <p className="text-sm text-slate-500">Consultá tus compras anteriores y sus comprobantes.</p>
+        <h1 className="text-2xl font-black text-slate-900">Mis pedidos</h1>
+        <p className="text-sm text-slate-500">Seguí tus pedidos y consultá tus compras anteriores.</p>
       </header>
 
+      <section className="space-y-3" aria-label="Pedidos en curso">
+        <div className="flex items-center gap-2">
+          <Truck className="h-5 w-5 text-blue-600" />
+          <h2 className="text-base font-black text-slate-900">Pedidos en curso ({activeOrders.length})</h2>
+        </div>
+        {activeOrders.length === 0 ? (
+          <p className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
+            No tenés pedidos en curso. Cuando hagas un pedido, vas a poder seguirlo acá.
+          </p>
+        ) : (
+          activeOrders.map((order) => {
+            const status = String(order.status || "").trim().toLowerCase();
+            const label = ["assigned", "picked up", "in transit"].includes(status)
+              ? "En camino"
+              : ["ready", "embalado"].includes(status)
+                ? "Listo para retirar"
+                : ["confirmed", "accepted"].includes(status)
+                  ? "Aceptado por el comercio"
+                  : "Esperando al comercio";
+            return (
+              <button key={order.id} type="button" onClick={() => onSelectActiveOrder(order)}
+                className="flex w-full items-center justify-between gap-3 rounded-2xl border border-blue-100 bg-blue-50 p-4 text-left hover:bg-blue-100">
+                <span className="min-w-0">
+                  <span className="block truncate text-sm font-bold text-slate-900">
+                    {order.branch || order.sucursal_origen || order.companyName || "Comercio"}
+                  </span>
+                  <span className="block text-xs text-slate-600">Pedido #{order.id} · {label}</span>
+                </span>
+                <span className="shrink-0 text-xs font-bold text-blue-700">Ver detalle ›</span>
+              </button>
+            );
+          })
+        )}
+      </section>
+
+      <h2 className="text-base font-black text-slate-900">Historial</h2>
       <div className="grid grid-cols-2 gap-3">
         <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4">
           <CheckCircle2 className="mb-2 h-5 w-5 text-blue-600" />

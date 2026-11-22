@@ -32,6 +32,7 @@ export interface OrderChatMessage {
   authorName: string;
   content: string;
   timestamp: string;
+  createdAt?: string;
 }
 
 interface OrderChatSheetProps {
@@ -64,14 +65,20 @@ export function OrderChatSheet({
   const isDriverViewer = effectiveRole === "driver";
   const orderId = activeOrder?.id || "RF-7420";
   const ticketId = activeOrder?.ticketId || activeOrder?.ticket_id;
-  const storageKey = `rf_chat_${orderId}`;
+  const clientId = !isDriverViewer ? loadClientProfile()?.userId : undefined;
+  const storageKey = `rf_client_chat_v2:${encodeURIComponent(clientId || "")}:${encodeURIComponent(orderId)}`;
 
   const [messages, setMessages] = useState<OrderChatMessage[]>([]);
   const [inputText, setInputText] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [isTicketModalOpen, setIsTicketModalOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const onOpenChangeRef = useRef(onOpenChange);
+  onOpenChangeRef.current = onOpenChange;
+  const chatContext = useRef({ isOpen, orderId, isDriverViewer });
+  chatContext.current = { isOpen, orderId, isDriverViewer };
 
   // Auto-scroll al final del chat
   const scrollToBottom = () => {
@@ -83,45 +90,67 @@ export function OrderChatSheet({
   // Cargar mensajes persistentes y sincronizar con backend PostgreSQL
   useEffect(() => {
     if (!isOpen) return;
+    let active = true;
+    let fetching = false;
+    const controller = new AbortController();
+    const role = isDriverViewer ? "Driver" : "Client";
+    const authorization = authHeaders(role).Authorization;
+    setMessages([]);
+    setInputText("");
+    setLoadError(null);
+    setSendError(null);
 
     // 1. Cargar caché local primero
     try {
-      const raw = localStorage.getItem(storageKey);
+      const canReadCache = !isDriverViewer && clientId && authHeaders("Client").Authorization;
+      const raw = canReadCache ? localStorage.getItem(storageKey) : null;
       if (raw) {
         const parsed = JSON.parse(raw);
         if (Array.isArray(parsed) && parsed.length > 0) {
           setMessages(parsed);
         }
-      } else {
-        setMessages([
-          {
-            id: `welcome-${orderId}`,
-            orderId,
-            authorRole: "company",
-            authorName: "Central CobroFácil",
-            content: `¡Canal directo abierto para el Pedido #${orderId}! Podés coordinar la entrega en tiempo real entre el repartidor y el cliente.`,
-            timestamp: "Ahora",
-          },
-        ]);
       }
-    } catch {}
+    } catch (error) {
+      console.warn("No se pudo leer el historial del chat:", error);
+    }
 
     // 2. Sincronizar con API cloud /api/chat/[orderId]
     const fetchCloudMessages = async () => {
+      if (fetching) return;
+      fetching = true;
       try {
-        const res = await fetch(`/api/chat/${orderId}`, {
+        const markRead = !isDriverViewer && document.visibilityState === "visible";
+        const res = await fetch(`/api/chat/${encodeURIComponent(orderId)}${markRead ? "?read=1" : ""}`, {
           cache: "no-store",
-          headers: authHeaders(isDriverViewer ? "Driver" : "Client"),
+          headers: authorization ? { Authorization: authorization } : {},
+          signal: controller.signal,
         });
-        if (res.ok) {
-          const data = await res.json();
-          if (data.success && Array.isArray(data.messages) && data.messages.length > 0) {
-            setMessages(data.messages);
-            localStorage.setItem(storageKey, JSON.stringify(data.messages));
+        if (!res.ok) {
+          if (res.status === 401 || res.status === 403 || res.status === 404) {
+            if (active) setMessages([]);
+            throw new Error("La conversación no está disponible para esta sesión.");
           }
+          throw new Error("No se pudo actualizar el chat. Los mensajes guardados pueden estar desactualizados.");
+        }
+        const data = await res.json();
+        if (!data.success || !Array.isArray(data.messages)) throw new Error("La respuesta del chat no es válida.");
+        if (active && authHeaders(role).Authorization === authorization) {
+          setMessages(data.messages);
+          setLoadError(null);
+          try {
+            if (!isDriverViewer && clientId) localStorage.setItem(storageKey, JSON.stringify(data.messages));
+          } catch (error) {
+            console.warn("No se pudo guardar el historial del chat:", error);
+          }
+          if (markRead) window.dispatchEvent(new Event("rf-chat-read"));
         }
       } catch (err) {
-        // Red offline o fallback local
+        if (active && !controller.signal.aborted) {
+          console.warn("No se pudo actualizar el chat:", err);
+          setLoadError(err instanceof Error ? err.message : "No se pudo actualizar el chat.");
+        }
+      } finally {
+        fetching = false;
       }
     };
 
@@ -130,22 +159,38 @@ export function OrderChatSheet({
 
     // 3. Escucha reactiva entre pestañas (Storage Event)
     const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === storageKey && e.newValue) {
+      if (!isDriverViewer && e.key === storageKey && e.newValue) {
         try {
           const parsed = JSON.parse(e.newValue);
           if (Array.isArray(parsed) && parsed.length > 0) {
             setMessages(parsed);
           }
-        } catch {}
+        } catch (error) {
+          console.warn("No se pudo leer el historial del chat:", error);
+        }
       }
     };
     window.addEventListener("storage", handleStorageChange);
+    const handleIdentityChange = () => {
+      if (authHeaders(role).Authorization !== authorization) {
+        active = false;
+        controller.abort();
+        setMessages([]);
+        onOpenChangeRef.current(false);
+      }
+    };
+    window.addEventListener(isDriverViewer ? "repartofacil-driver-auth" : "repartofacil-client-auth", handleIdentityChange);
+    window.addEventListener("storage", handleIdentityChange);
 
     return () => {
+      active = false;
+      controller.abort();
       clearInterval(interval);
       window.removeEventListener("storage", handleStorageChange);
+      window.removeEventListener(isDriverViewer ? "repartofacil-driver-auth" : "repartofacil-client-auth", handleIdentityChange);
+      window.removeEventListener("storage", handleIdentityChange);
     };
-  }, [isOpen, orderId, storageKey, isDriverViewer]);
+  }, [isOpen, orderId, storageKey, isDriverViewer, clientId]);
 
   useEffect(() => {
     scrollToBottom();
@@ -166,6 +211,12 @@ export function OrderChatSheet({
     e.preventDefault();
     const text = inputText.trim();
     if (!text || isSending) return;
+    const role = isDriverViewer ? "Driver" : "Client";
+    const authorization = authHeaders(role).Authorization;
+    const stillCurrent = () => chatContext.current.isOpen &&
+      chatContext.current.orderId === orderId &&
+      chatContext.current.isDriverViewer === isDriverViewer &&
+      authHeaders(role).Authorization === authorization;
 
     const myName = getMyAuthorName();
     const now = new Date();
@@ -185,7 +236,7 @@ export function OrderChatSheet({
     try {
       const response = await fetch(`/api/chat/${orderId}`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", ...authHeaders(isDriverViewer ? "Driver" : "Client") },
+        headers: { "Content-Type": "application/json", ...(authorization ? { Authorization: authorization } : {}) },
         body: JSON.stringify(newMsg),
       });
       if (!response.ok) {
@@ -195,12 +246,13 @@ export function OrderChatSheet({
       }
       const data = await response.json();
       if (!data.success || !data.message) throw new Error("El servidor no confirmó el mensaje.");
+      if (!stillCurrent()) return;
       setMessages((current) => {
         const updated = current.some((message) => message.id === data.message.id)
           ? current
           : [...current, data.message];
         try {
-          localStorage.setItem(storageKey, JSON.stringify(updated));
+          if (!isDriverViewer && clientId) localStorage.setItem(storageKey, JSON.stringify(updated));
         } catch (error) {
           console.warn("No se pudo guardar el chat local:", error);
         }
@@ -209,7 +261,7 @@ export function OrderChatSheet({
       setInputText("");
     } catch (err) {
       console.warn("No se pudo enviar el mensaje:", err);
-      setSendError(err instanceof Error ? err.message : "No se pudo enviar el mensaje. Intentá nuevamente.");
+      if (stillCurrent()) setSendError(err instanceof Error ? err.message : "No se pudo enviar el mensaje. Intentá nuevamente.");
     } finally {
       setIsSending(false);
     }
@@ -217,7 +269,7 @@ export function OrderChatSheet({
 
   const isClientViewer = effectiveRole === "client";
   const displayDestAddress = deliveryAddress || activeOrder?.deliveryAddress || "Tucumán 2130, Rosario";
-  const backButtonLabel = isDriverViewer ? "Volver a mensajes" : embedded ? "Volver al pedido" : "Volver a la lista de pedidos";
+  const backButtonLabel = isDriverViewer ? "Volver a mensajes" : embedded ? "Volver al pedido" : "Volver a mensajes";
 
   const chatContent = (
     <>
@@ -268,14 +320,13 @@ export function OrderChatSheet({
               <div className="flex items-center gap-1.5">
                 {embedded ? (
                   <h2 className="text-sm font-black text-slate-900">
-                    {isClientViewer ? "Chat con tu Repartidor" : "Chat con el Cliente"}
+                    {isClientViewer ? "Chat del pedido" : "Chat con el Cliente"}
                   </h2>
                 ) : (
                   <SheetTitle className={`text-sm font-black ${isDriverViewer ? "text-slate-900" : "text-white"}`}>
-                    {isClientViewer ? "Chat con tu Repartidor" : "Chat con el Cliente"}
+                    {isClientViewer ? "Chat del pedido" : "Chat con el Cliente"}
                   </SheetTitle>
                 )}
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
               </div>
               <div className="flex items-center gap-2 mt-0.5">
                 <span
@@ -285,7 +336,7 @@ export function OrderChatSheet({
                 >
                   Pedido #{orderId}
                 </span>
-                {(!embedded || isDriverViewer) && ticketId && (
+                {isDriverViewer && ticketId && (
                   <button
                     type="button"
                     onClick={() => setIsTicketModalOpen(true)}
@@ -311,81 +362,27 @@ export function OrderChatSheet({
                 : "border-emerald-500/30 bg-emerald-500/20 text-emerald-400"
             }`}
           >
-            EN VIVO
+            {isClientViewer ? "GRUPAL" : "EN VIVO"}
           </Badge>
         </SheetHeader>
 
-        {/* Tarjeta de Estado del Reparto (Estilo Uber Eats / Rappi) */}
-        <div
-          className={`flex items-center justify-between border-b px-4 py-2.5 ${
-            isDriverViewer
-              ? "border-yellow-200 bg-yellow-50"
-              : embedded
-              ? "border-blue-100 bg-blue-50/70"
-              : isClientViewer
-              ? "border-blue-500/20 bg-blue-950/30"
-              : "border-emerald-500/20 bg-emerald-950/30"
-          }`}
-        >
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div
-              className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-sm font-bold shadow-sm ${
-                isDriverViewer
-                  ? "bg-white text-yellow-800 border border-yellow-200"
-                  : embedded
-                  ? "bg-white text-blue-700"
-                  : "bg-slate-800/90 text-white"
-              }`}
-            >
-              {isClientViewer ? "🛵" : "👤"}
+        {isDriverViewer ? (
+          <div className="flex items-center gap-2.5 border-b border-yellow-200 bg-yellow-50 px-4 py-2.5">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-yellow-200 bg-white text-yellow-800">
+              <User className="h-4 w-4" />
             </div>
             <div className="min-w-0">
-              <div className="flex items-center gap-1.5">
-                <span
-                  className={`truncate text-xs font-black ${
-                    embedded || isDriverViewer ? "text-slate-900" : "text-white"
-                  }`}
-                >
-                  {isClientViewer ? driverName : (clientName || activeOrder?.clientName || "Familia Gómez")}
-                </span>
-                <span
-                  className={`shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-bold ${
-                    isDriverViewer
-                      ? "bg-yellow-100 text-yellow-900"
-                      : embedded
-                      ? "bg-blue-100 text-blue-700"
-                      : "bg-emerald-500/20 text-emerald-300"
-                  }`}
-                >
-                  {isClientViewer ? "En viaje" : "Esperando entrega"}
-                </span>
-              </div>
-              <p
-                className={`truncate text-[10px] font-medium ${
-                  embedded || isDriverViewer ? "text-slate-600" : "text-slate-400"
-                }`}
-              >
-                {isClientViewer ? `Entrega en: ${displayDestAddress}` : `Destino: ${displayDestAddress}`}
-              </p>
+              <p className="truncate text-xs font-black text-slate-900">{clientName || activeOrder?.clientName || "Cliente"}</p>
+              <p className="truncate text-[10px] text-slate-600">Destino: {displayDestAddress}</p>
             </div>
           </div>
-          {!isDriverViewer && <div className="text-right shrink-0 pl-2">
-            <span
-              className={`text-xs font-black ${
-                embedded ? "text-blue-700" : isDriverViewer ? "text-yellow-900" : "text-emerald-400"
-              }`}
-            >
-              12-15 min
-            </span>
-            <span
-              className={`block text-[9px] font-medium ${
-                embedded || isDriverViewer ? "text-slate-500" : "text-slate-400"
-              }`}
-            >
-              GPS activo
-            </span>
-          </div>}
-        </div>
+        ) : (
+          <p className={`border-b px-4 py-2 text-xs ${embedded ? "border-blue-100 bg-blue-50 text-blue-800" : "border-slate-800 bg-slate-900 text-slate-300"}`}>
+            {["delivered", "cancelled", "cancelled_by_client", "cancelled_timeout", "rejected"].includes(String(activeOrder?.status || "").toLowerCase())
+              ? "Conversación entre comprador y empresa. Se conservan los mensajes anteriores."
+              : "Comparten este chat el comprador, la empresa y el repartidor asignado hasta la entrega."}
+          </p>
+        )}
 
         {/* Barra de perfil activo (Auditoría de Identidad) */}
         <div
@@ -419,6 +416,7 @@ export function OrderChatSheet({
           </span>
         </div>
 
+        {loadError && <p role="status" className={`px-3 pt-2 text-xs ${embedded || isDriverViewer ? "text-amber-800" : "text-amber-300"}`}>{loadError}</p>}
         <OrderChatMessageList
           messages={messages}
           effectiveRole={effectiveRole}
@@ -441,7 +439,7 @@ export function OrderChatSheet({
             onChange={(e) => setInputText(e.target.value)}
             placeholder={
               isClientViewer
-                ? `Escribir mensaje a ${driverName}...`
+                ? "Escribir al grupo..."
                 : `Escribir mensaje al cliente (${clientName || activeOrder?.clientName || "Cliente"})...`
             }
             className={
