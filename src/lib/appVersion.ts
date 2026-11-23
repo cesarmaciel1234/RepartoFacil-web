@@ -1,2 +1,2 @@
-export const APP_VERSION = "6.3";
-export const APP_RELEASE = "v6.3-scroll-chat-statusbar-limpia";
+export const APP_VERSION = "6.6";
+export const APP_RELEASE = "v6.6.0-selector-calle-altura-gps";

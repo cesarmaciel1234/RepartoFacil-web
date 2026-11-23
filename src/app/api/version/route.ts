@@ -32,6 +32,9 @@ export async function GET() {
       "Número de ticket en comanda con apertura fluida de chat en la misma ventana",
       "Scroll inteligente en chat (permite leer historial sin saltos automáticos)",
       "Status bar limpia y nítida sin viñeta oscura borrosa",
+      "Selector estructurado y editable de Calle y Altura / Número de casa para comprador",
+      "Selector de punto GPS exacto en el mapa con geocodificación inversa",
+      "Navegación GPS por coordenadas exactas y cálculo de ETA con fórmula Haversine en chofer y despacho",
     ],
   });
 }
