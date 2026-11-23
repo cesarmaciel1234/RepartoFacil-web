@@ -3,7 +3,7 @@ import { loadDriverProfile, ORDERS_STORAGE_KEY } from "./driverService";
 import { creditDeliveryEarning } from "./walletService";
 import { authHeaders } from "@/lib/clientAuth";
 
-type PendingActionType = "assign" | "deliver";
+type PendingActionType = "assign" | "pickup" | "deliver";
 
 export interface PendingDriverAction {
   type: PendingActionType;
@@ -37,7 +37,7 @@ export function loadPendingDriverActions(driverId: string): PendingDriverAction[
     if (
       action.driverId !== driverId ||
       !action.order?.id ||
-      (action.type !== "assign" && action.type !== "deliver") ||
+      (action.type !== "assign" && action.type !== "deliver" && action.type !== "pickup") ||
       key !== actionKey(driverId, action.order.id)
     ) {
       throw new Error("No se pudo validar una acción pendiente del repartidor.");
@@ -104,7 +104,7 @@ export async function syncPendingDriverActions(driverId: string): Promise<Driver
           headers: { "Content-Type": "application/json", ...authHeaders("Driver") },
           body: JSON.stringify({
             id: action.order.id,
-            status: action.type === "assign" ? "Assigned" : "Delivered",
+            status: action.type === "assign" ? "Assigned" : action.type === "pickup" ? "Picked Up" : "Delivered",
             driverProtocol: 2,
             driverId: action.driverId,
             driverUserId: action.driverUserId,

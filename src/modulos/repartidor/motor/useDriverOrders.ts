@@ -131,7 +131,12 @@ export function useDriverOrders(currentDriverId?: string | null) {
       for (const result of results) {
         toast(result.status === "confirmed"
           ? {
-              title: result.action.type === "assign" ? "Pedido confirmado" : "Entrega confirmada",
+              title:
+                result.action.type === "assign"
+                  ? "Pedido asignado"
+                  : result.action.type === "pickup"
+                  ? "Retiro confirmado"
+                  : "Entrega confirmada",
               description: `El servidor confirmó el pedido #${result.action.order.id}.`,
             }
           : {
@@ -174,7 +179,7 @@ export function useDriverOrders(currentDriverId?: string | null) {
     };
   }, [currentDriverId, syncPending]);
 
-  const queueAction = useCallback((type: "assign" | "deliver", order: DriverOrder, driverId: string) => {
+  const queueAction = useCallback((type: "assign" | "pickup" | "deliver", order: DriverOrder, driverId: string) => {
     try {
       const profile = loadDriverProfile();
       if (!profile || profile.id !== driverId) {
@@ -184,9 +189,12 @@ export function useDriverOrders(currentDriverId?: string | null) {
       setPendingActions(loadPendingDriverActions(driverId));
       toast({
         title: "Pendiente de confirmación",
-        description: type === "assign"
-          ? "El pedido no está asignado hasta que el servidor lo confirme."
-          : "La entrega y la ganancia se confirmarán al sincronizar.",
+        description:
+          type === "assign"
+            ? "El pedido no está asignado hasta que el servidor lo confirme."
+            : type === "pickup"
+            ? "El retiro del negocio se confirmará al sincronizar."
+            : "La entrega y la ganancia se confirmarán al sincronizar.",
       });
       void syncPending();
     } catch (error) {
@@ -217,6 +225,15 @@ export function useDriverOrders(currentDriverId?: string | null) {
     }
   }, [pendingAcceptOrder, queueAction]);
 
+  const handlePickupOrder = useCallback((orderId: string) => {
+    const order = myActiveOrders.find((item) => item.id === orderId);
+    if (!order || !currentDriverId) {
+      toast({ variant: "destructive", title: "Pedido no disponible", description: "Revisá tu ruta antes de confirmar el retiro." });
+      return;
+    }
+    queueAction("pickup", order, currentDriverId);
+  }, [currentDriverId, myActiveOrders, queueAction, toast]);
+
   const handleCompleteDelivery = useCallback((orderId: string) => {
     const order = myActiveOrders.find((item) => item.id === orderId);
     if (!order || !currentDriverId) {
@@ -230,6 +247,7 @@ export function useDriverOrders(currentDriverId?: string | null) {
     availableOrders,
     myActiveOrders,
     handleTakeOrder,
+    handlePickupOrder,
     handleCompleteDelivery,
     pendingAcceptOrder,
     showLoginModal,

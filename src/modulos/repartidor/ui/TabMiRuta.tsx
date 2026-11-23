@@ -13,6 +13,7 @@ import {
   ExternalLink,
   Store,
   Package,
+  PackageCheck,
   MessageSquare,
   Sparkles,
   Compass,
@@ -20,6 +21,7 @@ import {
 
 interface TabMiRutaProps {
   activeOrders: DriverOrder[];
+  onPickupOrder: (orderId: string) => void;
   onCompleteDelivery: (orderId: string) => void;
   onOpenOrderChat?: (order: DriverOrder) => void;
   pendingOrderIds: string[];
@@ -27,6 +29,7 @@ interface TabMiRutaProps {
 
 export function TabMiRuta({
   activeOrders,
+  onPickupOrder,
   onCompleteDelivery,
   onOpenOrderChat,
   pendingOrderIds,
@@ -67,6 +70,9 @@ export function TabMiRuta({
         const isPacked = ["ready", "embalado"].includes(
           String(order.status).trim().toLowerCase()
         );
+        const isPickedUp = ["picked up", "in transit"].includes(
+          String(order.status).trim().toLowerCase()
+        );
 
         // Enlace real a Google Maps para navegación GPS del chofer
         const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(
@@ -83,13 +89,17 @@ export function TabMiRuta({
               <div>
                 <div className="flex items-center gap-2">
                   <span className="font-black text-sm text-slate-900">#{order.id}</span>
-                  {isPacked ? (
+                  {isPickedUp ? (
+                    <Badge className="bg-blue-600 text-white font-black text-[10px] px-2 py-0.5 shadow-sm">
+                      🛵 EN VIAJE AL DOMICILIO
+                    </Badge>
+                  ) : isPacked ? (
                     <Badge className="bg-[#FFE600] text-[#2D3277] font-black text-[10px] px-2 py-0.5 animate-pulse shadow-sm shadow-yellow-500/30">
-                      📦 EMBALADO / LISTO
+                      📦 EMBALADO / LISTO PARA RETIRAR
                     </Badge>
                   ) : (
                     <Badge className="bg-yellow-50 text-yellow-900 border border-yellow-300 text-[10px] font-black px-2 py-0.5">
-                      EN CURSO
+                      🏪 EN PREPARACIÓN EN LOCAL
                     </Badge>
                   )}
                 </div>
@@ -226,20 +236,49 @@ export function TabMiRuta({
               </div>
             )}
 
-            {/* Botón Real de Confirmación de Entrega */}
+            {/* Botón según estado de la ruta: Primero Retirar, luego Entregar */}
             <div className="pt-1">
-              <Button
-                onClick={() => onCompleteDelivery(order.id)}
-                disabled={pendingOrderIds.includes(order.id)}
-                className="w-full h-13 rounded-2xl bg-[#FFE600] hover:bg-yellow-300 text-[#2D3277] font-black text-sm flex items-center justify-center gap-2 shadow-md shadow-yellow-500/20 active:scale-98 transition-all"
-              >
-                <CheckCircle2 className="w-5 h-5 text-[#2D3277]" />
-                <span>{pendingOrderIds.includes(order.id) ? "ENTREGA PENDIENTE DE CONFIRMACIÓN" : earnings == null ? "CONFIRMAR ENTREGA" : `CONFIRMAR ENTREGA (+${formatMoney(earnings)})`}</span>
-              </Button>
-              <p className="text-[10px] text-center text-slate-500 font-medium mt-1.5 flex items-center justify-center gap-1">
-                <Sparkles className="w-3 h-3 text-yellow-700" />
-                La ganancia se acredita cuando el servidor confirma la entrega.
-              </p>
+              {!isPickedUp ? (
+                <>
+                  <Button
+                    onClick={() => onPickupOrder(order.id)}
+                    disabled={pendingOrderIds.includes(order.id)}
+                    className="w-full h-13 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-black text-sm flex items-center justify-center gap-2 shadow-md shadow-blue-500/20 active:scale-98 transition-all"
+                  >
+                    <PackageCheck className="w-5 h-5 text-white" />
+                    <span>
+                      {pendingOrderIds.includes(order.id)
+                        ? "RETIRO PENDIENTE DE CONFIRMACIÓN"
+                        : "CONFIRMAR RETIRO EN NEGOCIO"}
+                    </span>
+                  </Button>
+                  <p className="text-[10px] text-center text-slate-500 font-medium mt-1.5 flex items-center justify-center gap-1">
+                    <Sparkles className="w-3 h-3 text-blue-600" />
+                    Presioná cuando tengas el pedido en tu poder para avisar al cliente.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <Button
+                    onClick={() => onCompleteDelivery(order.id)}
+                    disabled={pendingOrderIds.includes(order.id)}
+                    className="w-full h-13 rounded-2xl bg-[#FFE600] hover:bg-yellow-300 text-[#2D3277] font-black text-sm flex items-center justify-center gap-2 shadow-md shadow-yellow-500/20 active:scale-98 transition-all"
+                  >
+                    <CheckCircle2 className="w-5 h-5 text-[#2D3277]" />
+                    <span>
+                      {pendingOrderIds.includes(order.id)
+                        ? "ENTREGA PENDIENTE DE CONFIRMACIÓN"
+                        : earnings == null
+                        ? "CONFIRMAR ENTREGA EN DESTINO"
+                        : `CONFIRMAR ENTREGA (+${formatMoney(earnings)})`}
+                    </span>
+                  </Button>
+                  <p className="text-[10px] text-center text-slate-500 font-medium mt-1.5 flex items-center justify-center gap-1">
+                    <Sparkles className="w-3 h-3 text-yellow-700" />
+                    La ganancia se acredita cuando el servidor confirma la entrega.
+                  </p>
+                </>
+              )}
             </div>
           </div>
         );

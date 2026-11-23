@@ -265,7 +265,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// PATCH /api/orders: Tomar pedido (Assigned) o Entregar pedido (Delivered)
+// PATCH /api/orders: Tomar pedido (Assigned), Retirar pedido (Picked Up), Embalar (embalado) o Entregar pedido (Delivered)
 export async function PATCH(request: NextRequest) {
   try {
     const auth = await authenticateOrderUser(request, ["Client", "Driver"]);
@@ -281,10 +281,13 @@ export async function PATCH(request: NextRequest) {
     }
 
     const isAssignment = status === "Assigned";
+    const isPickup = status === "Picked Up" || status === "in_transit" || status === "picked_up";
     const isDelivery = status === "Delivered";
-    const driverAction = isAssignment || isDelivery;
+    const isPacked = status === "embalado" || status === "ready";
+    const driverAction = isAssignment || isPickup || isDelivery;
     const isCancellation = status === "cancelled_by_client";
-    if ((!driverAction && !isCancellation) ||
+
+    if ((!driverAction && !isCancellation && !isPacked) ||
         (driverAction && auth.user.role !== "Driver") ||
         (isCancellation && auth.user.role !== "Client")) {
       return NextResponse.json({ error: "La cuenta no puede realizar esta acción." }, { status: 403 });
@@ -300,7 +303,7 @@ export async function PATCH(request: NextRequest) {
     if (status) {
       updateQuery += `, estado = $${idx++}`;
       values.push(status);
-      if (status === "Assigned") {
+      if (status === "Assigned" || isPickup) {
         updateQuery += `, driver_last_ping = NOW(), custodio_estado = 'normal', custodio_advertencia_at = NULL`;
       }
     }
@@ -319,10 +322,15 @@ export async function PATCH(request: NextRequest) {
     updateQuery += ` WHERE id = $${idx++}`;
     values.push(id);
     if (isAssignment) {
-      updateQuery += " AND (repartidor_id IS NULL OR repartidor_id = '') AND LOWER(TRIM(estado)) IN ('confirmed', 'ready', 'accepted', 'embalado')";
+      updateQuery += " AND (repartidor_id IS NULL OR repartidor_id = '') AND LOWER(TRIM(estado)) IN ('confirmed', 'ready', 'accepted', 'embalado', 'pending', 'pending_store')";
+    } else if (isPickup) {
+      updateQuery += ` AND repartidor_id = $${idx++} AND LOWER(TRIM(estado)) IN ('assigned', 'ready', 'accepted', 'embalado')`;
+      values.push(driverId);
     } else if (isDelivery) {
       updateQuery += ` AND repartidor_id = $${idx++} AND LOWER(TRIM(estado)) IN ('assigned', 'picked up', 'in transit', 'ready', 'embalado')`;
       values.push(driverId);
+    } else if (isPacked) {
+      updateQuery += ` AND LOWER(TRIM(estado)) NOT IN ('delivered', 'cancelled', 'cancelled_by_client', 'rejected')`;
     } else {
       updateQuery += ` AND (cliente_id = $${idx} OR cliente_usuario_id = $${idx}) AND LOWER(TRIM(estado)) NOT IN ('delivered', 'cancelled', 'cancelled_by_client', 'rejected')`;
       values.push(auth.user.id);
@@ -343,6 +351,8 @@ export async function PATCH(request: NextRequest) {
         const alreadyApplied = existing[0].repartidor_id === driverId && (
           isAssignment
             ? ["assigned", "picked up", "in transit", "ready", "embalado", "delivered"].includes(existingStatus)
+            : isPickup
+            ? ["picked up", "in transit", "delivered"].includes(existingStatus)
             : existingStatus === "delivered"
         );
         if (alreadyApplied) {
@@ -350,7 +360,7 @@ export async function PATCH(request: NextRequest) {
         }
         return NextResponse.json(
           {
-            error: isAssignment ? "El pedido ya no está disponible." : "La entrega no se puede confirmar para este repartidor.",
+            error: isAssignment ? "El pedido ya no está disponible." : "La acción no se puede confirmar para este repartidor.",
           },
           { status: 409 }
         );
@@ -358,18 +368,32 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: "No se puede cancelar este pedido." }, { status: 409 });
     }
 
-    // Si el chofer acepta la orden o la entrega, registrar el evento en el chat tripartito
+    // Registrar el evento correspondiente en el chat tripartito
+    const horaStr = new Date().toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" });
+
     if (status === "Assigned") {
       const msgId = `msg-driver-${Date.now()}`;
-      const horaStr = new Date().toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" });
       const txt = `Repartidor ${driverName || "Lucas Motomensajero"}: ¡Hola! He tomado tu pedido #${id} y voy hacia la sucursal a retirarlo 🛵💨`;
       await queryDb(
         "INSERT INTO repartofacil_chat_mensajes (id, order_id, author_role, author_name, content, timestamp_str, created_at, author_id) VALUES ($1, $2, $3, $4, $5, $6, NOW(), $7)",
         [msgId, id, "driver", driverName || "Lucas Motomensajero", txt, horaStr, driverId || null]
       ).catch(() => {});
+    } else if (isPickup) {
+      const msgId = `msg-driver-pickup-${Date.now()}`;
+      const txt = `Repartidor ${driverName || "Lucas Motomensajero"}: Ya retiré el pedido #${id} del local y voy en camino a tu domicilio 🛵📦💨`;
+      await queryDb(
+        "INSERT INTO repartofacil_chat_mensajes (id, order_id, author_role, author_name, content, timestamp_str, created_at, author_id) VALUES ($1, $2, $3, $4, $5, $6, NOW(), $7)",
+        [msgId, id, "driver", driverName || "Lucas Motomensajero", txt, horaStr, driverId || null]
+      ).catch(() => {});
+    } else if (isPacked) {
+      const msgId = `msg-store-pack-${Date.now()}`;
+      const txt = `Comercio: Pedido #${id} embalado y listo para ser retirado por el repartidor 📦✨`;
+      await queryDb(
+        "INSERT INTO repartofacil_chat_mensajes (id, order_id, author_role, author_name, content, timestamp_str, created_at) VALUES ($1, $2, $3, $4, $5, $6, NOW())",
+        [msgId, id, "store", "Comercio", txt, horaStr]
+      ).catch(() => {});
     } else if (status === "Delivered") {
       const msgId = `msg-driver-${Date.now()}`;
-      const horaStr = new Date().toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" });
       const txt = `Repartidor ${driverName || "Lucas Motomensajero"}: Pedido #${id} entregado con éxito en destino. ¡Muchas gracias por tu compra! 📦✅`;
       await queryDb(
         "INSERT INTO repartofacil_chat_mensajes (id, order_id, author_role, author_name, content, timestamp_str, created_at) VALUES ($1, $2, $3, $4, $5, $6, NOW())",
@@ -377,7 +401,6 @@ export async function PATCH(request: NextRequest) {
       ).catch(() => {});
     } else if (status === "cancelled_by_client" || status === "cancelled" || status === "Cancelled") {
       const msgId = `msg-client-cancel-${Date.now()}`;
-      const horaStr = new Date().toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" });
       const txt = `✕ El cliente canceló el pedido #${id}.`;
       await queryDb(
         "INSERT INTO repartofacil_chat_mensajes (id, order_id, author_role, author_name, content, timestamp_str, created_at) VALUES ($1, $2, $3, $4, $5, $6, NOW())",

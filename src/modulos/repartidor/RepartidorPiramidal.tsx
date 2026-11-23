@@ -73,6 +73,7 @@ export function RepartidorPiramidal({ onSwitchToStore }: RepartidorPiramidalProp
     availableOrders,
     myActiveOrders,
     handleTakeOrder,
+    handlePickupOrder,
     handleCompleteDelivery,
     pendingAcceptOrder,
     showLoginModal,
@@ -387,6 +388,7 @@ export function RepartidorPiramidal({ onSwitchToStore }: RepartidorPiramidalProp
             {activeTab === "ruta" && (
               <TabMiRuta
                 activeOrders={myActiveOrders}
+                onPickupOrder={handlePickupOrder}
                 onCompleteDelivery={handleCompleteDelivery}
                 onOpenOrderChat={openOrderConversation}
                 pendingOrderIds={pendingActions.map((action) => action.order.id)}
