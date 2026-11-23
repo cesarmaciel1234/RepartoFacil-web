@@ -263,17 +263,32 @@ export function RepartidorPiramidal({ onSwitchToStore }: RepartidorPiramidalProp
     setIsExpanded(true);
   };
 
+  const activeOrder = myActiveOrders[0] || null;
+  const isOrderPickedUp = Boolean(
+    activeOrder &&
+      ["picked up", "in transit"].includes(String(activeOrder.status).trim().toLowerCase())
+  );
+
+  // Navegación en dos paradas:
+  // 1. Si no retiró el pedido -> Navegar al Local / Sucursal donde retira
+  // 2. Si ya lo retiró -> Navegar al Domicilio del Comprador
+  const activeNavDestination: [number, number] | null = activeOrder
+    ? isOrderPickedUp
+      ? activeOrder.destinationCoords?.lat && activeOrder.destinationCoords?.lng
+        ? [activeOrder.destinationCoords.lat, activeOrder.destinationCoords.lng]
+        : null
+      : activeOrder.storeCoords?.lat && activeOrder.storeCoords?.lng
+      ? [activeOrder.storeCoords.lat, activeOrder.storeCoords.lng]
+      : [-32.9372, -60.6542]
+    : null;
+
   return (
     <div className="relative h-screen h-[100dvh] w-full overflow-hidden bg-slate-50 text-slate-900 flex flex-col font-sans select-none">
       {/* ─── 1. Mapa Interactivo de Fondo (Full Screen) ─── */}
       <div className="absolute inset-0 z-0">
         <InteractiveMap
           center={coords ? [coords.lat, coords.lng] : [-32.9372, -60.6542]}
-          destination={
-            myActiveOrders[0]?.destinationCoords?.lat && myActiveOrders[0]?.destinationCoords?.lng
-              ? [myActiveOrders[0].destinationCoords.lat, myActiveOrders[0].destinationCoords.lng]
-              : null
-          }
+          destination={activeNavDestination}
           heading={heading}
           alerts={null}
           activeOrders={myActiveOrders}

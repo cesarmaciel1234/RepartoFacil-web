@@ -76,9 +76,14 @@ export function TabMiRuta({
           String(order.status).trim().toLowerCase()
         );
 
-        // Enlace real a Google Maps con coordenadas exactas y modo de transporte según vehículo del repartidor
+        // ─── Navegación en dos paradas consecutivas: 1) Local de Retiro y 2) Domicilio Comprador ───
+        const storeCoords = order.storeCoords?.lat && order.storeCoords?.lng
+          ? order.storeCoords
+          : { lat: -32.9372, lng: -60.6542 };
+        const storeTarget = `${storeCoords.lat},${storeCoords.lng}`;
+
         const hasExactCoords = Boolean(order.destinationCoords?.lat && order.destinationCoords?.lng);
-        const destinationTarget = hasExactCoords
+        const customerTarget = hasExactCoords
           ? `${order.destinationCoords!.lat},${order.destinationCoords!.lng}`
           : encodeURIComponent(order.deliveryAddress);
 
@@ -88,7 +93,13 @@ export function TabMiRuta({
           ? "bicycling"
           : "driving";
 
-        const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${destinationTarget}&travelmode=${travelmode}`;
+        // Destino activo según la parada en curso:
+        // Si no retiró -> Navegar al Local donde retira (Parada 1)
+        // Si ya retiró -> Navegar a la casa del comprador (Parada 2)
+        const currentStopTarget = isPickedUp ? customerTarget : storeTarget;
+        const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${currentStopTarget}&travelmode=${travelmode}`;
+        const mapsStoreUrl = `https://www.google.com/maps/dir/?api=1&destination=${storeTarget}&travelmode=${travelmode}`;
+        const mapsCustomerUrl = `https://www.google.com/maps/dir/?api=1&destination=${customerTarget}&travelmode=${travelmode}`;
 
         const rawTicket = order.ticketId || order.ticket_id || order.id;
         const cleanTicket = String(rawTicket).replace(/^#?RF-?/i, "");
@@ -139,40 +150,127 @@ export function TabMiRuta({
               </div>
             </div>
 
-            {/* Puntos de Ruta Reales (Retiro en Comercio y Entrega a Domicilio) */}
-            <div className="space-y-2 bg-slate-50 p-3 rounded-2xl border border-slate-200 text-xs">
-              {/* Origen (Sucursal de Retiro) */}
-              <div className="flex items-start gap-2.5">
-                <Store className="w-4 h-4 text-yellow-700 shrink-0 mt-0.5" />
-                <div className="min-w-0 flex-1">
-                  <span className="text-[10px] text-slate-500 font-semibold block uppercase tracking-wider">
-                    Retiro en Sucursal:
-                  </span>
-                  <span className="font-bold text-slate-900 text-xs block truncate">
-                    {branchDisplay}
-                  </span>
+            {/* Puntos de Ruta Reales (Navegación en dos paradas consecutivas: 1) Retiro en Comercio y 2) Entrega a Domicilio) */}
+            <div className="space-y-2.5">
+              {/* PARADA 1: Retiro en Sucursal / Negocio */}
+              <div
+                className={cn(
+                  "p-3 rounded-2xl border text-xs transition-all",
+                  !isPickedUp
+                    ? "bg-amber-50/80 border-amber-300 shadow-xs"
+                    : "bg-slate-50 border-slate-200 opacity-80"
+                )}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-start gap-2.5 min-w-0 flex-1">
+                    <div
+                      className={cn(
+                        "w-6 h-6 rounded-lg flex items-center justify-center shrink-0 mt-0.5 text-xs font-black",
+                        !isPickedUp
+                          ? "bg-amber-400 text-amber-950 ring-2 ring-amber-300/60"
+                          : "bg-emerald-100 text-emerald-800"
+                      )}
+                    >
+                      {isPickedUp ? "✓" : "1"}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="text-[10px] font-black uppercase tracking-wider text-slate-500">
+                          {isPickedUp ? "✓ Parada 1: Retirado del Local" : "📍 Parada 1: Retiro en Sucursal"}
+                        </span>
+                        {!isPickedUp && (
+                          <span className="text-[9px] font-black bg-amber-200 text-amber-900 px-1.5 py-0.5 rounded-full uppercase">
+                            En curso
+                          </span>
+                        )}
+                      </div>
+                      <span className="font-extrabold text-slate-900 text-xs block truncate mt-0.5">
+                        {branchDisplay}
+                      </span>
+                    </div>
+                  </div>
+                  <a
+                    href={mapsStoreUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className={cn(
+                      "px-2.5 py-1.5 rounded-xl text-[10px] font-black flex items-center gap-1 shrink-0 transition-all border shadow-xs active:scale-95",
+                      !isPickedUp
+                        ? "bg-[#FFE600] hover:bg-yellow-300 text-[#2D3277] border-yellow-500 font-extrabold"
+                        : "bg-white hover:bg-slate-100 text-slate-600 border-slate-200"
+                    )}
+                    title="Navegar en Google Maps hasta la sucursal de retiro"
+                  >
+                    <Compass className="w-3 h-3 text-yellow-800" />
+                    <span>GPS Local</span>
+                    <ExternalLink className="w-2.5 h-2.5 opacity-60" />
+                  </a>
                 </div>
               </div>
 
-              <div className="border-t border-slate-200 pt-2 flex items-start gap-2.5">
-                <MapPin className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
-                <div className="min-w-0 flex-1">
-                  <span className="text-[10px] text-slate-500 font-semibold block uppercase tracking-wider">
-                    Entregar en Domicilio:
-                  </span>
-                  <span className="font-bold text-slate-900 text-xs block">
-                    {order.deliveryAddress}
-                  </span>
-                  {hasExactCoords && (
-                    <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded-md border border-emerald-200 mt-1">
-                      🎯 Ubicación exacta con GPS fijada por el comprador
-                    </span>
-                  )}
-                  {order.notes && (
-                    <span className="text-[11px] text-yellow-900 font-medium block mt-0.5 bg-yellow-50 px-2 py-0.5 rounded-lg border border-yellow-200">
-                      Nota cliente: "{order.notes}"
-                    </span>
-                  )}
+              {/* PARADA 2: Entrega en Domicilio del Comprador */}
+              <div
+                className={cn(
+                  "p-3 rounded-2xl border text-xs transition-all",
+                  isPickedUp
+                    ? "bg-blue-50/80 border-blue-300 shadow-xs ring-1 ring-blue-400/30"
+                    : "bg-slate-50 border-slate-200 opacity-80"
+                )}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-start gap-2.5 min-w-0 flex-1">
+                    <div
+                      className={cn(
+                        "w-6 h-6 rounded-lg flex items-center justify-center shrink-0 mt-0.5 text-xs font-black",
+                        isPickedUp
+                          ? "bg-blue-600 text-white ring-2 ring-blue-300/60"
+                          : "bg-slate-200 text-slate-600"
+                      )}
+                    >
+                      2
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="text-[10px] font-black uppercase tracking-wider text-slate-500">
+                          {isPickedUp ? "🛵 Parada 2: Entregar al Cliente" : "⏳ Parada 2: Domicilio del Cliente"}
+                        </span>
+                        {isPickedUp && (
+                          <span className="text-[9px] font-black bg-blue-200 text-blue-900 px-1.5 py-0.5 rounded-full uppercase">
+                            En curso
+                          </span>
+                        )}
+                      </div>
+                      <span className="font-extrabold text-slate-900 text-xs block mt-0.5">
+                        {order.deliveryAddress}
+                      </span>
+                      {hasExactCoords && (
+                        <span className="inline-flex items-center gap-1 text-[9.5px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded-md border border-emerald-200 mt-1">
+                          🎯 Ubicación exacta con GPS fijada por comprador
+                        </span>
+                      )}
+                      {order.notes && (
+                        <span className="text-[10.5px] text-yellow-900 font-medium block mt-1 bg-yellow-50 px-2 py-0.5 rounded-lg border border-yellow-200">
+                          Nota: "{order.notes}"
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <a
+                    href={mapsCustomerUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className={cn(
+                      "px-2.5 py-1.5 rounded-xl text-[10px] font-black flex items-center gap-1 shrink-0 transition-all border shadow-xs active:scale-95",
+                      isPickedUp
+                        ? "bg-blue-600 hover:bg-blue-700 text-white border-blue-700 font-extrabold"
+                        : "bg-white hover:bg-slate-100 text-slate-600 border-slate-200"
+                    )}
+                    title="Navegar en Google Maps hasta la casa del cliente"
+                  >
+                    <Compass className="w-3 h-3 text-current" />
+                    <span>GPS Cliente</span>
+                    <ExternalLink className="w-2.5 h-2.5 opacity-60" />
+                  </a>
                 </div>
               </div>
             </div>
@@ -184,10 +282,10 @@ export function TabMiRuta({
                 target="_blank"
                 rel="noreferrer"
                 className="h-10 rounded-xl bg-slate-50 hover:bg-yellow-50 text-slate-800 font-bold text-[11px] flex items-center justify-center gap-1 border border-slate-200 transition-all shadow-sm group px-1"
-                title="Abrir mapa en Google Maps"
+                title={!isPickedUp ? "Navegar a Parada 1 (Local de Retiro)" : "Navegar a Parada 2 (Casa del Cliente)"}
               >
                 <Compass className="w-3.5 h-3.5 text-yellow-700 group-hover:rotate-45 transition-transform" />
-                <span>GPS</span>
+                <span>{!isPickedUp ? "GPS Local" : "GPS Cliente"}</span>
                 <ExternalLink className="w-2.5 h-2.5 text-slate-500" />
               </a>
 
