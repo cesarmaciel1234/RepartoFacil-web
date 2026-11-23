@@ -26,6 +26,9 @@ export async function GET() {
       "Navegación libre de catálogo para visitantes sin bloqueo GPS",
       "Flujo de repartidor en dos etapas: retiro en negocio y entrega",
       "Eventos y sincronización automática en chat tripartito",
+      "DriverTopBar ultra-compacto adaptado a pantallas móviles pequeñas",
+      "Badges de mensajes no leídos en Copiloto IA y Chat de repartidor",
+      "Integración nativa PWA (Web Audio, Vibración, WakeLock de pantalla y App Badging)",
     ],
   });
 }

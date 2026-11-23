@@ -1,21 +1,24 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { authHeaders } from "@/lib/clientAuth";
+import { playNotificationSound, triggerVibration, setBrowserAppBadge } from "@/lib/browserIntegration";
 
-export function useMensajesNoLeidos() {
+export function useMensajesNoLeidos(role: "Client" | "Driver" = "Client") {
   const [unread, setUnread] = useState<Record<string, number>>({});
   const [error, setError] = useState(false);
+  const prevTotalRef = useRef<number>(0);
 
   useEffect(() => {
     let active = true;
     let sequence = 0;
     const refresh = async () => {
       const request = ++sequence;
-      const headers = authHeaders("Client");
+      const headers = authHeaders(role);
       if (!headers.Authorization) {
         setUnread({});
         setError(false);
+        setBrowserAppBadge(0);
         return;
       }
       try {
@@ -36,7 +39,14 @@ export function useMensajesNoLeidos() {
           }
           counts[row.order_id] = row.unread;
         }
-        if (active && request === sequence && authHeaders("Client").Authorization === headers.Authorization) {
+        if (active && request === sequence && authHeaders(role).Authorization === headers.Authorization) {
+          const total = Object.values(counts).reduce((sum, count) => sum + count, 0);
+          if (total > prevTotalRef.current && prevTotalRef.current >= 0) {
+            playNotificationSound();
+            triggerVibration([120, 60, 120]);
+          }
+          prevTotalRef.current = total;
+          setBrowserAppBadge(total);
           setUnread(counts);
           setError(false);
         }
@@ -49,7 +59,7 @@ export function useMensajesNoLeidos() {
       }
     };
     void refresh();
-    const timer = window.setInterval(refresh, 5000);
+    const timer = window.setInterval(refresh, 4000);
     window.addEventListener("rf-chat-read", refresh);
     const refreshIdentity = () => {
       setUnread({});
@@ -67,7 +77,7 @@ export function useMensajesNoLeidos() {
       window.removeEventListener("repartofacil-auth", refreshIdentity);
       window.removeEventListener("storage", refreshIdentity);
     };
-  }, []);
+  }, [role]);
 
   return { unread, unreadError: error, unreadTotal: Object.values(unread).reduce((sum, count) => sum + count, 0) };
 }

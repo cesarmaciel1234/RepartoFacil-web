@@ -29,6 +29,8 @@ import { Layers, Truck, ShieldAlert, Navigation, Target, MessageCircle } from "l
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { authHeaders } from "@/lib/clientAuth";
+import { useMensajesNoLeidos } from "@/modulos/tienda/pedidos/hooks/useMensajesNoLeidos";
+import { useScreenWakeLock, requestNotificationPermission } from "@/lib/browserIntegration";
 
 interface RepartidorPiramidalProps {
   onSwitchToStore: () => void;
@@ -84,6 +86,28 @@ export function RepartidorPiramidal({ onSwitchToStore }: RepartidorPiramidalProp
     syncError,
     syncPending,
   } = useDriverOrders(driverProfile?.id);
+
+  const { unreadTotal: chatUnreadCount } = useMensajesNoLeidos("Driver");
+  const [copilotUnreadCount, setCopilotUnreadCount] = useState(0);
+  const prevAvailableCountRef = useRef(0);
+
+  // Mantener la pantalla encendida durante navegación activa o entregas en curso (PWA WakeLock)
+  useScreenWakeLock(myActiveOrders.length > 0 || isNavigating);
+
+  // Solicitar permiso de notificaciones nativas del navegador al iniciar actividad como repartidor
+  useEffect(() => {
+    if (driverProfile?.id) {
+      void requestNotificationPermission();
+    }
+  }, [driverProfile?.id]);
+
+  // Si ingresan nuevas oportunidades en Disponibles, Copo IA genera sugerencia/badge
+  useEffect(() => {
+    if (availableOrders.length > prevAvailableCountRef.current && prevAvailableCountRef.current > 0) {
+      setCopilotUnreadCount((prev) => prev + (availableOrders.length - prevAvailableCountRef.current));
+    }
+    prevAvailableCountRef.current = availableOrders.length;
+  }, [availableOrders.length]);
 
   useEffect(() => {
     if (selectedDriverChatOrder && !myActiveOrders.some((order) => order.id === selectedDriverChatOrder.id)) {
@@ -174,6 +198,7 @@ export function RepartidorPiramidal({ onSwitchToStore }: RepartidorPiramidalProp
   const openCopilotConversation = () => {
     setSelectedDriverChatOrder(null);
     setIsCopilotConversationOpen(true);
+    setCopilotUnreadCount(0);
     setActiveTab("mensajes");
     setIsExpanded(true);
   };
@@ -206,6 +231,8 @@ export function RepartidorPiramidal({ onSwitchToStore }: RepartidorPiramidalProp
         driverProfile={driverProfile}
         walletBalance={wallet.balance}
         activeOrder={myActiveOrders[0] || null}
+        chatUnreadCount={chatUnreadCount}
+        copilotUnreadCount={copilotUnreadCount}
         onOpenSidebar={() => setIsSidebarOpen(true)}
         onOpenCopilot={openCopilotConversation}
         onOpenOrderChat={showMessageInbox}
@@ -350,6 +377,11 @@ export function RepartidorPiramidal({ onSwitchToStore }: RepartidorPiramidalProp
                 >
                   <MessageCircle className="w-3.5 h-3.5 shrink-0" />
                   <span className="truncate">Mensajes</span>
+                  {chatUnreadCount > 0 && (
+                    <span className="absolute -top-1 -right-0.5 min-w-4 h-4 px-1 bg-red-500 text-white text-[9px] rounded-full font-bold flex items-center justify-center shadow animate-pulse">
+                      {chatUnreadCount > 9 ? "9+" : chatUnreadCount}
+                    </span>
+                  )}
                 </button>
               </div>
             </div>
