@@ -245,7 +245,9 @@ export async function createOrder(
 
   const total = subtotal + deliveryFee;
   const orderId = `RF-${crypto.randomUUID()}`;
-  const { coords: destCoords } = estimateAddressCoords(form.deliveryAddress || "");
+  const destCoords = form.deliveryCoordinates
+    ? { lat: Number(form.deliveryCoordinates.lat), lng: Number(form.deliveryCoordinates.lng) }
+    : estimateAddressCoords(form.deliveryAddress || "").coords;
 
   // Asignar IDs únicos de usuario, perfil cliente y empresa destinataria (aislamiento estricto)
   const identity = getOrCreateActiveClientIdentity();
@@ -307,6 +309,7 @@ export async function createOrder(
     branch: companyBranchName,
     storeCoords: MARKET_CENTRAL.coords,
     destinationCoords: destCoords,
+    deliveryCoordinates: destCoords,
 
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
@@ -320,7 +323,13 @@ export async function createOrder(
   const response = await fetch("/api/orders", {
     method: "POST",
     headers: { "Content-Type": "application/json", ...headers },
-    body: JSON.stringify(newOrder),
+    body: JSON.stringify({
+      ...newOrder,
+      deliveryLat: destCoords.lat,
+      deliveryLng: destCoords.lng,
+      deliveryCoordinates: destCoords,
+      destinationCoords: destCoords,
+    }),
   });
   if (!response.ok) {
     if (response.status === 401 || response.status === 403) {

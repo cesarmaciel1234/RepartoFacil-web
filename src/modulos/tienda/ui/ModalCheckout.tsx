@@ -60,6 +60,33 @@ interface ModalCheckoutProps {
   onCloseConfirmed: () => void;
 }
 
+function parseAddressParts(raw: string) {
+  if (!raw) return { street: "", number: "", unit: "", city: "" };
+  const commaParts = raw.split(",").map((s) => s.trim());
+  const first = commaParts[0] || "";
+  const match = first.match(/^(.*?)(?:\s+(\d+[\w-]*))$/);
+  let street = first;
+  let number = "";
+  if (match) {
+    street = match[1].trim();
+    number = match[2].trim();
+  }
+  let unit = "";
+  const otherParts: string[] = [];
+  for (let i = 1; i < commaParts.length; i++) {
+    const part = commaParts[i];
+    if (!number && /^\d+$/.test(part)) {
+      number = part;
+    } else if (/^(piso|depto|dto|departamento|timbre)/i.test(part)) {
+      unit = part;
+    } else {
+      otherParts.push(part);
+    }
+  }
+  const city = otherParts.join(", ");
+  return { street, number, unit, city };
+}
+
 export function ModalCheckout({
   isOpen,
   onOpenChange,
@@ -83,6 +110,9 @@ export function ModalCheckout({
   const [missingPhone, setMissingPhone] = useState(true);
   const [formError, setFormError] = useState("");
   const [addressUnit, setAddressUnit] = useState("");
+  const [streetInput, setStreetInput] = useState("");
+  const [numberInput, setNumberInput] = useState("");
+  const [citySuffix, setCitySuffix] = useState("");
 
   const [form, setForm] = useState<CheckoutFormData>({
     customerName: "",
@@ -93,6 +123,17 @@ export function ModalCheckout({
     paymentMethod: "efectivo",
     orderNotes: "",
   });
+
+  const updateCombinedAddress = (
+    street: string,
+    num: string,
+    unit: string,
+    city: string
+  ) => {
+    const streetWithNum = num.trim() ? `${street.trim()} ${num.trim()}` : street.trim();
+    const combined = [streetWithNum, unit.trim(), city.trim()].filter(Boolean).join(", ");
+    setForm((p) => ({ ...p, deliveryAddress: combined }));
+  };
 
   useEffect(() => {
     if (!isOpen) {
@@ -109,20 +150,41 @@ export function ModalCheckout({
     setMissingName(!customerName);
     setMissingPhone(!customerPhone);
     setFormError("");
+
+    const initialAddr =
+      profileAddress || selectedDeliveryAddress || saved.deliveryAddress || "";
+    const parsed = parseAddressParts(initialAddr);
+    setStreetInput(parsed.street);
+    setNumberInput(parsed.number);
+    setCitySuffix(parsed.city);
+    if (parsed.unit) setAddressUnit(parsed.unit);
+
     setForm((prev) => ({
       ...prev,
       customerName,
       customerPhone,
-      deliveryAddress: profileAddress || selectedDeliveryAddress || saved.deliveryAddress || "",
+      deliveryAddress: initialAddr,
       deliveryType: saved.deliveryType || "delivery",
       selectedBranch: saved.selectedBranch || "Sucursal Central - Tucumán 2130",
     }));
   }, [isOpen, profileAddress, selectedDeliveryAddress]);
 
-  // Cálculo de tarifa estándar Uber / PedidosYa
+  // Si cambia la dirección seleccionada desde el mapa mientras el checkout está abierto
+  useEffect(() => {
+    if (selectedDeliveryAddress) {
+      const parsed = parseAddressParts(selectedDeliveryAddress);
+      if (parsed.street) setStreetInput(parsed.street);
+      if (parsed.number) setNumberInput(parsed.number);
+      if (parsed.city) setCitySuffix(parsed.city);
+      if (parsed.unit && !addressUnit) setAddressUnit(parsed.unit);
+      setForm((prev) => ({ ...prev, deliveryAddress: selectedDeliveryAddress }));
+    }
+  }, [selectedDeliveryAddress]);
+
+  // Cálculo de tarifa estándar Uber / PedidosYa (usando coordenadas exactas o dirección)
   const tarifa = useMemo(
-    () => calcularTarifaEnvio(form.deliveryAddress || ""),
-    [form.deliveryAddress]
+    () => calcularTarifaEnvio(deliveryCoordinates || form.deliveryAddress || ""),
+    [deliveryCoordinates, form.deliveryAddress]
   );
 
   const deliveryFee =
@@ -145,8 +207,12 @@ export function ModalCheckout({
       return;
     }
     if (form.deliveryType === "delivery") {
-      if (!form.deliveryAddress.trim()) {
-        setFormError("Completá tu dirección de entrega.");
+      if (!streetInput.trim()) {
+        setFormError("Por favor ingresá la calle de tu domicilio.");
+        return;
+      }
+      if (!numberInput.trim() && !deliveryCoordinates) {
+        setFormError("Por favor ingresá el número de tu casa (altura) o marcá el punto en el mapa para que el repartidor llegue a tu puerta.");
         return;
       }
       if (REQUIRE_VERIFIED_GPS && !deliveryCoordinates) {
@@ -156,11 +222,25 @@ export function ModalCheckout({
       }
     }
     setFormError("");
-    const finalAddress =
-      form.deliveryType === "delivery" && addressUnit.trim()
-        ? `${form.deliveryAddress.trim()}, ${addressUnit.trim()}`
-        : form.deliveryAddress.trim();
-    await onConfirmOrder({ ...form, deliveryAddress: finalAddress }, checkoutClientId.current);
+
+    const streetWithNum = numberInput.trim()
+      ? `${streetInput.trim()} ${numberInput.trim()}`
+      : streetInput.trim();
+    const finalAddress = [streetWithNum, addressUnit.trim(), citySuffix.trim()]
+      .filter(Boolean)
+      .join(", ");
+
+    await onConfirmOrder(
+      {
+        ...form,
+        deliveryAddress: finalAddress,
+        deliveryStreet: streetInput.trim(),
+        deliveryNumber: numberInput.trim(),
+        deliveryFloor: addressUnit.trim(),
+        deliveryCoordinates: deliveryCoordinates || null,
+      },
+      checkoutClientId.current
+    );
   };
 
   return (
@@ -259,69 +339,111 @@ export function ModalCheckout({
               </div>}
 
               {form.deliveryType === "delivery" ? (
-                <div className="space-y-2">
-                  <label className="mb-0.5 block text-xs font-bold text-slate-700">
-                    Dirección de Entrega (1 km GPS) *
-                  </label>
+                <div className="space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-xs font-bold text-slate-700">
+                      Dirección y Número de Casa *
+                    </label>
+                    {deliveryCoordinates ? (
+                      <span className="inline-flex items-center gap-1 text-[10px] font-black text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                        <ShieldCheck className="w-3 h-3 text-emerald-600" />
+                        Punto GPS fijado
+                      </span>
+                    ) : (
+                      <span className="text-[10px] font-semibold text-slate-400">
+                        Punto GPS opcional
+                      </span>
+                    )}
+                  </div>
 
-                  {deliveryCoordinates ? (
-                    <div className="space-y-2">
-                      <div className="rounded-2xl border border-emerald-200 bg-emerald-50/80 p-3 space-y-1 shadow-sm">
-                        <div className="flex items-center justify-between">
-                          <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-emerald-800">
-                            <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-                            Ubicación real verificada (1 km)
-                          </span>
-                          <button
-                            type="button"
-                            onClick={onOpenAddressPicker}
-                            className="text-[11px] font-bold text-blue-600 hover:text-blue-800 underline"
-                          >
-                            Cambiar punto
-                          </button>
-                        </div>
-                        <p className="text-xs font-black text-slate-900 leading-tight">
-                          {form.deliveryAddress || "Ubicación seleccionada en el mapa"}
+                  {/* Tarjeta de Punto en el Mapa */}
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50/90 p-2.5 flex items-center justify-between gap-2 shadow-xs">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${deliveryCoordinates ? "bg-emerald-100 text-emerald-700" : "bg-blue-100 text-blue-700"}`}>
+                        <MapPin className="w-4 h-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold text-slate-900 truncate">
+                          {deliveryCoordinates ? "Punto fijado en el mapa" : "Punto exacto sin marcar"}
+                        </p>
+                        <p className="text-[10px] text-slate-500 truncate">
+                          {deliveryCoordinates
+                            ? `${deliveryCoordinates.lat.toFixed(4)}, ${deliveryCoordinates.lng.toFixed(4)}`
+                            : "Tocá el mapa para ubicar tu puerta"}
                         </p>
                       </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={onOpenAddressPicker}
+                      className="px-2.5 py-1.5 rounded-xl bg-white border border-slate-200 hover:border-blue-400 text-blue-600 hover:text-blue-800 text-[11px] font-bold shrink-0 shadow-xs active:scale-95 transition-all"
+                    >
+                      {deliveryCoordinates ? "Cambiar punto" : "Elegir en mapa"}
+                    </button>
+                  </div>
 
-                      <div>
-                        <label className="mb-0.5 block text-[11px] font-bold text-slate-600">
-                          Piso, Depto o Timbre (opcional)
-                        </label>
-                        <Input
-                          placeholder="Ej. Piso 3 Depto B / Timbre blanco"
-                          value={addressUnit}
-                          onChange={(e) => setAddressUnit(e.target.value)}
-                          className="h-9 rounded-xl border-slate-200 bg-white text-xs text-slate-900 placeholder:text-slate-400"
-                        />
-                      </div>
+                  {/* Campos estructurados para Calle y Altura / Número de casa */}
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="col-span-2 space-y-1">
+                      <label className="text-[11px] font-bold text-slate-600">
+                        Calle *
+                      </label>
+                      <Input
+                        placeholder="Ej. San Lorenzo o Tucumán"
+                        value={streetInput}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setStreetInput(val);
+                          updateCombinedAddress(val, numberInput, addressUnit, citySuffix);
+                        }}
+                        className="h-10 rounded-xl border-slate-200 bg-white text-xs text-slate-900 placeholder:text-slate-400"
+                        required
+                      />
                     </div>
-                  ) : (
-                    <div className="space-y-2">
-                      <div className="relative">
-                        <MapPin className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                        <Input
-                          autoComplete="street-address"
-                          placeholder="Ej. San Lorenzo 2040, Rosario"
-                          value={form.deliveryAddress}
-                          onChange={(e) => setForm((p) => ({ ...p, deliveryAddress: e.target.value }))}
-                          className="h-10 rounded-xl border-slate-200 bg-white pl-8 text-xs text-slate-900 placeholder:text-slate-400"
-                          required
-                        />
-                      </div>
-                      <div className="flex items-center justify-between text-[11px] text-slate-500 bg-slate-50 px-3 py-2 rounded-xl border border-slate-200">
-                        <span>💡 Modo prueba (Ubicación libre)</span>
-                        <button
-                          type="button"
-                          onClick={onOpenAddressPicker}
-                          className="font-bold text-blue-600 hover:text-blue-800 underline"
-                        >
-                          Elegir en mapa (Opcional)
-                        </button>
-                      </div>
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-black text-blue-700">
+                        Número / Altura *
+                      </label>
+                      <Input
+                        placeholder="Ej. 2040"
+                        value={numberInput}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setNumberInput(val);
+                          updateCombinedAddress(streetInput, val, addressUnit, citySuffix);
+                        }}
+                        className="h-10 rounded-xl border-blue-400 bg-blue-50/40 text-xs font-bold text-slate-900 placeholder:text-slate-400"
+                        required
+                      />
                     </div>
-                  )}
+                  </div>
+
+                  {/* Piso, Depto o Referencia */}
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-bold text-slate-600">
+                      Piso, Depto o Timbre (opcional)
+                    </label>
+                    <Input
+                      placeholder="Ej. Piso 3 Depto B / Timbre blanco"
+                      value={addressUnit}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setAddressUnit(val);
+                        updateCombinedAddress(streetInput, numberInput, val, citySuffix);
+                      }}
+                      className="h-9 rounded-xl border-slate-200 bg-white text-xs text-slate-900 placeholder:text-slate-400"
+                    />
+                  </div>
+
+                  {/* Preview de entrega para el cliente */}
+                  <div className="text-[10px] text-slate-500 bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-200 flex items-center gap-1.5 truncate">
+                    <span className="font-bold text-slate-700 shrink-0">📍 Destino:</span>
+                    <span className="truncate">
+                      {streetInput.trim() || "Calle"} {numberInput.trim() || "S/N"}
+                      {addressUnit.trim() ? `, ${addressUnit.trim()}` : ""}
+                      {citySuffix.trim() ? `, ${citySuffix.trim()}` : ""}
+                    </span>
+                  </div>
 
                   {/* Tarifa dinámica estándar Uber / PedidosYa */}
                   <div className="space-y-1 rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-[11px]">

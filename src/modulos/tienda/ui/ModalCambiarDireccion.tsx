@@ -37,26 +37,47 @@ export function ModalCambiarDireccion({
 }: ModalCambiarDireccionProps) {
   const [step, setStep] = useState<"map" | "details">("map");
   const [selectedLocation, setSelectedLocation] = useState<LocationPickerSelection | null>(null);
-  const [addressInput, setAddressInput] = useState(currentAddress);
+  const [streetInput, setStreetInput] = useState("");
+  const [numberInput, setNumberInput] = useState("");
   const [unitInput, setUnitInput] = useState("");
+
+  const parseAddress = (addr: string) => {
+    const parts = addr.split(",").map((p) => p.trim());
+    const first = parts[0] || "";
+    const match = first.match(/^(.*?)(?:\s+(\d+[\w-]*))?$/);
+    const street = match?.[1]?.trim() || first;
+    const num = match?.[2]?.trim() || "";
+    const unit = parts.length > 2 ? parts[1] : "";
+    return { street, num, unit };
+  };
 
   useEffect(() => {
     setStep("map");
-    setAddressInput(currentAddress);
+    const parsed = parseAddress(currentAddress);
+    setStreetInput(parsed.street);
+    setNumberInput(parsed.num);
+    setUnitInput(parsed.unit);
     setSelectedLocation(null);
-    setUnitInput("");
   }, [currentAddress, isOpen]);
 
   const handleLocationChange = useCallback((location: LocationPickerSelection | null) => {
     setSelectedLocation(location);
   }, []);
 
-  const handleSave = (addr: string) => {
+  const handleSave = () => {
     if (!selectedLocation) return;
-    const clean = addr.trim();
+    const street = streetInput.trim() || selectedLocation.road || "Calle";
+    const num = numberInput.trim() || selectedLocation.houseNumber || "";
     const unit = unitInput.trim();
+    const city = selectedLocation.city || "";
+    const neighborhood = selectedLocation.neighborhood || "";
+
+    const streetAndNum = num ? `${street} ${num}` : street;
+    const combinedParts = [streetAndNum, unit, neighborhood, city].filter(Boolean);
+    const finalAddress = combinedParts.join(", ");
+
     onSelectAddress(
-      unit ? `${clean}, ${unit}` : clean,
+      finalAddress,
       { lat: selectedLocation.lat, lng: selectedLocation.lng }
     );
     onOpenChange(false);
@@ -64,7 +85,16 @@ export function ModalCambiarDireccion({
 
   const handleContinue = () => {
     if (!selectedLocation || selectedLocation.isResolving) return;
-    setAddressInput(selectedLocation.address);
+    if (selectedLocation.road) {
+      setStreetInput(selectedLocation.road);
+    } else if (selectedLocation.address) {
+      const parsed = parseAddress(selectedLocation.address);
+      setStreetInput(parsed.street);
+      if (parsed.num && !numberInput) setNumberInput(parsed.num);
+    }
+    if (selectedLocation.houseNumber) {
+      setNumberInput(selectedLocation.houseNumber);
+    }
     setStep("details");
   };
 
@@ -169,49 +199,79 @@ export function ModalCambiarDireccion({
               </section>
             ) : (
               <section
-                className="absolute bottom-0 left-0 right-0 z-20 space-y-4 rounded-t-[28px] bg-white px-5 pt-5 shadow-[0_-8px_24px_rgba(15,23,42,0.12)]"
+                className="absolute bottom-0 left-0 right-0 z-20 space-y-3.5 rounded-t-[28px] bg-white px-5 pt-4 shadow-[0_-8px_24px_rgba(15,23,42,0.12)] max-h-[85vh] overflow-y-auto"
                 style={{ paddingBottom: "max(1.25rem, env(safe-area-inset-bottom, 0px))" }}
               >
                 <div className="space-y-1">
-                  <h2 className="text-xl font-extrabold text-slate-900">
-                    Completá la dirección
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex items-center gap-1 text-[11px] font-black uppercase tracking-wider text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                      🎯 Coordenadas fijadas en mapa
+                    </span>
+                  </div>
+                  <h2 className="text-lg font-extrabold text-slate-900">
+                    Número de tu casa y detalles
                   </h2>
-                  <p className="text-sm text-slate-600">
-                    Confirmá la calle y agregá piso o departamento si hace falta.
+                  <p className="text-xs text-slate-600">
+                    Completá la altura exacta para que la navegación GPS del repartidor llegue directo a tu puerta.
                   </p>
                 </div>
-                <div className="space-y-2">
-                  <label htmlFor="delivery-street" className="text-xs font-bold text-slate-700">
-                    Calle y altura
-                  </label>
-                  <Input
-                    id="delivery-street"
-                    autoFocus
-                    value={addressInput}
-                    onChange={(event) => setAddressInput(event.target.value)}
-                    placeholder="Ej. Tucumán 2130, Rosario"
-                    className="h-12 rounded-xl border-slate-200 bg-white text-sm text-slate-900 placeholder:text-slate-400 focus-visible:ring-blue-500"
-                  />
+
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="col-span-2 space-y-1">
+                    <label htmlFor="delivery-street" className="text-xs font-bold text-slate-700">
+                      Calle *
+                    </label>
+                    <Input
+                      id="delivery-street"
+                      value={streetInput}
+                      onChange={(event) => setStreetInput(event.target.value)}
+                      placeholder="Ej. Tucumán o San Lorenzo"
+                      className="h-11 rounded-xl border-slate-200 bg-white text-sm text-slate-900 placeholder:text-slate-400 focus-visible:ring-blue-500"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label htmlFor="delivery-num" className="text-xs font-black text-blue-700">
+                      Número / Altura *
+                    </label>
+                    <Input
+                      id="delivery-num"
+                      autoFocus
+                      value={numberInput}
+                      onChange={(event) => setNumberInput(event.target.value)}
+                      placeholder="Ej. 2040"
+                      className="h-11 rounded-xl border-blue-400 bg-blue-50/40 text-sm font-bold text-slate-900 placeholder:text-slate-400 focus-visible:ring-blue-500"
+                    />
+                  </div>
                 </div>
-                <div className="space-y-2">
+
+                <div className="space-y-1">
                   <label htmlFor="delivery-unit" className="text-xs font-bold text-slate-700">
-                    Piso, departamento o referencia (opcional)
+                    Piso, Depto, Timbre o Referencia (opcional)
                   </label>
                   <Input
                     id="delivery-unit"
                     value={unitInput}
                     onChange={(event) => setUnitInput(event.target.value)}
-                    placeholder="Ej. Piso 4, departamento B"
-                    className="h-12 rounded-xl border-slate-200 bg-white text-sm text-slate-900 placeholder:text-slate-400 focus-visible:ring-blue-500"
+                    placeholder="Ej. Piso 4 Depto B / Portón negro"
+                    className="h-11 rounded-xl border-slate-200 bg-white text-sm text-slate-900 placeholder:text-slate-400 focus-visible:ring-blue-500"
                   />
                 </div>
+
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-xs text-slate-700 flex items-center gap-2">
+                  <MapPin className="h-4 w-4 shrink-0 text-blue-600" />
+                  <span className="truncate">
+                    <strong>Destino:</strong> {streetInput || "Calle"} {numberInput || "S/N"}
+                    {unitInput ? `, ${unitInput}` : ""} ({selectedLocation?.neighborhood || "Barrio"})
+                  </span>
+                </div>
+
                 <Button
                   type="button"
-                  disabled={!addressInput.trim()}
-                  onClick={() => handleSave(addressInput)}
-                  className="h-13 w-full rounded-full bg-blue-600 text-sm font-extrabold text-white shadow-lg shadow-blue-600/20 hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  disabled={!streetInput.trim() || !numberInput.trim()}
+                  onClick={handleSave}
+                  className="h-12 w-full rounded-full bg-blue-600 text-sm font-extrabold text-white shadow-lg shadow-blue-600/20 hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  Confirmar dirección
+                  Confirmar dirección y punto GPS
                 </Button>
               </section>
             )}

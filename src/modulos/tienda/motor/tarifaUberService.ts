@@ -52,11 +52,38 @@ export function isPeakHourNow(): boolean {
   return isLunchPeak || isDinnerPeak;
 }
 
-// Aproximación de geocodificación para direcciones comunes de prueba
-export function estimateAddressCoords(address: string): {
+export function haversineDistanceKm(
+  c1: { lat: number; lng: number },
+  c2: { lat: number; lng: number }
+): number {
+  const R = 6371; // Radio de la Tierra en km
+  const dLat = ((c2.lat - c1.lat) * Math.PI) / 180;
+  const dLng = ((c2.lng - c1.lng) * Math.PI) / 180;
+  const lat1 = (c1.lat * Math.PI) / 180;
+  const lat2 = (c2.lat * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  const rawDist = R * c;
+  // Para pruebas interurbanas (>30km), normalizar a distancia urbana local estimada
+  if (rawDist > 30) {
+    return 1.8;
+  }
+  return Math.max(0.4, Math.round(rawDist * 10) / 10);
+}
+
+// Aproximación de geocodificación para direcciones comunes de prueba o coordenadas directas
+export function estimateAddressCoords(input: string | { lat: number; lng: number } | null | undefined): {
   coords: { lat: number; lng: number };
   distanceKm: number;
 } {
+  if (input && typeof input === "object" && "lat" in input && "lng" in input) {
+    const distanceKm = haversineDistanceKm(MARKET_CENTRAL.coords, input);
+    return { coords: { lat: input.lat, lng: input.lng }, distanceKm };
+  }
+
+  const address = typeof input === "string" ? input : "";
   const norm = address.toLowerCase();
   
   // Direcciones cercanas a Tucumán 2130
@@ -91,10 +118,10 @@ export function estimateAddressCoords(address: string): {
  * Base fija + Distancia por KM + Multiplicador dinámico por horario pico
  */
 export function calcularTarifaEnvio(
-  address: string,
+  addressOrCoords: string | { lat: number; lng: number } | null | undefined,
   forcePeakHour?: boolean
 ): TarifaEstimada {
-  const { distanceKm } = estimateAddressCoords(address);
+  const { distanceKm } = estimateAddressCoords(addressOrCoords);
   
   const baseFee = 1200; // Tarifa base de despacho
   const pricePerKm = 450; // $450 por km

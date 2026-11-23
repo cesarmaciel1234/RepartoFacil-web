@@ -75,14 +75,16 @@ export function TabMiRuta({
           String(order.status).trim().toLowerCase()
         );
 
-        // Enlace real a Google Maps para navegación GPS del chofer
-        const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(
-          order.deliveryAddress
-        )}`;
+        // Enlace real a Google Maps con coordenadas exactas del punto fijado por el cliente
+        const hasExactCoords = Boolean(order.destinationCoords?.lat && order.destinationCoords?.lng);
+        const destinationTarget = hasExactCoords
+          ? `${order.destinationCoords!.lat},${order.destinationCoords!.lng}`
+          : encodeURIComponent(order.deliveryAddress);
+        const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${destinationTarget}`;
 
         const rawTicket = order.ticketId || order.ticket_id || order.id;
         const cleanTicket = String(rawTicket).replace(/^#?RF-?/i, "");
-        const ticketDisplay = cleanTicket.length > 6 ? `RF-${cleanTicket.slice(0, 4)}…` : rawTicket.startsWith("RF-") ? rawTicket : `RF-${cleanTicket}`;
+        const ticketDisplay = cleanTicket.length > 6 ? `RF-${cleanTicket.slice(0, 5)}` : rawTicket.startsWith("RF-") ? rawTicket : `RF-${cleanTicket}`;
 
         return (
           <div
@@ -153,6 +155,11 @@ export function TabMiRuta({
                   <span className="font-bold text-slate-900 text-xs block">
                     {order.deliveryAddress}
                   </span>
+                  {hasExactCoords && (
+                    <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded-md border border-emerald-200 mt-1">
+                      🎯 Ubicación exacta con GPS fijada por el comprador
+                    </span>
+                  )}
                   {order.notes && (
                     <span className="text-[11px] text-yellow-900 font-medium block mt-0.5 bg-yellow-50 px-2 py-0.5 rounded-lg border border-yellow-200">
                       Nota cliente: "{order.notes}"

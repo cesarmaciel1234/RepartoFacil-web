@@ -55,6 +55,8 @@ export interface LocationPickerSelection {
   lat: number;
   lng: number;
   address: string;
+  road?: string;
+  houseNumber?: string;
   neighborhood: string;
   city: string;
   isResolving: boolean;
@@ -95,7 +97,13 @@ export default function LocationPickerMap({
   const [markerPosition, setMarkerPosition] = useState<[number, number] | null>(null);
   const [gpsPosition, setGpsPosition] = useState<[number, number] | null>(null);
   const [mapCenter, setMapCenter] = useState<[number, number] | null>(null);
-  const [locationDetails, setLocationDetails] = useState<{address: string, neighborhood: string, city: string} | null>(null);
+  const [locationDetails, setLocationDetails] = useState<{
+    address: string;
+    neighborhood: string;
+    city: string;
+    road?: string;
+    houseNumber?: string;
+  } | null>(null);
   const [isGeocoding, setIsGeocoding] = useState(false);
   const [isLocating, setIsLocating] = useState(false);
   const [locationError, setLocationError] = useState<string | null>(null);
@@ -125,6 +133,8 @@ export default function LocationPickerMap({
           const street = [address.road, address.house_number].filter(Boolean).join(" ");
           setLocationDetails({
             address: [street, neighborhood, city].filter(Boolean).join(", ") || data.display_name,
+            road: address.road || "",
+            houseNumber: address.house_number || "",
             neighborhood,
             city,
           });
@@ -197,6 +207,8 @@ export default function LocationPickerMap({
       lat: markerPosition[0],
       lng: markerPosition[1],
       address: locationDetails?.address || "",
+      road: locationDetails?.road || "",
+      houseNumber: locationDetails?.houseNumber || "",
       neighborhood: locationDetails?.neighborhood || "",
       city: locationDetails?.city || "",
       isResolving: isGeocoding,

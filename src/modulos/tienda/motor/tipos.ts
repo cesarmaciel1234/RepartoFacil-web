@@ -16,6 +16,10 @@ export interface CheckoutFormData {
   customerPhone: string;
   deliveryType: "delivery" | "pickup";
   deliveryAddress: string;
+  deliveryStreet?: string;
+  deliveryNumber?: string;
+  deliveryFloor?: string;
+  deliveryCoordinates?: { lat: number; lng: number } | null;
   selectedBranch: string;
   paymentMethod: "efectivo" | "transferencia" | "tarjeta";
   orderNotes: string;
@@ -42,6 +46,8 @@ export interface OrderData {
   customerPhone: string;
   deliveryType: "delivery" | "pickup";
   deliveryAddress: string;
+  deliveryCoordinates?: { lat: number; lng: number } | null;
+  destinationCoords?: { lat: number; lng: number } | null;
   paymentMethod: OrderPaymentMethod;
   notes?: string;
   items: OrderItem[];

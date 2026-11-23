@@ -247,7 +247,7 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
       (isValidDeliveryAddress(savedAddress) ? savedAddress : "") ||
       (isValidDeliveryAddress(client?.address) ? client.address : "");
     const activeCoordinates =
-      savedCoordinates?.address === activeAddress ? savedCoordinates : null;
+      savedCoordinates?.lat && savedCoordinates?.lng ? savedCoordinates : null;
     setDeliveryAddress(activeAddress);
     setDeliveryCoordinates(activeCoordinates);
 
@@ -263,7 +263,7 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
             : "");
       setDeliveryAddress(currentAddress);
       setDeliveryCoordinates(
-        currentCoordinates?.address === currentAddress ? currentCoordinates : null
+        currentCoordinates?.lat && currentCoordinates?.lng ? currentCoordinates : null
       );
     };
     const syncClientProfileFromStorage = (event: StorageEvent) => {
