@@ -22,6 +22,10 @@ export async function GET() {
       "Actualización transitoria del repartidor y catálogo offline del comprador",
       "Autorización de pedidos y verificación de precios en servidor",
       "Ficha pública del comercio y reseñas de pedidos entregados",
+      "Despertar nativo y protección de base de datos (/api/wake)",
+      "Navegación libre de catálogo para visitantes sin bloqueo GPS",
+      "Flujo de repartidor en dos etapas: retiro en negocio y entrega",
+      "Eventos y sincronización automática en chat tripartito",
     ],
   });
 }
