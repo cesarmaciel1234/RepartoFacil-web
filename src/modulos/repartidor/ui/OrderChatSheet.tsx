@@ -16,6 +16,7 @@ import {
   ShieldCheck,
   Bike,
   ArrowLeft,
+  ArrowDown,
 } from "lucide-react";
 import { loadClientProfile, loadDriverProfile } from "../motor/driverService";
 import { ModalTicketDigital } from "@/components/ModalTicketDigital";
@@ -87,15 +88,34 @@ export function OrderChatSheet({
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isTicketModalOpen, setIsTicketModalOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const isNearBottomRef = useRef(true);
+  const prevMessagesLengthRef = useRef(0);
+  const [hasNewMessagesBelow, setHasNewMessagesBelow] = useState(false);
+  const isInitialLoadRef = useRef(true);
   const onOpenChangeRef = useRef(onOpenChange);
   onOpenChangeRef.current = onOpenChange;
   const chatContext = useRef({ isOpen, orderId, isDriverViewer });
   chatContext.current = { isOpen, orderId, isDriverViewer };
 
-  // Auto-scroll al final del chat
-  const scrollToBottom = () => {
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const el = e.currentTarget;
+    const distanceToBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    const isNear = distanceToBottom < 75;
+    isNearBottomRef.current = isNear;
+    if (isNear) {
+      setHasNewMessagesBelow(false);
+    }
+  };
+
+  // Auto-scroll al final del chat con soporte para scroll suave
+  const scrollToBottom = (behavior: ScrollBehavior = "smooth") => {
     if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      scrollRef.current.scrollTo({
+        top: scrollRef.current.scrollHeight,
+        behavior,
+      });
+      isNearBottomRef.current = true;
+      setHasNewMessagesBelow(false);
     }
   };
 
@@ -205,8 +225,44 @@ export function OrderChatSheet({
   }, [isOpen, orderId, storageKey, isDriverViewer, clientId]);
 
   useEffect(() => {
-    scrollToBottom();
+    if (!isOpen) return;
+
+    const currentLen = messages.length;
+    const prevLen = prevMessagesLengthRef.current;
+
+    // 1. Carga inicial: siempre scrollear abajo para ver los últimos mensajes
+    if (isInitialLoadRef.current && currentLen > 0) {
+      isInitialLoadRef.current = false;
+      prevMessagesLengthRef.current = currentLen;
+      setTimeout(() => scrollToBottom("auto"), 50);
+      return;
+    }
+
+    // 2. Si es una actualización periódica (polling) sin mensajes nuevos: NO alterar el scroll del usuario
+    if (currentLen === prevLen) {
+      return;
+    }
+
+    // 3. Si ingresaron mensajes nuevos:
+    if (currentLen > prevLen) {
+      prevMessagesLengthRef.current = currentLen;
+      // Solo auto-scrollear si el usuario ya estaba al fondo
+      if (isNearBottomRef.current) {
+        setTimeout(() => scrollToBottom("smooth"), 50);
+      } else {
+        // Si el usuario subió para leer el historial: RESPETAR SU LECTURA y mostrar indicador flotante
+        setHasNewMessagesBelow(true);
+      }
+    }
   }, [messages, isOpen]);
+
+  useEffect(() => {
+    if (isOpen) {
+      isInitialLoadRef.current = true;
+      isNearBottomRef.current = true;
+      setHasNewMessagesBelow(false);
+    }
+  }, [isOpen, orderId]);
 
   // Nombre resuelto del autor según su cuenta real
   const getMyAuthorName = () => {
@@ -271,6 +327,9 @@ export function OrderChatSheet({
         return updated;
       });
       setInputText("");
+      isNearBottomRef.current = true;
+      setHasNewMessagesBelow(false);
+      setTimeout(() => scrollToBottom("smooth"), 50);
     } catch (err) {
       console.warn("No se pudo enviar el mensaje:", err);
       if (stillCurrent()) setSendError(err instanceof Error ? err.message : "No se pudo enviar el mensaje. Intentá nuevamente.");
@@ -431,12 +490,25 @@ export function OrderChatSheet({
         </div>
 
         {loadError && <p role="status" className={`px-3 pt-2 text-xs ${embedded || isDriverViewer ? "text-amber-800" : "text-amber-300"}`}>{loadError}</p>}
-        <OrderChatMessageList
-          messages={messages}
-          effectiveRole={effectiveRole}
-          embedded={embedded && !isDriverViewer}
-          scrollRef={scrollRef}
-        />
+        <div className="relative min-h-0 flex-1 flex flex-col">
+          <OrderChatMessageList
+            messages={messages}
+            effectiveRole={effectiveRole}
+            embedded={embedded && !isDriverViewer}
+            scrollRef={scrollRef}
+            onScroll={handleScroll}
+          />
+          {hasNewMessagesBelow && (
+            <button
+              type="button"
+              onClick={() => scrollToBottom("smooth")}
+              className="absolute bottom-3 left-1/2 -translate-x-1/2 z-20 px-3 py-1.5 rounded-full bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-black shadow-lg flex items-center gap-1.5 active:scale-95 transition-all animate-bounce"
+            >
+              <ArrowDown className="w-3.5 h-3.5" />
+              <span>Mensajes nuevos abajo ↓</span>
+            </button>
+          )}
+        </div>
 
         {/* Input de Mensaje Scoped a la Cuenta Actual */}
         {sendError && <p role="alert" className="px-3 pt-1 text-xs text-red-700">{sendError}</p>}

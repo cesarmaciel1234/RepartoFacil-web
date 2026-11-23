@@ -23,7 +23,7 @@ export const metadata: Metadata = {
   },
   appleWebApp: {
     capable: true,
-    statusBarStyle: "black-translucent",
+    statusBarStyle: "default",
     title: "Reparto Fácil",
   },
   formatDetection: {
@@ -37,7 +37,7 @@ export const viewport: Viewport = {
   maximumScale: 1,
   userScalable: false,
   viewportFit: "cover",
-  themeColor: "#020617",
+  themeColor: "#ffffff",
 }
 
 export default function RootLayout({

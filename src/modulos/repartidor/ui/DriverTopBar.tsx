@@ -71,7 +71,7 @@ export function DriverTopBar({
         <button
           type="button"
           onClick={onOpenCopilot}
-          className="relative h-9 w-9 sm:h-10 sm:w-10 shrink-0 rounded-full bg-white hover:bg-yellow-50 border border-yellow-300 text-[#2D3277] shadow-md shadow-slate-900/10 backdrop-blur-md flex items-center justify-center active:scale-95 transition-all"
+          className="relative h-9 w-9 sm:h-10 sm:w-10 shrink-0 rounded-full bg-white hover:bg-yellow-50 border border-yellow-300 text-[#2D3277] shadow-sm flex items-center justify-center active:scale-95 transition-all"
           title="Copiloto IA de Reparto"
         >
           <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
@@ -86,7 +86,7 @@ export function DriverTopBar({
         <button
           type="button"
           onClick={onOpenOrderChat}
-          className="relative h-9 w-9 sm:h-10 sm:w-10 shrink-0 rounded-full bg-white hover:bg-yellow-50 border border-yellow-300 text-[#2D3277] shadow-md shadow-slate-900/10 backdrop-blur-md flex items-center justify-center active:scale-95 transition-all"
+          className="relative h-9 w-9 sm:h-10 sm:w-10 shrink-0 rounded-full bg-white hover:bg-yellow-50 border border-yellow-300 text-[#2D3277] shadow-sm flex items-center justify-center active:scale-95 transition-all"
           title="Mensajes de pedidos y Copo IA"
           aria-label="Abrir mensajes"
         >
@@ -103,7 +103,7 @@ export function DriverTopBar({
           <button
             type="button"
             onClick={onFocusActiveRoute}
-            className="h-9 sm:h-10 px-2 sm:px-2.5 rounded-full bg-white hover:bg-yellow-50 border border-yellow-400 shadow-md shadow-slate-900/10 backdrop-blur-md flex items-center gap-1.5 active:scale-95 transition-all text-left shrink min-w-0 max-w-[125px] sm:max-w-[170px]"
+            className="h-9 sm:h-10 px-2 sm:px-2.5 rounded-full bg-white hover:bg-yellow-50 border border-yellow-400 shadow-sm flex items-center gap-1.5 active:scale-95 transition-all text-left shrink min-w-0 max-w-[125px] sm:max-w-[170px]"
             title={`Pedido activo ${activeOrder.id} · Toca para centrar la ruta en vivo`}
           >
             <div className="relative flex items-center justify-center shrink-0">
@@ -139,7 +139,7 @@ export function DriverTopBar({
           <button
             type="button"
             onClick={onOpenLoginModal}
-            className="h-9 sm:h-10 px-2.5 sm:px-3 rounded-full bg-[#FFE600] hover:bg-yellow-300 text-[#2D3277] text-[11px] sm:text-xs font-black flex items-center gap-1 border border-yellow-500 shadow-md backdrop-blur-md active:scale-95 transition-all shrink-0"
+            className="h-9 sm:h-10 px-2.5 sm:px-3 rounded-full bg-[#FFE600] hover:bg-yellow-300 text-[#2D3277] text-[11px] sm:text-xs font-black flex items-center gap-1 border border-yellow-500 shadow-md active:scale-95 transition-all shrink-0"
           >
             <User className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-[#2D3277]" />
             <span>Ingresar</span>

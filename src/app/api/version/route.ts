@@ -30,6 +30,8 @@ export async function GET() {
       "Badges de mensajes no leídos en Copiloto IA y Chat de repartidor",
       "Integración nativa PWA (Web Audio, Vibración, WakeLock de pantalla y App Badging)",
       "Número de ticket en comanda con apertura fluida de chat en la misma ventana",
+      "Scroll inteligente en chat (permite leer historial sin saltos automáticos)",
+      "Status bar limpia y nítida sin viñeta oscura borrosa",
     ],
   });
 }

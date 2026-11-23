@@ -14,6 +14,7 @@ interface OrderChatMessageListProps {
   effectiveRole: "client" | "driver";
   embedded: boolean;
   scrollRef: { current: HTMLDivElement | null };
+  onScroll?: (e: React.UIEvent<HTMLDivElement>) => void;
 }
 
 export function OrderChatMessageList({
@@ -21,10 +22,12 @@ export function OrderChatMessageList({
   effectiveRole,
   embedded,
   scrollRef,
+  onScroll,
 }: OrderChatMessageListProps) {
   return (
     <div
       ref={scrollRef}
+      onScroll={onScroll}
       className={`min-h-0 flex-1 space-y-3.5 overflow-y-auto p-4 ${
         embedded ? "bg-slate-50/60" : effectiveRole === "driver" ? "bg-white" : ""
       }`}
