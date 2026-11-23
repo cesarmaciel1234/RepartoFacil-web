@@ -250,7 +250,6 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
       savedCoordinates?.address === activeAddress ? savedCoordinates : null;
     setDeliveryAddress(activeAddress);
     setDeliveryCoordinates(activeCoordinates);
-    if (!activeCoordinates) setIsAddressModalOpen(true);
 
     const syncAuth = () => {
       const c = loadClientProfile();
@@ -266,7 +265,6 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
       setDeliveryCoordinates(
         currentCoordinates?.address === currentAddress ? currentCoordinates : null
       );
-      if (!currentCoordinates) setIsAddressModalOpen(true);
     };
     const syncClientProfileFromStorage = (event: StorageEvent) => {
       if (event.key === null || event.key === "repartofacil_client_user" || event.key === "repartofacil_client_token") {
@@ -292,6 +290,11 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
     setDeliveryCoordinates(location);
     localStorage.setItem("repartofacil_delivery_address", newAddr);
     localStorage.setItem("repartofacil_delivery_coordinates", JSON.stringify(location));
+
+    // Si el usuario estaba en proceso de pago, reabrir el checkout con su ubicación confirmada
+    if (checkoutCompanyId) {
+      setIsCheckoutOpen(true);
+    }
   };
 
   const handleAddToCart = (product: typeof products[number]) => {
@@ -719,6 +722,11 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
             : undefined
         }
         selectedDeliveryAddress={deliveryAddress}
+        deliveryCoordinates={deliveryCoordinates}
+        onOpenAddressPicker={() => {
+          setIsCheckoutOpen(false);
+          setIsAddressModalOpen(true);
+        }}
         isSubmitting={isSubmittingOrder}
         onConfirmOrder={handleConfirmOrder}
         orderConfirmed={orderConfirmed}

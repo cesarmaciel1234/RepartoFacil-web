@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, Loader2, MapPin } from "lucide-react";
+import { ArrowLeft, Loader2, MapPin, X } from "lucide-react";
 import type { LocationPickerSelection } from "@/components/LocationPickerMap";
 
 const LocationPickerMap = dynamic(() => import("@/components/LocationPickerMap"), {
@@ -104,7 +104,14 @@ export function ModalCambiarDireccion({
                 Elegí una dirección dentro de 1 km de tu ubicación GPS y completá los detalles de entrega.
               </DialogDescription>
             </div>
-            <span className="h-10 w-10" aria-hidden="true" />
+            <button
+              type="button"
+              onClick={() => onOpenChange(false)}
+              aria-label="Cerrar modal"
+              className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 transition-colors hover:bg-slate-50"
+            >
+              <X className="h-5 w-5" />
+            </button>
           </header>
 
           <div className="relative min-h-0 flex-1">

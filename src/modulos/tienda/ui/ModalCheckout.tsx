@@ -28,7 +28,10 @@ import {
   MessageCircle,
   Copy,
   Zap,
+  ShieldCheck,
+  ArrowRight,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface ModalCheckoutProps {
   isOpen: boolean;
@@ -39,6 +42,8 @@ interface ModalCheckoutProps {
   freeDeliveryThreshold?: number;
   profileAddress?: string;
   selectedDeliveryAddress?: string;
+  deliveryCoordinates?: { lat: number; lng: number } | null;
+  onOpenAddressPicker?: () => void;
   isSubmitting: boolean;
   onConfirmOrder: (formData: CheckoutFormData, clientId: string) => Promise<void>;
   orderConfirmed: OrderData | null;
@@ -54,6 +59,8 @@ export function ModalCheckout({
   freeDeliveryThreshold = 35000,
   profileAddress,
   selectedDeliveryAddress,
+  deliveryCoordinates,
+  onOpenAddressPicker,
   isSubmitting,
   onConfirmOrder,
   orderConfirmed,
@@ -65,6 +72,7 @@ export function ModalCheckout({
   const [missingName, setMissingName] = useState(true);
   const [missingPhone, setMissingPhone] = useState(true);
   const [formError, setFormError] = useState("");
+  const [addressUnit, setAddressUnit] = useState("");
 
   const [form, setForm] = useState<CheckoutFormData>({
     customerName: "",
@@ -122,13 +130,23 @@ export function ModalCheckout({
       setFormError("La sesión cambió. Cerrá el formulario y volvé a abrirlo.");
       return;
     }
-    if (!form.customerName.trim() || !form.customerPhone.trim() ||
-        (form.deliveryType === "delivery" && !form.deliveryAddress.trim())) {
-      setFormError("Completá los datos de contacto y la dirección de entrega.");
+    if (!form.customerName.trim() || !form.customerPhone.trim()) {
+      setFormError("Completá tus datos de contacto.");
       return;
     }
+    if (form.deliveryType === "delivery") {
+      if (!form.deliveryAddress.trim() || !deliveryCoordinates) {
+        setFormError("Para envío a domicilio es obligatorio seleccionar tu ubicación en el mapa dentro de 1 km.");
+        onOpenAddressPicker?.();
+        return;
+      }
+    }
     setFormError("");
-    await onConfirmOrder(form, checkoutClientId.current);
+    const finalAddress =
+      form.deliveryType === "delivery" && addressUnit.trim()
+        ? `${form.deliveryAddress.trim()}, ${addressUnit.trim()}`
+        : form.deliveryAddress.trim();
+    await onConfirmOrder({ ...form, deliveryAddress: finalAddress }, checkoutClientId.current);
   };
 
   return (
@@ -227,21 +245,65 @@ export function ModalCheckout({
               </div>}
 
               {form.deliveryType === "delivery" ? (
-                <div className="space-y-1.5">
+                <div className="space-y-2">
                   <label className="mb-0.5 block text-xs font-bold text-slate-700">
-                    Dirección de Entrega y Altura *
+                    Dirección de Entrega (1 km GPS) *
                   </label>
-                  <div className="relative">
-                    <MapPin className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                    <Input
-                      autoComplete="street-address"
-                      placeholder="Ej. San Lorenzo 2040, Rosario"
-                      value={form.deliveryAddress}
-                      onChange={(e) => setForm((p) => ({ ...p, deliveryAddress: e.target.value }))}
-                      className="h-10 rounded-xl border-slate-200 bg-white pl-8 text-xs text-slate-900 placeholder:text-slate-400"
-                      required
-                    />
-                  </div>
+
+                  {deliveryCoordinates ? (
+                    <div className="space-y-2">
+                      <div className="rounded-2xl border border-emerald-200 bg-emerald-50/80 p-3 space-y-1 shadow-sm">
+                        <div className="flex items-center justify-between">
+                          <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-emerald-800">
+                            <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                            Ubicación real verificada (1 km)
+                          </span>
+                          <button
+                            type="button"
+                            onClick={onOpenAddressPicker}
+                            className="text-[11px] font-bold text-blue-600 hover:text-blue-800 underline"
+                          >
+                            Cambiar punto
+                          </button>
+                        </div>
+                        <p className="text-xs font-black text-slate-900 leading-tight">
+                          {form.deliveryAddress || "Ubicación seleccionada en el mapa"}
+                        </p>
+                      </div>
+
+                      <div>
+                        <label className="mb-0.5 block text-[11px] font-bold text-slate-600">
+                          Piso, Depto o Timbre (opcional)
+                        </label>
+                        <Input
+                          placeholder="Ej. Piso 3 Depto B / Timbre blanco"
+                          value={addressUnit}
+                          onChange={(e) => setAddressUnit(e.target.value)}
+                          className="h-9 rounded-xl border-slate-200 bg-white text-xs text-slate-900 placeholder:text-slate-400"
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="rounded-2xl border-2 border-dashed border-amber-300 bg-amber-50/80 p-3.5 space-y-2.5">
+                      <div className="flex items-start gap-2.5">
+                        <MapPin className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                        <div>
+                          <h4 className="text-xs font-black text-amber-900">Ubicación en el mapa requerida</h4>
+                          <p className="text-[11px] text-amber-700 leading-tight mt-0.5">
+                            Para evitar pedidos maliciosos y calcular el envío exacto, seleccioná tu punto en el mapa dentro de 1 km de tu ubicación GPS.
+                          </p>
+                        </div>
+                      </div>
+                      <Button
+                        type="button"
+                        onClick={onOpenAddressPicker}
+                        className="w-full h-10 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-black text-xs flex items-center justify-center gap-1.5 shadow-sm active:scale-98"
+                      >
+                        <MapPin className="w-4 h-4" />
+                        <span>Elegir mi ubicación en el mapa</span>
+                      </Button>
+                    </div>
+                  )}
 
                   {/* Tarifa dinámica estándar Uber / PedidosYa */}
                   <div className="space-y-1 rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-[11px]">
@@ -337,10 +399,28 @@ export function ModalCheckout({
               <Button
                 type="submit"
                 disabled={isSubmitting}
-                className="flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 text-xs font-black uppercase tracking-wider text-white shadow-lg shadow-blue-600/20 transition-all hover:bg-blue-700 active:scale-98"
+                onClick={
+                  form.deliveryType === "delivery" && !deliveryCoordinates
+                    ? (e) => {
+                        e.preventDefault();
+                        onOpenAddressPicker?.();
+                      }
+                    : undefined
+                }
+                className={cn(
+                  "flex h-11 w-full items-center justify-center gap-2 rounded-2xl text-xs font-black uppercase tracking-wider text-white shadow-lg transition-all active:scale-98",
+                  form.deliveryType === "delivery" && !deliveryCoordinates
+                    ? "bg-amber-600 hover:bg-amber-700 shadow-amber-600/20"
+                    : "bg-blue-600 hover:bg-blue-700 shadow-blue-600/20"
+                )}
               >
                 {isSubmitting ? (
                   <span>Procesando pedido...</span>
+                ) : form.deliveryType === "delivery" && !deliveryCoordinates ? (
+                  <>
+                    <MapPin className="w-4 h-4" />
+                    <span>Elegí tu ubicación en el mapa</span>
+                  </>
                 ) : (
                   <>
                     <Check className="w-4 h-4" />
