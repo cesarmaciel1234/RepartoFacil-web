@@ -1,10 +1,11 @@
 import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
+from sqlalchemy import text
 
-from app.database import Base, engine
+from app.database import Base, engine, is_sqlite
 from app.api import auth, db, cobrofacil
 from app.models.local import Document, LocalUser
 
@@ -45,4 +46,16 @@ if os.path.isdir(static_dir):
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "database": "sqlite", "service": "repartofacil-local"}
+    try:
+        with engine.connect() as connection:
+            connection.execute(text("SELECT 1"))
+    except Exception:
+        return JSONResponse(
+            {"status": "degraded", "database": "unavailable", "service": "repartofacil-local"},
+            status_code=503,
+        )
+    return {
+        "status": "ok",
+        "database": "sqlite" if is_sqlite else "external",
+        "service": "repartofacil-local",
+    }

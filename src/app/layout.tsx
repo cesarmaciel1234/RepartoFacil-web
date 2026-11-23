@@ -4,6 +4,7 @@ import { Toaster } from "@/components/ui/toaster"
 import { FirebaseClientProvider } from "@/firebase"
 import { PwaRegister } from "@/components/PwaRegister"
 import { PwaInstallBanner } from "@/components/PwaInstallBanner"
+import { BackendWakeup } from "@/components/BackendWakeup"
 
 export const metadata: Metadata = {
   title: "Reparto Fácil · Ecosistema de Comercios y Envíos",
@@ -56,6 +57,7 @@ export default function RootLayout({
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
       </head>
       <body className="font-body antialiased bg-slate-950 text-slate-100 min-h-screen selection:bg-emerald-500 selection:text-white pb-safe">
+        <BackendWakeup />
         <PwaRegister />
         <PwaInstallBanner />
         <FirebaseClientProvider>

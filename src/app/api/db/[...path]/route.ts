@@ -26,7 +26,7 @@ export async function GET(
     if (authHeader) headers["Authorization"] = authHeader;
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 2000);
+    const timeoutId = setTimeout(() => controller.abort(), 25000);
 
     const res = await fetch(url, { headers, cache: "no-store", signal: controller.signal })
       .finally(() => clearTimeout(timeoutId));
@@ -59,7 +59,7 @@ export async function POST(
     if (authHeader) headers["Authorization"] = authHeader;
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 2000);
+    const timeoutId = setTimeout(() => controller.abort(), 25000);
 
     const res = await fetch(url, {
       method: "POST",

@@ -45,3 +45,11 @@ next-env.d.ts
 firebase-debug.log
 firestore-debug.log
 scratch/
+
+# python
+__pycache__/
+*.py[cod]
+*$py.class
+*.db
+.pytest_cache/
+nul

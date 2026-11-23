@@ -20,12 +20,26 @@ export async function authenticateOrderUser(
   }
 
   const backend = process.env.BACKEND_URL || "http://127.0.0.1:8000";
+  const deadline = Date.now() + 60_000;
   try {
-    const response = await fetch(`${backend}/api/auth/me`, {
-      headers: { Authorization: authorization },
-      cache: "no-store",
-      signal: AbortSignal.timeout(30000),
-    });
+    let response: Response | null = null;
+    for (let attempt = 0; attempt < 4; attempt += 1) {
+      const remaining = deadline - Date.now();
+      if (remaining <= 500) break;
+      response = await fetch(`${backend}/api/auth/me`, {
+        headers: { Authorization: authorization },
+        cache: "no-store",
+        signal: AbortSignal.timeout(remaining),
+      });
+      const contentType = response.headers.get("content-type") || "";
+      const gateway = [502, 503, 504].includes(response.status) && !contentType.includes("json");
+      if (!gateway) break;
+      console.error("[Order Auth] El backend todavía está arrancando", response.status);
+      await new Promise((resolve) => setTimeout(resolve, Math.min(5000, deadline - Date.now())));
+    }
+    if (!response) {
+      return { response: NextResponse.json({ error: "No se pudo verificar la sesión." }, { status: 503 }) };
+    }
     if (response.status === 401 || response.status === 403) {
       return { response: NextResponse.json({ error: "La sesión no es válida o expiró." }, { status: 401 }) };
     }

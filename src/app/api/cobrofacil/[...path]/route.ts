@@ -412,7 +412,7 @@ export async function GET(
   const url = `${BACKEND_URL}/api/cobrofacil/${pathStr}${search}`;
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 2000);
+    const timeoutId = setTimeout(() => controller.abort(), 25000);
 
     const res = await fetch(url, {
       cache: "no-store",

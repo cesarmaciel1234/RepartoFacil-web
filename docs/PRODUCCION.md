@@ -149,6 +149,33 @@ la versión instalada se compara con `/api/version`; si la consulta falla se
 indica que no pudo comprobarse. Actualizar `src/lib/appVersion.ts` y el identificador
 `RELEASE` del service worker en cada publicación de código cliente.
 
+#### Diagnóstico de autenticación
+
+El 22 de noviembre de 2026 se informó «Servicio de autenticación no disponible»
+en comprador y repartidor. Los registros de la web mostraron `SyntaxError` en el
+proxy para accesos y registros: la respuesta recibida no pudo interpretarse como
+JSON, pero el registro no permite identificar por sí solo la causa original.
+Después se observó un arranque del backend, un timeout al verificar sesiones y
+una recuperación del servicio; el usuario informó que ya funcionaba. No se
+confirmó si el arranque en frío causó todos los errores ni se verificó un acceso
+real con credenciales durante el diagnóstico.
+
+Ante una nueva incidencia:
+
+1. Consultar el estado y los logs de `repartofacil` y `repartofacil-backend` en
+   Render. El plan gratuito puede tardar en despertar después de inactividad.
+2. Comprobar `GET /health` en el backend y `GET /api/auth/me` sin autorización en
+   el backend y en la web. Un `401 Authentication required` en ambas rutas indica
+   que el proxy alcanza al backend, no que una cuenta concreta pueda acceder.
+   `/health` devuelve una respuesta fija y no comprueba el estado de la base.
+3. Si responde, pedir al usuario que pruebe una vez sin compartir credenciales.
+   Evitar intentos repetidos por el límite de acceso y no repetir registros sin
+   comprobar su resultado: una respuesta perdida no demuestra que el alta falló.
+4. No reiniciar ni redesplegar el backend como primera medida: la configuración
+   observada usa SQLite sin disco persistente y puede perder cuentas. El problema
+   requiere una solución de persistencia acordada y migración segura; no asumir que
+   una cuenta inexistente se puede asociar automáticamente a pedidos anteriores.
+
 Al recibir un pedido, el servidor consulta el catálogo de PostgreSQL y verifica
 comercio, artículos, cantidades, precios y tarifa antes de guardarlo. Si cambió
 el importe o falta el catálogo, rechaza la compra sin confirmarla. El stock

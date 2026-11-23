@@ -16,20 +16,28 @@ const getPool = () => {
       ? { rejectUnauthorized: false }
       : undefined,
     max: 10,
-    idleTimeoutMillis: 30000,
-    connectionTimeoutMillis: 5000,
+    idleTimeoutMillis: 15000,
+    connectionTimeoutMillis: 10000,
+    statement_timeout: 10000,
+    keepAlive: true,
+  });
+
+  pool.on("error", (error) => {
+    console.error("[DB] Se cortó o falló una conexión en el pool:", error.message);
   });
 
   return pool;
 };
 
 export async function queryDb<T = any>(text: string, params: any[] = []): Promise<T[]> {
-  const client = await getPool().connect();
+  const activePool = getPool();
   try {
-    const res = await client.query(text, params);
+    // pool.query adquiere un cliente del pool y garantiza liberarlo inmediatamente al terminar o fallar
+    const res = await activePool.query(text, params);
     return res.rows;
-  } finally {
-    client.release();
+  } catch (error: any) {
+    console.error("[DB Query Error]:", error?.message || error);
+    throw error;
   }
 }
 
