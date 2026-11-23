@@ -121,6 +121,9 @@ export function CentroMensajeriaDriverSheet({
                 .join("")
                 .toUpperCase() || "C";
               const store = item.order.branch || "Sucursal";
+              const rawTicket = item.order.ticketId || item.order.id || "";
+              const cleanTicket = String(rawTicket).replace(/^#?RF-?/i, "");
+              const shortBadge = cleanTicket.length > 6 ? `RF-${cleanTicket.slice(0, 5)}` : `RF-${cleanTicket}`;
 
               return (
                 <button
@@ -144,7 +147,7 @@ export function CentroMensajeriaDriverSheet({
                           {client}
                         </span>
                         <Badge className="bg-yellow-100 text-yellow-900 border border-yellow-200 text-[9px] font-mono font-bold px-1.5 py-0 shrink-0">
-                          #{item.order.id}
+                          #{shortBadge}
                         </Badge>
                       </div>
                       <span className="text-[10px] text-slate-500 font-medium shrink-0 font-mono">

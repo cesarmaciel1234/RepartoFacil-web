@@ -50,7 +50,7 @@ export function DriverTopBar({
   return (
     <header
       style={{
-        paddingTop: "max(0.5rem, calc(env(safe-area-inset-top, 0px) + 0.35rem))",
+        paddingTop: "max(1.75rem, calc(env(safe-area-inset-top, 0px) + 0.5rem))",
       }}
       className="absolute top-0 left-0 right-0 z-40 px-2 sm:px-4 py-1.5 pointer-events-none flex items-center justify-between gap-1 sm:gap-2 max-w-full"
     >

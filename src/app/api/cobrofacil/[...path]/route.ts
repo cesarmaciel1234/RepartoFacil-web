@@ -113,6 +113,14 @@ function mapProduct(
   const image = getProductImage(name);
   const code = String(item.codigo || productId);
 
+  const isOutOfStock = stockKg !== undefined && stockKg <= 0;
+  const isLowStock = stockKg !== undefined && stockKg > 0 && stockKg < 5;
+  const dynamicBadge = isOutOfStock
+    ? "AGOTADO EN SUCURSAL"
+    : isLowStock
+      ? `⚡ ÚLTIMOS ${stockKg} ${String(item.unidad || "KG").toUpperCase()}`
+      : department;
+
   return {
     id: `${options.idPrefix}${productId}`,
     name,
@@ -121,14 +129,17 @@ function mapProduct(
     department,
     ...(price !== undefined && price > 0 ? { price } : {}),
     unit: String(item.unidad || "").trim(),
-    description: `${department} · Inventario ${options.companyName}. Código TPV: ${code}.`,
+    description: `${department} · Inventario en vivo ${options.companyName}. Código TPV: ${code}.`,
     ...(image ? { image } : {}),
     ...(stockKg !== undefined ? { stockKg } : {}),
     priceSource: "tpv" as const,
-    badge: department,
+    badge: dynamicBadge,
+    isOutOfStock,
+    isLowStock,
     companyId: options.companyId,
     companyName: options.companyName,
     source: options.source,
+    synchronizedFromPos: true,
   };
 }
 

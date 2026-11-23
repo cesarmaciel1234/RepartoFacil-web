@@ -101,9 +101,12 @@ export function TabMiRuta({
         const mapsStoreUrl = `https://www.google.com/maps/dir/?api=1&destination=${storeTarget}&travelmode=${travelmode}`;
         const mapsCustomerUrl = `https://www.google.com/maps/dir/?api=1&destination=${customerTarget}&travelmode=${travelmode}`;
 
-        const rawTicket = order.ticketId || order.ticket_id || order.id;
-        const cleanTicket = String(rawTicket).replace(/^#?RF-?/i, "");
-        const ticketDisplay = cleanTicket.length > 6 ? `RF-${cleanTicket.slice(0, 5)}` : rawTicket.startsWith("RF-") ? rawTicket : `RF-${cleanTicket}`;
+        const rawTicket = order.ticketId || order.ticket_id;
+        const isNumericTicket = rawTicket && /^\d+$/.test(String(rawTicket).replace(/^#?RF-?/i, ""));
+        const cleanTicket = rawTicket ? String(rawTicket).replace(/^#?RF-?/i, "") : "";
+        const rawIdClean = String(order.id || "").replace(/^#?RF-?/i, "");
+        const shortId = rawIdClean.length > 5 ? rawIdClean.slice(0, 5) : rawIdClean;
+        const ticketDisplay = isNumericTicket ? `Ticket #${cleanTicket}` : `RF-${shortId}`;
 
         return (
           <div
@@ -112,16 +115,16 @@ export function TabMiRuta({
           >
             {/* Header del Pedido Activo */}
             <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-2.5">
-              <div>
-                <div className="flex items-center gap-2">
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
                   <button
                     type="button"
                     onClick={() => onOpenOrderChat?.(order)}
-                    className="flex items-center gap-1 font-black text-sm text-[#2D3277] hover:text-blue-700 active:scale-95 transition-all text-left group"
+                    className="inline-flex items-center gap-1 font-black text-sm text-[#2D3277] hover:text-blue-700 active:scale-95 transition-all text-left group max-w-[160px] truncate"
                     title={`Abrir chat del pedido #${order.id} en esta misma ventana`}
                   >
-                    <Receipt className="w-3.5 h-3.5 text-yellow-700" />
-                    <span>#{ticketDisplay}</span>
+                    <Receipt className="w-3.5 h-3.5 text-yellow-700 shrink-0" />
+                    <span className="truncate">{ticketDisplay.startsWith("Ticket") ? ticketDisplay : `#${ticketDisplay}`}</span>
                   </button>
                   {isPickedUp ? (
                     <Badge className="bg-blue-600 text-white font-black text-[10px] px-2 py-0.5 shadow-sm">

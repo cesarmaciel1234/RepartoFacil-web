@@ -353,9 +353,12 @@ export function OrderChatSheet({
   const interlocutorName = isDriverViewer
     ? (clientName || activeOrder?.clientName || (activeOrder as any)?.customerName || "Cliente")
     : (driverName || activeOrder?.driverName || "Repartidor");
-  const rawTicketVal = ticketId || activeOrder?.ticketId || activeOrder?.id || orderId;
-  const cleanTicketStr = String(rawTicketVal).replace(/^#?RF-?/i, "");
-  const ticketDisplay = cleanTicketStr.length > 7 ? `${cleanTicketStr.slice(0, 6)}…` : cleanTicketStr;
+  const numericTicket = activeOrder?.ticketId || activeOrder?.ticket_id;
+  const hasNumericTicket = numericTicket && /^\d+$/.test(String(numericTicket).replace(/^#?RF-?/i, ""));
+  const cleanTicketStr = hasNumericTicket
+    ? String(numericTicket).replace(/^#?RF-?/i, "")
+    : String(activeOrder?.id || orderId || "").replace(/^#?RF-?/i, "").slice(0, 5);
+  const ticketLabel = hasNumericTicket ? `Ticket #${cleanTicketStr}` : `#RF-${cleanTicketStr}`;
   const backButtonLabel = customBackButtonLabel || (isDriverViewer ? "Volver a mensajes" : embedded ? "Volver al pedido" : "Volver a mensajes");
 
   const chatContent = (
@@ -423,14 +426,14 @@ export function OrderChatSheet({
                 >
                   📍 {displayDestAddress}
                 </span>
-                {isDriverViewer && rawTicketVal && (
+                {isDriverViewer && (
                   <button
                     type="button"
                     onClick={() => setIsTicketModalOpen(true)}
                     className="flex shrink-0 items-center gap-1 rounded-md border border-yellow-300 bg-yellow-50 px-1.5 py-0.5 text-[9.5px] font-bold text-yellow-900 hover:bg-yellow-100 transition-all"
                     title="Ver Ticket Digital Cobro Fácil"
                   >
-                    🧾 Ticket #{ticketDisplay} ↗
+                    <span>🧾 {ticketLabel} ↗</span>
                   </button>
                 )}
               </div>
