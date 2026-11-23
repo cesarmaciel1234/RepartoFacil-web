@@ -350,19 +350,25 @@ export function OrderChatSheet({
 
   const isClientViewer = effectiveRole === "client";
   const displayDestAddress = deliveryAddress || activeOrder?.deliveryAddress || "Tucumán 2130, Rosario";
+  const interlocutorName = isDriverViewer
+    ? (clientName || activeOrder?.clientName || (activeOrder as any)?.customerName || "Cliente")
+    : (driverName || activeOrder?.driverName || "Repartidor");
+  const rawTicketVal = ticketId || activeOrder?.ticketId || activeOrder?.id || orderId;
+  const cleanTicketStr = String(rawTicketVal).replace(/^#?RF-?/i, "");
+  const ticketDisplay = cleanTicketStr.length > 7 ? `${cleanTicketStr.slice(0, 6)}…` : cleanTicketStr;
   const backButtonLabel = customBackButtonLabel || (isDriverViewer ? "Volver a mensajes" : embedded ? "Volver al pedido" : "Volver a mensajes");
 
   const chatContent = (
     <>
-        {/* Header Scoped: Diferenciado según el perfil del usuario */}
+        {/* Header Scoped: Título con nombre del cliente y dirección, punto verde EN VIVO */}
         <SheetHeader
-          className={`flex flex-row items-center justify-between gap-2 border-b p-4 ${reserveCloseButton ? "pr-12" : ""} ${
+          className={`flex flex-row items-center justify-between gap-2 border-b p-3 sm:p-4 ${reserveCloseButton ? "pr-12" : ""} ${
             embedded || isDriverViewer
               ? "border-slate-100 bg-white"
               : "border-slate-800 bg-slate-900"
           }`}
         >
-          <div className="flex min-w-0 items-center gap-2">
+          <div className="flex min-w-0 items-center gap-2 flex-1">
             {onBackToOrdersHub && (
               <button
                 type="button"
@@ -386,7 +392,7 @@ export function OrderChatSheet({
               </button>
             )}
             <div
-              className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl shadow-md ${
+              className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl shadow-xs ${
                 isDriverViewer
                   ? "bg-yellow-100 text-yellow-900"
                   : embedded
@@ -398,68 +404,49 @@ export function OrderChatSheet({
             >
               {isClientViewer ? <Bike className="w-5 h-5" /> : <User className="w-5 h-5" />}
             </div>
-            <div className="min-w-0 text-left">
+            <div className="min-w-0 flex-1 text-left">
               <div className="flex items-center gap-1.5">
                 {embedded ? (
-                  <h2 className="truncate text-sm font-black text-slate-900">
-                    {conversationTitle || (isClientViewer ? "Chat del pedido" : "Chat con el Cliente")}
+                  <h2 className="truncate text-sm font-black text-slate-900" title={interlocutorName}>
+                    {conversationTitle || interlocutorName}
                   </h2>
                 ) : (
-                  <SheetTitle className={`text-sm font-black ${isDriverViewer ? "text-slate-900" : "text-white"}`}>
-                    {conversationTitle || (isClientViewer ? "Chat del pedido" : "Chat con el Cliente")}
+                  <SheetTitle className={`text-sm font-black truncate ${isDriverViewer ? "text-slate-900" : "text-white"}`} title={interlocutorName}>
+                    {conversationTitle || interlocutorName}
                   </SheetTitle>
                 )}
               </div>
-              <div className="mt-0.5 flex min-w-0 items-center gap-2">
+              <div className="mt-0.5 flex min-w-0 items-center gap-1.5 text-[11px] text-slate-500">
                 <span
-                  title={`Pedido #${orderId}`}
-                  className={`truncate text-[10px] font-medium ${
-                    embedded || isDriverViewer ? "text-slate-500" : "text-slate-400"
-                  }`}
+                  title={displayDestAddress}
+                  className="truncate font-semibold text-slate-600 max-w-[130px] sm:max-w-[200px]"
                 >
-                  Pedido #{orderId}
+                  📍 {displayDestAddress}
                 </span>
-                {isDriverViewer && ticketId && (
+                {isDriverViewer && rawTicketVal && (
                   <button
                     type="button"
                     onClick={() => setIsTicketModalOpen(true)}
-                    className={`flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[9.5px] font-bold transition-all ${
-                      isDriverViewer
-                        ? "border-yellow-300 bg-yellow-50 text-yellow-900 hover:bg-yellow-100"
-                        : "border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100"
-                    }`}
+                    className="flex shrink-0 items-center gap-1 rounded-md border border-yellow-300 bg-yellow-50 px-1.5 py-0.5 text-[9.5px] font-bold text-yellow-900 hover:bg-yellow-100 transition-all"
                     title="Ver Ticket Digital Cobro Fácil"
                   >
-                    🧾 Ticket #{ticketId} ↗
+                    🧾 Ticket #{ticketDisplay} ↗
                   </button>
                 )}
               </div>
             </div>
           </div>
-          <Badge
-            className={`shrink-0 border py-0.5 text-[9px] font-black ${
-              isDriverViewer
-                ? "border-yellow-300 bg-yellow-100 text-yellow-900"
-                : embedded
-                ? "border-blue-100 bg-blue-50 text-blue-700"
-                : "border-emerald-500/30 bg-emerald-500/20 text-emerald-400"
-            }`}
-          >
-            {isClientViewer ? "GRUPAL" : "EN VIVO"}
-          </Badge>
+
+          {/* Punto verde pulsante de estado en vivo (sin textos innecesarios) */}
+          <div className="flex items-center gap-1.5 shrink-0 pl-1" title="Canal de chat en vivo">
+            <span className="relative flex h-3 w-3">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500 border border-white" />
+            </span>
+          </div>
         </SheetHeader>
 
-        {isDriverViewer ? (
-          <div className="flex items-center gap-2.5 border-b border-yellow-200 bg-yellow-50 px-4 py-2.5">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-yellow-200 bg-white text-yellow-800">
-              <User className="h-4 w-4" />
-            </div>
-            <div className="min-w-0">
-              <p className="truncate text-xs font-black text-slate-900">{clientName || activeOrder?.clientName || "Cliente"}</p>
-              <p className="truncate text-[10px] text-slate-600">Destino: {displayDestAddress}</p>
-            </div>
-          </div>
-        ) : (
+        {!isDriverViewer && (
           <p className={`border-b px-4 py-2 text-xs ${embedded ? "border-blue-100 bg-blue-50 text-blue-800" : "border-slate-800 bg-slate-900 text-slate-300"}`}>
             {["delivered", "cancelled", "cancelled_by_client", "cancelled_timeout", "rejected"].includes(String(activeOrder?.status || "").toLowerCase())
               ? "Conversación entre comprador y empresa. Se conservan los mensajes anteriores."

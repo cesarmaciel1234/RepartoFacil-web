@@ -21,6 +21,103 @@ const fixLeafletIcons = () => {
   });
 };
 
+const getVehicleEmoji = (type?: string) => {
+  const t = (type || "").toLowerCase();
+  if (t.includes("bici") || t.includes("bicycle")) return "🚲";
+  if (t.includes("auto") || t.includes("car")) return "🚗";
+  return "🛵";
+};
+
+const createSelfDriverIcon = (vehicleType?: string, heading: number = 0) => {
+  const emoji = getVehicleEmoji(vehicleType);
+  const iconHtml = renderToStaticMarkup(
+    <div className="relative flex items-center justify-center">
+      <div className="w-11 h-11 rounded-full bg-[#FFE600] border-[2.5px] border-[#2D3277] shadow-xl flex items-center justify-center text-xl transition-transform">
+        <span style={{ display: 'inline-block', transform: heading ? `rotate(${heading}deg)` : undefined }}>{emoji}</span>
+      </div>
+      <div className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-emerald-500 border-2 border-white shadow-xs" />
+      <div className="absolute w-14 h-14 bg-yellow-400/20 rounded-full animate-ping pointer-events-none" />
+    </div>
+  );
+  return L.divIcon({
+    html: iconHtml,
+    className: 'self-driver-icon',
+    iconSize: [44, 44],
+    iconAnchor: [22, 22],
+  });
+};
+
+const createFleetDriverIcon = (vehicleType?: string, isBusy: boolean = false) => {
+  const emoji = getVehicleEmoji(vehicleType);
+  const iconHtml = renderToStaticMarkup(
+    <div className="relative flex items-center justify-center">
+      <div className="w-9 h-9 rounded-full bg-white border-2 border-slate-300 shadow-md flex items-center justify-center text-base">
+        {emoji}
+      </div>
+      <div className={cn(
+        "absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white",
+        isBusy ? "bg-amber-500" : "bg-emerald-500"
+      )} />
+    </div>
+  );
+  return L.divIcon({
+    html: iconHtml,
+    className: 'fleet-driver-icon',
+    iconSize: [36, 36],
+    iconAnchor: [18, 18],
+  });
+};
+
+const createStoreBasketIcon = (count: number = 0) => {
+  const iconHtml = renderToStaticMarkup(
+    <div className="relative flex flex-col items-center">
+      <div className="w-10 h-10 rounded-2xl bg-[#047857] border-2 border-white shadow-xl flex items-center justify-center text-lg text-white">
+        🧺
+      </div>
+      {count > 0 && (
+        <span className="absolute -top-1.5 -right-1.5 min-w-4 h-4 px-1 rounded-full bg-amber-400 text-slate-900 border border-white text-[9px] font-black flex items-center justify-center shadow">
+          {count}
+        </span>
+      )}
+      <div className="w-2.5 h-2.5 bg-[#047857] rotate-45 border-r border-b border-white -mt-1 shadow-xs" />
+    </div>
+  );
+  return L.divIcon({
+    html: iconHtml,
+    className: 'store-basket-icon',
+    iconSize: [40, 44],
+    iconAnchor: [20, 44],
+  });
+};
+
+const createOrderPinIcon = (orderId: string, isMyRoute: boolean = false) => {
+  const clean = orderId.replace(/^#?RF-?/i, "");
+  const shortId = clean.length > 5 ? clean.slice(0, 4) : clean;
+  const iconHtml = renderToStaticMarkup(
+    <div className="relative flex flex-col items-center">
+      <div className={cn(
+        "px-2 py-0.5 rounded-xl border-2 shadow-lg flex items-center gap-1 text-[10px] font-black tracking-tight",
+        isMyRoute
+          ? "bg-[#FFE600] border-[#2D3277] text-[#2D3277]"
+          : "bg-blue-600 border-white text-white"
+      )}>
+        <span>📦</span>
+        <span>#{shortId}</span>
+      </div>
+      <div className={cn(
+        "w-2 h-2 rotate-45 -mt-1 border-r border-b",
+        isMyRoute ? "bg-[#FFE600] border-[#2D3277]" : "bg-blue-600 border-white"
+      )} />
+    </div>
+  );
+  return L.divIcon({
+    html: iconHtml,
+    className: 'order-pin-icon',
+    iconSize: [60, 28],
+    iconAnchor: [30, 28],
+  });
+};
+
 const createDriverIcon = (color: string, isBusy: boolean = false, isSOS: boolean = false) => {
   const iconHtml = renderToStaticMarkup(
     <div className="relative">
@@ -101,12 +198,16 @@ interface InteractiveMapProps {
   destination?: [number, number] | null;
   alerts?: any[] | null;
   activeOrders?: any[] | null;
+  availableOrders?: any[] | null;
   fleet?: any[] | null;
   heading?: number;
   zoom?: number;
   isNavigating?: boolean;
   centerTrigger?: number;
   currentUserId?: string;
+  driverVehicle?: string;
+  onSelectOrder?: (order: any) => void;
+  onTakeOrder?: (orderId: string) => void;
 }
 
 export default function InteractiveMap({ 
@@ -114,12 +215,16 @@ export default function InteractiveMap({
   destination, 
   alerts,
   activeOrders,
+  availableOrders,
   fleet,
   heading = 0, 
   zoom = 14,
   isNavigating = false,
   centerTrigger = 0,
-  currentUserId
+  currentUserId,
+  driverVehicle = "Motorcycle",
+  onSelectOrder,
+  onTakeOrder,
 }: InteractiveMapProps) {
   const [isMounted, setIsMounted] = useState(false);
   const lastFetchedCoords = useRef<{center: [number, number], dest: [number, number]} | null>(null);
@@ -127,6 +232,8 @@ export default function InteractiveMap({
     main: [],
     alternatives: []
   });
+
+  const formatMoney = (val: number) => "$" + (Number(val) || 0).toLocaleString("es-AR");
 
   useEffect(() => {
     setIsMounted(true);
@@ -170,6 +277,71 @@ export default function InteractiveMap({
       </div>
     );
   }
+
+  // 1. Comercios / Puntos de retiro con icon de canasto 🧺
+  const storesMap = new Map<string, { name: string; address: string; coords: [number, number]; count: number }>();
+  storesMap.set("maciel-central", {
+    name: "Frigorífico Maciel - Central",
+    address: "Tucumán 2130, Rosario",
+    coords: [-32.9372, -60.6542],
+    count: (availableOrders?.length || 0) + (activeOrders?.length || 0),
+  });
+
+  [...(activeOrders || []), ...(availableOrders || [])].forEach((o) => {
+    if (o?.storeCoords?.lat && o?.storeCoords?.lng) {
+      const key = `${o.storeCoords.lat},${o.storeCoords.lng}`;
+      const existing = storesMap.get(key);
+      if (existing) {
+        existing.count += 1;
+      } else {
+        storesMap.set(key, {
+          name: o.branch || "Punto de Retiro",
+          address: o.branch || "Sucursal",
+          coords: [o.storeCoords.lat, o.storeCoords.lng],
+          count: 1,
+        });
+      }
+    }
+  });
+
+  // 2. Pedidos en el mapa (Entregas a clientes) con icon de paquete 📦
+  const allOrdersToRender = [
+    ...(activeOrders || []).map((o) => ({ ...o, isMyActive: true })),
+    ...(availableOrders || []).map((o) => ({ ...o, isMyActive: false })),
+  ].filter((o) => o?.destinationCoords?.lat && o?.destinationCoords?.lng);
+
+  // 3. Flota de repartidores activos (simulados/reales) con icons de 🛵 🚲 🚗
+  const effectiveFleet = (fleet && fleet.length > 0)
+    ? fleet
+    : [
+        {
+          id: "fleet-1",
+          firstName: "Lucas",
+          lastName: "M.",
+          vehicleType: "Motorcycle",
+          currentLatitude: center[0] + 0.0035,
+          currentLongitude: center[1] + 0.0028,
+          isBusy: false,
+        },
+        {
+          id: "fleet-2",
+          firstName: "Marcos",
+          lastName: "B.",
+          vehicleType: "Bicycle",
+          currentLatitude: center[0] - 0.0032,
+          currentLongitude: center[1] + 0.0045,
+          isBusy: true,
+        },
+        {
+          id: "fleet-3",
+          firstName: "Diego",
+          lastName: "A.",
+          vehicleType: "Car",
+          currentLatitude: center[0] + 0.0021,
+          currentLongitude: center[1] - 0.0038,
+          isBusy: false,
+        },
+      ];
 
   const getAlertColor = (type: string) => {
     switch (type) {
@@ -235,28 +407,109 @@ export default function InteractiveMap({
             );
           })}
 
-          {fleet?.map((driver) => {
-            if (typeof driver.currentLatitude !== 'number' || typeof driver.currentLongitude !== 'number') return null;
-            
-            const isSOS = alerts?.some(a => a.type === 'sos' && a.authorId === driver.id);
-            const isBusy = activeOrders?.some(o => o.driverId === driver.id && ["Picked Up", "In Transit"].includes(o.status));
-            
+          {/* ─── 1. Comercios / Sucursales con icono de canasto 🧺 ─── */}
+          {Array.from(storesMap.values()).map((store, idx) => (
+            <Marker
+              key={`store-${idx}`}
+              position={store.coords}
+              icon={createStoreBasketIcon(store.count)}
+              zIndexOffset={1500}
+            >
+              <Popup>
+                <div className="p-1 min-w-[150px]">
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <span className="text-base">🧺</span>
+                    <span className="font-black text-xs text-emerald-950 uppercase tracking-tight">Comercio / Retiro</span>
+                  </div>
+                  <p className="font-extrabold text-xs text-slate-900">{store.name}</p>
+                  <p className="text-[10px] text-slate-500 mt-0.5">{store.address}</p>
+                  <div className="mt-1.5 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[9.5px] font-black">
+                    <span>📦 {store.count} pedido{store.count === 1 ? '' : 's'}</span>
+                  </div>
+                </div>
+              </Popup>
+            </Marker>
+          ))}
+
+          {/* ─── 2. Pedidos en el mapa (Entregas a Domicilio) 📦 ─── */}
+          {allOrdersToRender.map((order) => {
+            const isMyActive = Boolean(order.isMyActive);
+            const pos: [number, number] = [order.destinationCoords.lat, order.destinationCoords.lng];
+            const clean = String(order.ticketId || order.id || "").replace(/^#?RF-?/i, "");
+            const shortTicket = clean.length > 5 ? clean.slice(0, 5) : clean;
             return (
-              <Marker 
-                key={`fleet-${driver.id}`} 
-                position={[driver.currentLatitude, driver.currentLongitude]} 
-                icon={createDriverIcon(driver.id === currentUserId ? '#2563eb' : '#94a3b8', isBusy, isSOS)}
-                zIndexOffset={isSOS ? 10000 : (driver.id === currentUserId ? 1000 : 500)}
+              <Marker
+                key={`order-pin-${order.id}`}
+                position={pos}
+                icon={createOrderPinIcon(order.id, isMyActive)}
+                zIndexOffset={isMyActive ? 2500 : 1800}
               >
                 <Popup>
-                  <div className="p-1">
-                    <p className={cn(
-                      "font-black text-[9px] uppercase tracking-widest mb-1 px-2 py-0.5 rounded-full inline-block",
-                      isSOS ? "bg-red-600 text-white animate-pulse" : isBusy ? "bg-orange-100 text-orange-600" : "bg-slate-100 text-slate-500"
-                    )}>
-                      {isSOS ? "EMERGENCIA CRÍTICA" : isBusy ? "EN RUTA" : "DISPONIBLE"}
-                    </p>
-                    <p className="font-black text-xs text-slate-900 mt-1">{driver.firstName} {driver.lastName || ''}</p>
+                  <div className="p-1 min-w-[170px] space-y-1">
+                    <div className="flex items-center justify-between gap-1">
+                      <span className={cn(
+                        "px-1.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider",
+                        isMyActive ? "bg-yellow-100 text-yellow-900 border border-yellow-300" : "bg-blue-100 text-blue-800 border border-blue-200"
+                      )}>
+                        {isMyActive ? "🛵 En tu ruta" : "✨ Disponible"}
+                      </span>
+                      <span className="font-mono text-[10px] font-bold text-slate-500">#{shortTicket}</span>
+                    </div>
+                    <p className="font-black text-xs text-slate-900">{order.customerName || order.clientName || 'Cliente'}</p>
+                    <p className="text-[10px] text-slate-600 line-clamp-2">📍 {order.deliveryAddress}</p>
+                    <div className="flex items-center justify-between text-xs font-black text-slate-900 pt-1 border-t border-slate-100">
+                      <span className="text-[10px] text-slate-500 font-semibold">Ganancia:</span>
+                      <span className="text-emerald-600 font-black">+{formatMoney(order.driverEarnings || 1600)}</span>
+                    </div>
+                    {onSelectOrder && isMyActive && (
+                      <button
+                        type="button"
+                        onClick={() => onSelectOrder(order)}
+                        className="w-full mt-1.5 py-1 px-2 rounded-lg bg-yellow-400 hover:bg-yellow-500 text-[#2D3277] font-black text-[10px] shadow-xs active:scale-95 transition-all"
+                      >
+                        Ver detalles / Chat
+                      </button>
+                    )}
+                    {onTakeOrder && !isMyActive && (
+                      <button
+                        type="button"
+                        onClick={() => onTakeOrder(order.id)}
+                        className="w-full mt-1.5 py-1 px-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-black text-[10px] shadow-xs active:scale-95 transition-all"
+                      >
+                        Aceptar y llevar 🛵
+                      </button>
+                    )}
+                  </div>
+                </Popup>
+              </Marker>
+            );
+          })}
+
+          {/* ─── 3. Flota de repartidores activos (Bici 🚲, Moto 🛵, Auto 🚗) ─── */}
+          {effectiveFleet.map((driver) => {
+            if (typeof driver.currentLatitude !== 'number' || typeof driver.currentLongitude !== 'number') return null;
+            if (driver.id === currentUserId) return null; // El repartidor propio se renderiza con su icono central
+            const vehicle = driver.vehicleType || "Motorcycle";
+            return (
+              <Marker
+                key={`fleet-${driver.id}`}
+                position={[driver.currentLatitude, driver.currentLongitude]}
+                icon={createFleetDriverIcon(vehicle, Boolean(driver.isBusy))}
+                zIndexOffset={800}
+              >
+                <Popup>
+                  <div className="p-1 min-w-[120px]">
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <span className="text-base">{getVehicleEmoji(vehicle)}</span>
+                      <span className={cn(
+                        "font-black text-[9px] uppercase px-1.5 py-0.5 rounded-full inline-block",
+                        driver.isBusy ? "bg-amber-100 text-amber-800" : "bg-emerald-100 text-emerald-800"
+                      )}>
+                        {driver.isBusy ? "En viaje" : "En línea"}
+                      </span>
+                    </div>
+                    <p className="font-black text-xs text-slate-900">{driver.firstName} {driver.lastName || ''}</p>
+                    <p className="text-[9.5px] text-slate-500">{vehicle === "Bicycle" ? "Bicicleta" : vehicle === "Car" ? "Automóvil" : "Motocicleta"}</p>
                   </div>
                 </Popup>
               </Marker>
@@ -274,32 +527,25 @@ export default function InteractiveMap({
             </Marker>
           )}
 
-          {/* Marcador del propio usuario/repartidor con flecha orientada en vista libre */}
-          {!isNavigating && center && (!fleet || !fleet.some(d => d.id === currentUserId)) && (
+          {/* ─── 4. Marcador del propio usuario/repartidor con su vehículo real ─── */}
+          {!isNavigating && center && (
             <Marker
               position={center}
-              icon={L.divIcon({
-                html: renderToStaticMarkup(
-                  <div className="relative flex items-center justify-center">
-                    <div 
-                      className="w-10 h-10 bg-blue-600 rounded-full shadow-lg border-2 border-white flex items-center justify-center"
-                      style={{ transform: `rotate(${heading}deg)` }}
-                    >
-                      <NavIcon className="w-5 h-5 text-white fill-current -rotate-45" />
-                    </div>
-                    <div className="absolute w-14 h-14 bg-blue-500/20 rounded-full animate-ping pointer-events-none" />
-                  </div>
-                ),
-                className: 'driver-self-marker',
-                iconSize: [40, 40],
-                iconAnchor: [20, 20],
-              })}
-              zIndexOffset={2000}
+              icon={createSelfDriverIcon(driverVehicle, heading)}
+              zIndexOffset={3000}
             >
               <Popup>
-                <div className="p-1">
-                  <p className="font-black text-[9px] uppercase tracking-widest text-blue-600">TU POSICIÓN</p>
-                  <p className="font-bold text-xs text-slate-800">Rumbo: {Math.round(heading)}°</p>
+                <div className="p-1 min-w-[130px]">
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <span className="text-lg">{getVehicleEmoji(driverVehicle)}</span>
+                    <span className="font-black text-[9px] uppercase tracking-wider text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded-full border border-emerald-200">
+                      Tu posición activa
+                    </span>
+                  </div>
+                  <p className="font-black text-xs text-slate-900">
+                    {driverVehicle === "Bicycle" ? "Bicicleta" : driverVehicle === "Car" ? "Automóvil" : "Motocicleta"}
+                  </p>
+                  <p className="text-[10px] text-slate-500">Rumbo: {Math.round(heading)}°</p>
                 </div>
               </Popup>
             </Marker>

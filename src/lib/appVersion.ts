@@ -1,2 +1,2 @@
-export const APP_VERSION = "6.6";
-export const APP_RELEASE = "v6.6.0-selector-calle-altura-gps";
+export const APP_VERSION = "6.7";
+export const APP_RELEASE = "v6.7.0-mapa-actividad-canastos-vehiculos";

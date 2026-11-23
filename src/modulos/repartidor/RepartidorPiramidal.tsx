@@ -269,13 +269,21 @@ export function RepartidorPiramidal({ onSwitchToStore }: RepartidorPiramidalProp
       <div className="absolute inset-0 z-0">
         <InteractiveMap
           center={coords ? [coords.lat, coords.lng] : [-32.9372, -60.6542]}
+          destination={
+            myActiveOrders[0]?.destinationCoords?.lat && myActiveOrders[0]?.destinationCoords?.lng
+              ? [myActiveOrders[0].destinationCoords.lat, myActiveOrders[0].destinationCoords.lng]
+              : null
+          }
           heading={heading}
           alerts={null}
-          activeOrders={null}
-          fleet={null}
+          activeOrders={myActiveOrders}
+          availableOrders={availableOrders}
+          driverVehicle={driverProfile?.vehicleType || "Motorcycle"}
           isNavigating={isNavigating}
           centerTrigger={mapCenterTrigger}
           currentUserId={driverProfile?.id}
+          onSelectOrder={openOrderConversation}
+          onTakeOrder={handleTakeOrder}
         />
       </div>
 

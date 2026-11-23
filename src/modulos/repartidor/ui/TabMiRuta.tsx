@@ -1,7 +1,8 @@
 "use client";
 
-import React from "react";
+import React, { useMemo } from "react";
 import { DriverOrder } from "../motor/tipos";
+import { loadDriverProfile } from "../motor/driverService";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -75,12 +76,19 @@ export function TabMiRuta({
           String(order.status).trim().toLowerCase()
         );
 
-        // Enlace real a Google Maps con coordenadas exactas del punto fijado por el cliente
+        // Enlace real a Google Maps con coordenadas exactas y modo de transporte según vehículo del repartidor
         const hasExactCoords = Boolean(order.destinationCoords?.lat && order.destinationCoords?.lng);
         const destinationTarget = hasExactCoords
           ? `${order.destinationCoords!.lat},${order.destinationCoords!.lng}`
           : encodeURIComponent(order.deliveryAddress);
-        const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${destinationTarget}`;
+
+        const driverProfile = loadDriverProfile();
+        const vehicleRaw = (driverProfile?.vehicleType || "Motorcycle").toLowerCase();
+        const travelmode = vehicleRaw.includes("bici") || vehicleRaw.includes("bicycle")
+          ? "bicycling"
+          : "driving";
+
+        const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${destinationTarget}&travelmode=${travelmode}`;
 
         const rawTicket = order.ticketId || order.ticket_id || order.id;
         const cleanTicket = String(rawTicket).replace(/^#?RF-?/i, "");
