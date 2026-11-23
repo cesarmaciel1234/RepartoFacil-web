@@ -319,6 +319,10 @@ export async function PATCH(request: NextRequest) {
       updateQuery += `, repartidor_nombre = $${idx++}`;
       values.push(driverName);
     }
+    if (isPacked && data.recargo_espera && Number(data.recargo_espera) > 0) {
+      updateQuery += `, ganancia_repartidor = COALESCE(ganancia_repartidor, 0) + $${idx++}`;
+      values.push(Number(data.recargo_espera));
+    }
     updateQuery += ` WHERE id = $${idx++}`;
     values.push(id);
     if (isAssignment) {
@@ -387,7 +391,10 @@ export async function PATCH(request: NextRequest) {
       ).catch(() => {});
     } else if (isPacked) {
       const msgId = `msg-store-pack-${Date.now()}`;
-      const txt = `Comercio: Pedido #${id} embalado y listo para ser retirado por el repartidor 📦✨`;
+      const recargo = Number(data.recargo_espera || 0);
+      const txt = recargo > 0
+        ? `Comercio: Pedido #${id} embalado y listo para retirar 📦✨ (Demora en mostrador: se acreditó +$${recargo.toLocaleString('es-AR')} extra por espera al repartidor ⏱️)`
+        : `Comercio: Pedido #${id} embalado y listo para ser retirado por el repartidor 📦✨`;
       await queryDb(
         "INSERT INTO repartofacil_chat_mensajes (id, order_id, author_role, author_name, content, timestamp_str, created_at) VALUES ($1, $2, $3, $4, $5, $6, NOW())",
         [msgId, id, "store", "Comercio", txt, horaStr]
