@@ -33,6 +33,7 @@ export interface OrderChatMessage {
   content: string;
   timestamp: string;
   createdAt?: string;
+  isRead?: boolean;
 }
 
 interface OrderChatSheetProps {
@@ -97,6 +98,13 @@ export function OrderChatSheet({
   const chatContext = useRef({ isOpen, orderId, isDriverViewer });
   chatContext.current = { isOpen, orderId, isDriverViewer };
 
+  // Al abrir el chat, despachar de inmediato la lectura para borrar el contador sin esperar
+  useEffect(() => {
+    if (isOpen && orderId) {
+      window.dispatchEvent(new CustomEvent("rf-chat-read", { detail: { orderId } }));
+    }
+  }, [isOpen, orderId]);
+
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
     const el = e.currentTarget;
     const distanceToBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
@@ -151,7 +159,7 @@ export function OrderChatSheet({
       if (fetching) return;
       fetching = true;
       try {
-        const markRead = !isDriverViewer && document.visibilityState === "visible";
+        const markRead = document.visibilityState === "visible";
         const res = await fetch(`/api/chat/${encodeURIComponent(orderId)}${markRead ? "?read=1" : ""}`, {
           cache: "no-store",
           headers: authorization ? { Authorization: authorization } : {},
@@ -174,7 +182,9 @@ export function OrderChatSheet({
           } catch (error) {
             console.warn("No se pudo guardar el historial del chat:", error);
           }
-          if (markRead) window.dispatchEvent(new Event("rf-chat-read"));
+          if (markRead) {
+            window.dispatchEvent(new CustomEvent("rf-chat-read", { detail: { orderId } }));
+          }
         }
       } catch (err) {
         if (active && !controller.signal.aborted) {

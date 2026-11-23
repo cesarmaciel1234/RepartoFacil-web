@@ -60,7 +60,21 @@ export function useMensajesNoLeidos(role: "Client" | "Driver" = "Client") {
     };
     void refresh();
     const timer = window.setInterval(refresh, 4000);
-    window.addEventListener("rf-chat-read", refresh);
+    const handleChatRead = (event: Event) => {
+      const detail = (event as CustomEvent)?.detail;
+      if (detail && typeof detail.orderId === "string") {
+        setUnread((prev) => {
+          if (!prev[detail.orderId]) return prev;
+          const next = { ...prev };
+          delete next[detail.orderId];
+          const total = Object.values(next).reduce((sum, count) => sum + count, 0);
+          setBrowserAppBadge(total);
+          return next;
+        });
+      }
+      void refresh();
+    };
+    window.addEventListener("rf-chat-read", handleChatRead);
     const refreshIdentity = () => {
       setUnread({});
       setError(false);
@@ -72,7 +86,7 @@ export function useMensajesNoLeidos(role: "Client" | "Driver" = "Client") {
     return () => {
       active = false;
       window.clearInterval(timer);
-      window.removeEventListener("rf-chat-read", refresh);
+      window.removeEventListener("rf-chat-read", handleChatRead);
       window.removeEventListener("repartofacil-client-auth", refreshIdentity);
       window.removeEventListener("repartofacil-auth", refreshIdentity);
       window.removeEventListener("storage", refreshIdentity);

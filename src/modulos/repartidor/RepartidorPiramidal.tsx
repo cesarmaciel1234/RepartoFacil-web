@@ -95,6 +95,50 @@ export function RepartidorPiramidal({ onSwitchToStore }: RepartidorPiramidalProp
   // Mantener la pantalla encendida durante navegación activa o entregas en curso (PWA WakeLock)
   useScreenWakeLock(myActiveOrders.length > 0 || isNavigating);
 
+  // Prueba de Vida del Repartidor: envía lat/lng y renueva driver_last_ping periódicamente
+  useEffect(() => {
+    if (!driverProfile?.id) return;
+    let active = true;
+
+    const emitirPruebaDeVida = async () => {
+      if (!active) return;
+      try {
+        const coords = typeof navigator !== "undefined" && navigator.geolocation
+          ? await new Promise<{ lat?: number; lng?: number }>((resolve) => {
+              navigator.geolocation.getCurrentPosition(
+                (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+                () => resolve({}),
+                { timeout: 4000, maximumAge: 30000 }
+              );
+            })
+          : {};
+
+        await fetch("/api/orders/custodio", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...authHeaders("Driver"),
+          },
+          body: JSON.stringify({
+            action: "ping",
+            driverId: driverProfile.id,
+            lat: coords.lat,
+            lng: coords.lng,
+          }),
+        });
+      } catch (err) {
+        // Silencioso ante pérdidas temporales de señal
+      }
+    };
+
+    void emitirPruebaDeVida();
+    const interval = setInterval(emitirPruebaDeVida, 20000);
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
+  }, [driverProfile?.id]);
+
   // Solicitar permiso de notificaciones nativas del navegador al iniciar actividad como repartidor
   useEffect(() => {
     if (driverProfile?.id) {

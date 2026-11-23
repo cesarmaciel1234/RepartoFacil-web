@@ -225,7 +225,7 @@ export function TabMiRuta({
                     <MessageSquare className="w-2.5 h-2.5 text-[#2D3277] group-hover:scale-110 transition-transform" />
                   </button>
                 </div>
-                <div className="space-y-1">
+                <div className="space-y-1 max-h-36 overflow-y-auto pr-1 scrollbar-thin">
                   {order.items.map((item: any, idx: number) => (
                     <div
                       key={idx}
@@ -240,6 +240,11 @@ export function TabMiRuta({
                     </div>
                   ))}
                 </div>
+                {order.items.length > 3 && (
+                  <p className="text-[9.5px] text-slate-400 text-center pt-0.5 font-medium">
+                    ↕ Deslizá para ver los {order.items.length} cortes
+                  </p>
+                )}
                 {/* Botón interactivo integrado para abrir el chat fluido */}
                 <button
                   type="button"

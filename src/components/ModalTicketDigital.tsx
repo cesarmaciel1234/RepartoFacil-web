@@ -122,8 +122,8 @@ export function ModalTicketDigital({
             </div>
           </div>
 
-          {/* Cortes y Productos */}
-          <div className="border-t border-slate-100 py-3 space-y-2.5">
+          {/* Cortes y Productos (Con scroll controlado si el ticket es muy largo) */}
+          <div className="border-t border-slate-100 py-3 space-y-2.5 max-h-[35vh] overflow-y-auto pr-1">
             {items.length > 0 ? (
               items.map((it: any, idx: number) => {
                 const sub = (it.price || it.precio || 0) * (it.quantity || it.cantidad || 1);
@@ -148,6 +148,11 @@ export function ModalTicketDigital({
                   {formatMoney(total)}
                 </span>
               </div>
+            )}
+            {items.length > 4 && (
+              <p className="text-[10px] text-slate-400 text-center pt-1 font-medium">
+                ↕ Deslizá para ver todos los {items.length} ítems
+              </p>
             )}
           </div>
 

@@ -150,7 +150,21 @@ export function OrderChatMessageList({
                   : "rounded-bl-xs border border-blue-500/40 bg-blue-950/80 text-blue-100"
               }`}
             >
-              <p>{message.content}</p>
+              <div className="flex items-end justify-between gap-2">
+                <p className="flex-1 break-words">{message.content}</p>
+                {isMe && (
+                  <span
+                    className={`inline-flex items-center text-[10.5px] font-black shrink-0 pl-1 select-none leading-none ${
+                      message.isRead
+                        ? (effectiveRole === "driver" && !embedded ? "text-blue-700" : "text-sky-300")
+                        : "opacity-60 text-current"
+                    }`}
+                    title={message.isRead ? "Leído por el destinatario (Confirmación ✓✓)" : "Enviado al chat ✓"}
+                  >
+                    {message.isRead ? "✓✓" : "✓"}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
         );
