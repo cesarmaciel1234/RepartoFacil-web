@@ -76,7 +76,7 @@ export function OrderChatSheet({
   const effectiveRole: "client" | "driver" = viewerRole || defaultRole;
   const isDriverViewer = effectiveRole === "driver";
   const orderId = activeOrder?.id || "RF-7420";
-  const ticketId = activeOrder?.ticketId || activeOrder?.ticket_id;
+  const ticketId = activeOrder?.ticketId || activeOrder?.ticket_id || orderId;
   const clientId = !isDriverViewer ? loadClientProfile()?.userId : undefined;
   const storageKey = `rf_client_chat_v2:${encodeURIComponent(clientId || "")}:${encodeURIComponent(orderId)}`;
 

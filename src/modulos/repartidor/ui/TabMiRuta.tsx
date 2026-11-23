@@ -17,6 +17,7 @@ import {
   MessageSquare,
   Sparkles,
   Compass,
+  Receipt,
 } from "lucide-react";
 
 interface TabMiRutaProps {
@@ -79,6 +80,10 @@ export function TabMiRuta({
           order.deliveryAddress
         )}`;
 
+        const rawTicket = order.ticketId || order.ticket_id || order.id;
+        const cleanTicket = String(rawTicket).replace(/^#?RF-?/i, "");
+        const ticketDisplay = cleanTicket.length > 6 ? `RF-${cleanTicket.slice(0, 4)}…` : rawTicket.startsWith("RF-") ? rawTicket : `RF-${cleanTicket}`;
+
         return (
           <div
             key={order.id}
@@ -88,7 +93,15 @@ export function TabMiRuta({
             <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-2.5">
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="font-black text-sm text-slate-900">#{order.id}</span>
+                  <button
+                    type="button"
+                    onClick={() => onOpenOrderChat?.(order)}
+                    className="flex items-center gap-1 font-black text-sm text-[#2D3277] hover:text-blue-700 active:scale-95 transition-all text-left group"
+                    title={`Abrir chat del pedido #${order.id} en esta misma ventana`}
+                  >
+                    <Receipt className="w-3.5 h-3.5 text-yellow-700" />
+                    <span>#{ticketDisplay}</span>
+                  </button>
                   {isPickedUp ? (
                     <Badge className="bg-blue-600 text-white font-black text-[10px] px-2 py-0.5 shadow-sm">
                       🛵 EN VIAJE AL DOMICILIO
@@ -194,12 +207,24 @@ export function TabMiRuta({
               </span>
             </div>
 
-            {/* Detalle de Artículos */}
+            {/* Detalle de Artículos con Número de Ticket y acceso fluido al chat en la misma ventana */}
             {Array.isArray(order.items) && order.items.length > 0 && (
-              <div className="bg-slate-50 p-2.5 rounded-2xl border border-slate-200 space-y-1">
-                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
-                  Cortes a Entregar ({order.items.length}):
-                </span>
+              <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200 space-y-2">
+                <div className="flex items-center justify-between gap-1 pb-1.5 border-b border-slate-200/80">
+                  <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider flex items-center gap-1">
+                    <Receipt className="w-3.5 h-3.5 text-yellow-700" />
+                    Cortes a Entregar ({order.items.length}):
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => onOpenOrderChat?.(order)}
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-[#FFE600] hover:bg-yellow-300 text-[#2D3277] text-[10px] sm:text-[11px] font-black border border-yellow-500 shadow-xs transition-all active:scale-95 group"
+                    title="Abrir chat del pedido en la misma ventana"
+                  >
+                    <span>Ticket #{ticketDisplay}</span>
+                    <MessageSquare className="w-2.5 h-2.5 text-[#2D3277] group-hover:scale-110 transition-transform" />
+                  </button>
+                </div>
                 <div className="space-y-1">
                   {order.items.map((item: any, idx: number) => (
                     <div
@@ -215,6 +240,21 @@ export function TabMiRuta({
                     </div>
                   ))}
                 </div>
+                {/* Botón interactivo integrado para abrir el chat fluido */}
+                <button
+                  type="button"
+                  onClick={() => onOpenOrderChat?.(order)}
+                  className="w-full pt-1.5 mt-1 border-t border-slate-200/80 flex items-center justify-between text-[11px] font-extrabold text-[#2D3277] hover:text-blue-900 transition-colors group"
+                  title="Abrir chat en esta misma ventana"
+                >
+                  <span className="flex items-center gap-1 text-slate-600 group-hover:text-[#2D3277]">
+                    <MessageSquare className="w-3.5 h-3.5 text-yellow-700 group-hover:scale-110 transition-transform" />
+                    <span>Chat con cliente y negocio</span>
+                  </span>
+                  <span className="text-[10px] bg-yellow-100 group-hover:bg-[#FFE600] px-2 py-0.5 rounded-md text-yellow-900 group-hover:text-[#2D3277] font-black transition-colors">
+                    Abrir chat →
+                  </span>
+                </button>
               </div>
             )}
 

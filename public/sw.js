@@ -1,6 +1,6 @@
 // Se conserva la caché durante la migración: las versiones antiguas eliminan las demás.
-const CACHE_NAME = "repartofacil-v6.1";
-const RELEASE = "v6.1-pwa-mobile-badges";
+const CACHE_NAME = "repartofacil-v6.2";
+const RELEASE = "v6.2-ticket-chat-fluido";
 
 const STATIC_PRECACHE = [
   "/manifest.webmanifest",

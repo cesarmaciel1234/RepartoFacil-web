@@ -42,6 +42,7 @@ export function RepartidorPiramidal({ onSwitchToStore }: RepartidorPiramidalProp
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isMarketsOpen, setIsMarketsOpen] = useState(false);
   const [selectedDriverChatOrder, setSelectedDriverChatOrder] = useState<DriverOrder | null>(null);
+  const [chatOriginTab, setChatOriginTab] = useState<"pedidos" | "ruta" | "mensajes">("ruta");
   const [isCopilotConversationOpen, setIsCopilotConversationOpen] = useState(false);
   const [isWalletModalOpen, setIsWalletModalOpen] = useState(false);
   const [isNavigating, setIsNavigating] = useState(false);
@@ -204,9 +205,17 @@ export function RepartidorPiramidal({ onSwitchToStore }: RepartidorPiramidalProp
   };
 
   const openOrderConversation = (order: DriverOrder) => {
+    setChatOriginTab(activeTab === "mensajes" ? "mensajes" : "ruta");
     setSelectedDriverChatOrder(order);
     setIsCopilotConversationOpen(false);
     setActiveTab("mensajes");
+    setIsExpanded(true);
+  };
+
+  const handleBackFromOrderChat = () => {
+    setSelectedDriverChatOrder(null);
+    setIsCopilotConversationOpen(false);
+    setActiveTab(chatOriginTab);
     setIsExpanded(true);
   };
 
@@ -443,7 +452,7 @@ export function RepartidorPiramidal({ onSwitchToStore }: RepartidorPiramidalProp
                   embedded
                   isOpen
                   onOpenChange={(open) => {
-                    if (!open) showMessageInbox();
+                    if (!open) handleBackFromOrderChat();
                   }}
                   activeOrder={selectedDriverChatOrder}
                   viewerRole="driver"
@@ -453,7 +462,8 @@ export function RepartidorPiramidal({ onSwitchToStore }: RepartidorPiramidalProp
                     selectedDriverChatOrder.customerName
                   }
                   deliveryAddress={selectedDriverChatOrder.deliveryAddress}
-                  onBackToOrdersHub={showMessageInbox}
+                  onBackToOrdersHub={handleBackFromOrderChat}
+                  backButtonLabel={chatOriginTab === "ruta" ? "Volver a Mi Ruta" : "Volver a mensajes"}
                 />
             )}
             <div className={cn(

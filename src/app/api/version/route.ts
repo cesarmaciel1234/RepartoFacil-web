@@ -29,6 +29,7 @@ export async function GET() {
       "DriverTopBar ultra-compacto adaptado a pantallas móviles pequeñas",
       "Badges de mensajes no leídos en Copiloto IA y Chat de repartidor",
       "Integración nativa PWA (Web Audio, Vibración, WakeLock de pantalla y App Badging)",
+      "Número de ticket en comanda con apertura fluida de chat en la misma ventana",
     ],
   });
 }
