@@ -33,6 +33,16 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+/**
+ * CONFIGURACIÓN DE VALIDACIÓN GPS:
+ * - En PRODUCCIÓN REAL: REQUIRE_VERIFIED_GPS = true para forzar que el cliente
+ *   haya marcado su ubicación en el mapa con GPS antes de poder enviar el pedido,
+ *   evitando compras maliciosas o fraudulentas fuera del radio permitido.
+ * - En MODO PRUEBA (Actual): REQUIRE_VERIFIED_GPS = false para permitir comprar
+ *   y testear pedidos en computadoras o navegadores sin geolocalización activa.
+ */
+export const REQUIRE_VERIFIED_GPS = false;
+
 interface ModalCheckoutProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
@@ -135,7 +145,11 @@ export function ModalCheckout({
       return;
     }
     if (form.deliveryType === "delivery") {
-      if (!form.deliveryAddress.trim() || !deliveryCoordinates) {
+      if (!form.deliveryAddress.trim()) {
+        setFormError("Completá tu dirección de entrega.");
+        return;
+      }
+      if (REQUIRE_VERIFIED_GPS && !deliveryCoordinates) {
         setFormError("Para envío a domicilio es obligatorio seleccionar tu ubicación en el mapa dentro de 1 km.");
         onOpenAddressPicker?.();
         return;
@@ -284,24 +298,28 @@ export function ModalCheckout({
                       </div>
                     </div>
                   ) : (
-                    <div className="rounded-2xl border-2 border-dashed border-amber-300 bg-amber-50/80 p-3.5 space-y-2.5">
-                      <div className="flex items-start gap-2.5">
-                        <MapPin className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-                        <div>
-                          <h4 className="text-xs font-black text-amber-900">Ubicación en el mapa requerida</h4>
-                          <p className="text-[11px] text-amber-700 leading-tight mt-0.5">
-                            Para evitar pedidos maliciosos y calcular el envío exacto, seleccioná tu punto en el mapa dentro de 1 km de tu ubicación GPS.
-                          </p>
-                        </div>
+                    <div className="space-y-2">
+                      <div className="relative">
+                        <MapPin className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                        <Input
+                          autoComplete="street-address"
+                          placeholder="Ej. San Lorenzo 2040, Rosario"
+                          value={form.deliveryAddress}
+                          onChange={(e) => setForm((p) => ({ ...p, deliveryAddress: e.target.value }))}
+                          className="h-10 rounded-xl border-slate-200 bg-white pl-8 text-xs text-slate-900 placeholder:text-slate-400"
+                          required
+                        />
                       </div>
-                      <Button
-                        type="button"
-                        onClick={onOpenAddressPicker}
-                        className="w-full h-10 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-black text-xs flex items-center justify-center gap-1.5 shadow-sm active:scale-98"
-                      >
-                        <MapPin className="w-4 h-4" />
-                        <span>Elegir mi ubicación en el mapa</span>
-                      </Button>
+                      <div className="flex items-center justify-between text-[11px] text-slate-500 bg-slate-50 px-3 py-2 rounded-xl border border-slate-200">
+                        <span>💡 Modo prueba (Ubicación libre)</span>
+                        <button
+                          type="button"
+                          onClick={onOpenAddressPicker}
+                          className="font-bold text-blue-600 hover:text-blue-800 underline"
+                        >
+                          Elegir en mapa (Opcional)
+                        </button>
+                      </div>
                     </div>
                   )}
 
@@ -399,28 +417,10 @@ export function ModalCheckout({
               <Button
                 type="submit"
                 disabled={isSubmitting}
-                onClick={
-                  form.deliveryType === "delivery" && !deliveryCoordinates
-                    ? (e) => {
-                        e.preventDefault();
-                        onOpenAddressPicker?.();
-                      }
-                    : undefined
-                }
-                className={cn(
-                  "flex h-11 w-full items-center justify-center gap-2 rounded-2xl text-xs font-black uppercase tracking-wider text-white shadow-lg transition-all active:scale-98",
-                  form.deliveryType === "delivery" && !deliveryCoordinates
-                    ? "bg-amber-600 hover:bg-amber-700 shadow-amber-600/20"
-                    : "bg-blue-600 hover:bg-blue-700 shadow-blue-600/20"
-                )}
+                className="flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 text-xs font-black uppercase tracking-wider text-white shadow-lg shadow-blue-600/20 transition-all hover:bg-blue-700 active:scale-98"
               >
                 {isSubmitting ? (
                   <span>Procesando pedido...</span>
-                ) : form.deliveryType === "delivery" && !deliveryCoordinates ? (
-                  <>
-                    <MapPin className="w-4 h-4" />
-                    <span>Elegí tu ubicación en el mapa</span>
-                  </>
                 ) : (
                   <>
                     <Check className="w-4 h-4" />

@@ -368,8 +368,30 @@ vaciar carritos preexistentes ni alterar datos del CRM durante una prueba.
 - Registrar en el PR o commit qué flujo se verificó, versión desplegada y
   resultado de `/api/orders`; nunca incluir el valor de las variables.
 
-## 8. Estado de referencia
+## 9. Política de Ubicación GPS y Geofencing (1 km vs Modo Prueba)
 
-La lectura histórica de pedidos en Render confirmó la conexión con PostgreSQL,
-pero no sustituye la prueba autenticada de checkout ni la confirmación visual
-en Cobro Fácil. Repetir la verificación después de cada despliegue.
+### Flujo Real de Producción (Prevención Antifraude)
+En producción, para pedidos con modalidad **Envío a Domicilio**:
+- El comprador debe validar su ubicación en el mapa interactivo dentro de un radio de **1 km** desde su ubicación GPS real reportada por el dispositivo.
+- **Objetivo:** Evitar compras maliciosas o fraudulentas donde un usuario ficticio ingresa direcciones remotas o inexistentes fuera de la zona de servicio del comercio o del repartidor asignado.
+- **Control en código:**
+  - `ENFORCE_GPS_RADIUS = true` en `src/components/LocationPickerMap.tsx`.
+  - `REQUIRE_VERIFIED_GPS = true` en `src/modulos/tienda/ui/ModalCheckout.tsx`.
+
+### Modo Prueba / Desarrollo (Estado Actual)
+- **Motivo de la desactivación temporal:**
+  - Permitir a los desarrolladores y evaluadores realizar pedidos de prueba desde computadoras de escritorio (PCs) o portátiles que no cuentan con receptor de hardware GPS de alta precisión o donde el navegador bloquea la geolocalización.
+  - Habilitar la prueba fluida de todo el ciclo de vida del pedido:
+    1. Comprador hace pedido con dirección libre.
+    2. Comercio embala el pedido (`embalado`).
+    3. Repartidor acepta el pedido (`Assigned`).
+    4. Repartidor confirma el retiro en el local (`Picked Up`).
+    5. Repartidor confirma la entrega al cliente (`Delivered`).
+- **Control en código:**
+  - `ENFORCE_GPS_RADIUS = false` en `src/components/LocationPickerMap.tsx`.
+  - `REQUIRE_VERIFIED_GPS = false` en `src/modulos/tienda/ui/ModalCheckout.tsx`.
+
+### Pasos para Reactivar el Bloqueo Estricto antes de Lanzamiento Oficial
+1. En `src/components/LocationPickerMap.tsx`: cambiar `export const ENFORCE_GPS_RADIUS = true;`.
+2. En `src/modulos/tienda/ui/ModalCheckout.tsx`: cambiar `export const REQUIRE_VERIFIED_GPS = true;`.
+3. Ejecutar `npm run typecheck` y desplegar a producción.

@@ -11,6 +11,15 @@ import { cn } from '@/lib/utils';
 
 const MAX_DELIVERY_RADIUS_METERS = 1000;
 
+/**
+ * CONFIGURACIÓN DE RADIO GPS:
+ * - En PRODUCCIÓN REAL: ENFORCE_GPS_RADIUS = true para forzar que el cliente elija
+ *   un punto dentro de 1 km de su GPS real, previniendo compras maliciosas o falsas.
+ * - En MODO PRUEBA (Actual): ENFORCE_GPS_RADIUS = false para permitir pruebas fluidas
+ *   desde cualquier PC o dispositivo que no cuente con GPS de hardware de precisión.
+ */
+export const ENFORCE_GPS_RADIUS = false;
+
 function distanceMeters(first: [number, number], second: [number, number]) {
   const earthRadiusMeters = 6_371_000;
   const latitudeDelta = ((second[0] - first[0]) * Math.PI) / 180;
@@ -133,7 +142,7 @@ export default function LocationPickerMap({
 
   const handleSearch = async () => {
     if (!searchQuery.trim()) return;
-    if (!gpsPosition) {
+    if (ENFORCE_GPS_RADIUS && !gpsPosition) {
       setLocationError('Activá tu ubicación GPS para elegir una dirección dentro del radio de 1 km.');
       return;
     }
@@ -159,7 +168,7 @@ export default function LocationPickerMap({
           return;
         }
         const newPos: [number, number] = [lat, lon];
-        if (!isWithinDeliveryRadius(newPos, gpsPosition)) {
+        if (ENFORCE_GPS_RADIUS && gpsPosition && !isWithinDeliveryRadius(newPos, gpsPosition)) {
           setLocationError('Esa dirección está fuera del radio permitido de 1 km desde tu GPS.');
           return;
         }
@@ -195,15 +204,17 @@ export default function LocationPickerMap({
   }, [isGeocoding, locationDetails, markerPosition, onSelectionChange]);
 
   const handleManualSelect = useCallback((lat: number, lng: number) => {
-    if (!gpsPosition) {
-      setLocationError('Activá tu ubicación GPS para elegir una dirección dentro del radio de 1 km.');
-      return;
-    }
-
     const position: [number, number] = [lat, lng];
-    if (!isWithinDeliveryRadius(position, gpsPosition)) {
-      setLocationError('Ese punto está fuera del radio permitido de 1 km desde tu GPS.');
-      return;
+
+    if (ENFORCE_GPS_RADIUS) {
+      if (!gpsPosition) {
+        setLocationError('Activá tu ubicación GPS para elegir una dirección dentro del radio de 1 km.');
+        return;
+      }
+      if (!isWithinDeliveryRadius(position, gpsPosition)) {
+        setLocationError('Ese punto está fuera del radio permitido de 1 km desde tu GPS.');
+        return;
+      }
     }
 
     setLocationError(null);

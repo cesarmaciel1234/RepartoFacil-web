@@ -565,27 +565,6 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
               setIsOrderChatOpen(true);
             }}
           />
-        ) : !deliveryCoordinates ? (
-          <section className="mx-auto flex min-h-[50vh] w-full max-w-lg flex-col items-center justify-center gap-4 rounded-3xl border border-slate-200 bg-white p-8 text-center shadow-sm">
-            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-blue-50 text-blue-600">
-              <MapPin className="h-7 w-7" />
-            </div>
-            <div className="space-y-2">
-              <h2 className="text-lg font-extrabold text-slate-900">
-                Elegí tu dirección de entrega
-              </h2>
-              <p className="text-sm text-slate-500">
-                Mostraremos primero los comercios más cercanos a tu ubicación.
-              </p>
-            </div>
-            <Button
-              type="button"
-              onClick={() => setIsAddressModalOpen(true)}
-              className="rounded-full bg-blue-600 px-6 font-bold text-white hover:bg-blue-700"
-            >
-              Elegir mi ubicación
-            </Button>
-          </section>
         ) : !selectedCompany ? (
           activeBottomTab === "markets" ? (
             <SupermercadosTienda {...browseProps} />
