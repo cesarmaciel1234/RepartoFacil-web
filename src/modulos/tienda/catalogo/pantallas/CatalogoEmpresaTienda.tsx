@@ -317,7 +317,11 @@ export function CatalogoEmpresaTienda({
               return (
                 <TarjetaProducto
                   key={product.id}
-                  product={product}
+                  product={
+                    distanceKm !== null && product.distanceKm === undefined
+                      ? { ...product, distanceKm, companyName: company.name }
+                      : product
+                  }
                   quantityInCart={quantity}
                   onAddToCart={onAddToCart}
                   onUpdateQuantity={onUpdateQuantity}

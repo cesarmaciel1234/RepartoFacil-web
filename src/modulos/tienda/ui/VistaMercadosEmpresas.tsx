@@ -425,9 +425,10 @@ export function VistaMercadosEmpresas({
                     </span>
                   </div>
 
-                  {/* Fila 2: Categoría y dirección */}
-                  <span className="text-xs text-slate-500 block font-medium mt-0.5 truncate">
-                    {comp.category} · {comp.address || "Dirección no configurada"}
+                  {/* Fila 2: Categoría y dirección completa */}
+                  <span className="text-xs text-slate-600 block font-medium mt-0.5 line-clamp-2 leading-tight">
+                    <span className="font-bold text-slate-700">{comp.category}</span>
+                    {comp.address ? ` · ${comp.address}` : ""}
                   </span>
 
                   {/* Fila 3: Tiempo de entrega */}
