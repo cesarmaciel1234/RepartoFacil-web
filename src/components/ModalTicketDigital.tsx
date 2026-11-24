@@ -109,6 +109,14 @@ export function ModalTicketDigital({
               </span>
             </div>
             <div className="flex justify-between items-center">
+              <span>Modalidad</span>
+              <span className="font-bold text-slate-900">
+                {String(displayOrder?.deliveryType || displayOrder?.tipo_entrega || "").toLowerCase() === "pickup"
+                  ? "🏪 Retiro en Tienda"
+                  : "🛵 Envío a Domicilio"}
+              </span>
+            </div>
+            <div className="flex justify-between items-center">
               <span>Pago</span>
               <span className="font-bold text-slate-900">{pagoDisplay}</span>
             </div>

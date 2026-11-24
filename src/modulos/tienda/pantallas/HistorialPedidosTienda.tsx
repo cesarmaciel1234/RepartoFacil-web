@@ -208,11 +208,22 @@ export function HistorialPedidosTienda({
                     <p className="mt-1 text-xs text-slate-500">
                       Pedido #{order.id} · {formatDate(order.createdAt || order.created_at)}
                     </p>
-                    {order.deliveryAddress && (
-                      <p className="mt-1 truncate text-xs text-slate-500">
-                        {order.deliveryAddress}
-                      </p>
-                    )}
+                    <div className="mt-1.5 flex items-center gap-1.5 text-xs">
+                      {String(order.deliveryType || order.tipo_entrega || "").toLowerCase() === "pickup" ? (
+                        <span className="inline-flex items-center gap-1 text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md text-[10px] font-bold">
+                          🏪 Retiro en Tienda
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md text-[10px] font-bold">
+                          🛵 Con Delivery
+                        </span>
+                      )}
+                      {order.deliveryAddress && (
+                        <span className="truncate text-slate-500 text-xs">
+                          {order.deliveryAddress}
+                        </span>
+                      )}
+                    </div>
                     <p className="mt-2 text-sm font-extrabold text-slate-900">
                       {formatMoney(Number(order.total))}
                     </p>
