@@ -64,6 +64,8 @@ export function ModalMercados({
   const categories = [
     { id: "todos", name: "Todos", emoji: "🛒" },
     { id: "carnes", name: "Carnicerías", emoji: "🥩" },
+    { id: "supermercados", name: "Supermercados", emoji: "🏪" },
+    { id: "bebidas", name: "Bebidas", emoji: "🍾" },
     { id: "kioscos", name: "Kioscos 24hs", emoji: "🍫" },
     { id: "minimercados", name: "Almacén", emoji: "🧀" },
   ];

@@ -359,7 +359,8 @@ export async function GET(
               : `empresa-${row.id}`;
 
           const category = String(
-            pick(details, ["rubro", "categoria", "category", "actividad"]) ||
+            profile.rubro ||
+              pick(details, ["rubro", "categoria", "category", "actividad"]) ||
               (isMaciel ? "Carnes y Pescados" : "Comercio")
           );
           const rawSlug = String(pick(details, ["categoria_slug", "category_slug"]) || "").toLowerCase();
