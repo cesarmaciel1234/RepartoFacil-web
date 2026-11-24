@@ -362,7 +362,7 @@ export async function GET(
           const slug = String(row.slug || "").toLowerCase().trim();
           return Number(row.id) !== 2 && slug !== "prueba";
         })
-        .map((row: any) => {
+        .flatMap((row: any) => {
           const details: Record<string, any> =
             row.company_data && typeof row.company_data === "object" ? row.company_data : {};
           const profile: Record<string, unknown> =
@@ -374,7 +374,7 @@ export async function GET(
           });
 
           // Los ids históricos se conservan porque los pedidos ya guardados los referencian
-          const id = isMaciel
+          const baseId = isMaciel
             ? "frigorifico-maciel"
             : slug
               ? `empresa-${slug}`
@@ -393,8 +393,8 @@ export async function GET(
           const badges = pick(details, ["badges", "etiquetas", "promociones"]);
           const isOpenValue = pick(details, ["abierto", "is_open", "isOpen"]);
 
-          return {
-            id,
+          const baseCompany = {
+            id: baseId,
             name: String(profile.nombre || pick(details, ["nombre_fantasia", "nombre_comercial"]) || row.nombre || `Empresa ${row.id}`),
             slug: slug || String(row.id),
             empresa_id: row.id,
@@ -423,10 +423,49 @@ export async function GET(
               isOpenValue === undefined
                 ? true
                 : !["0", "false", "no", "cerrado"].includes(String(isOpenValue).toLowerCase()),
-            sucursales: sucursalesPorEmpresa[Number(row.id)] || [],
-            isMultiBranch: (sucursalesPorEmpresa[Number(row.id)] || []).length > 1,
-            isSingleBranch: (sucursalesPorEmpresa[Number(row.id)] || []).length <= 1,
           };
+
+          const sucs = sucursalesPorEmpresa[Number(row.id)] || [];
+          const isMultiBranch = sucs.length > 1;
+
+          if (isMultiBranch) {
+            // Modelo Hiperlocal: Cada sucursal compite por cercanía y estrellas en la portada
+            return sucs.map((suc) => ({
+              ...baseCompany,
+              id: `${baseId}-suc-${suc.id}`,
+              name: `${baseCompany.name} · ${suc.nombre}`,
+              address: suc.direccion || baseCompany.address,
+              ...(suc.latitud && suc.longitud
+                ? { coordinates: { lat: Number(suc.latitud), lng: Number(suc.longitud) } }
+                : baseCompany.coordinates
+                  ? { coordinates: baseCompany.coordinates }
+                  : {}),
+              phone: suc.whatsapp || suc.telefono || baseCompany.phone,
+              openingHours: suc.horario || baseCompany.openingHours,
+              sucursal_id: suc.id,
+              parentCompanyId: baseId,
+              parentSlug: slug,
+              sucursales: sucs,
+              isMultiBranch: true,
+              isSingleBranch: false,
+            }));
+          }
+
+          // Negocio Único (1 sucursal o Casa Central): Sin sufijos ni división
+          const sucUnica = sucs[0];
+          return [{
+            ...baseCompany,
+            address: sucUnica?.direccion || baseCompany.address,
+            ...(sucUnica?.latitud && sucUnica?.longitud
+              ? { coordinates: { lat: Number(sucUnica.latitud), lng: Number(sucUnica.longitud) } }
+              : baseCompany.coordinates
+                ? { coordinates: baseCompany.coordinates }
+                : {}),
+            sucursal_id: sucUnica?.id || 1,
+            sucursales: sucs,
+            isMultiBranch: false,
+            isSingleBranch: true,
+          }];
         });
 
       const companyList = dynamicCompanies;

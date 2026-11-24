@@ -33,6 +33,9 @@ export interface CompanyStore {
   openingHours?: string;
   cobroFacilApiEndpoint?: string;
   isOpen: boolean;
+  sucursal_id?: number;
+  parentCompanyId?: string;
+  parentSlug?: string;
   sucursales?: BranchInfo[];
   isMultiBranch?: boolean;
   isSingleBranch?: boolean;

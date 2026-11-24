@@ -46,10 +46,23 @@ function getDepartmentIcon(department: string) {
 export function productBelongsToCompany(product: Product, company: CompanyStore) {
   const productCompany = (product.companyId || "").toLowerCase();
   if (!productCompany) return false;
-  const candidates = [company.id, company.slug, company.slug && `empresa-${company.slug}`]
+  const candidates = [
+    company.id,
+    company.slug,
+    company.slug && `empresa-${company.slug}`,
+    (company as any).parentCompanyId,
+    (company as any).parentSlug,
+  ]
     .filter(Boolean)
     .map((value) => String(value).toLowerCase());
-  if (company.id === "frigorifico-maciel" || company.slug === "maciel") candidates.push("maciel");
+  if (
+    company.id === "frigorifico-maciel" ||
+    company.slug === "maciel" ||
+    (company as any).parentCompanyId === "frigorifico-maciel" ||
+    (company as any).parentSlug === "maciel"
+  ) {
+    candidates.push("maciel", "frigorifico-maciel");
+  }
   if (company.id === "empresa-prueba" || company.slug === "prueba") candidates.push("prueba");
   return candidates.includes(productCompany);
 }
