@@ -93,6 +93,8 @@ export function CentroPedidosClienteSheet({
     selectedOrder?.status === "Assigned" ||
     selectedOrder?.status === "Picked Up" ||
     selectedOrder?.status === "In Transit";
+  const selectedOrderIsPickup =
+    String(selectedOrder?.deliveryType || selectedOrder?.tipo_entrega || "").toLowerCase() === "pickup";
   const selectedOrderDriverName = selectedOrder?.driverName || "Repartidor";
   const selectedOrderItems =
     selectedOrder && Array.isArray(selectedOrder.items) ? selectedOrder.items : [];
@@ -185,7 +187,15 @@ export function CentroPedidosClienteSheet({
                 </div>
               </div>
               <Badge className="mr-1 shrink-0 border border-blue-100 bg-blue-50 py-0.5 text-[10px] font-bold text-blue-700">
-                {selectedOrderIsAssigned ? "En camino" : "Preparando"}
+                {selectedOrderIsPickup
+                  ? ["ready", "embalado"].includes(String(selectedOrder.status || "").toLowerCase())
+                    ? "Listo para retirar"
+                    : ["delivered"].includes(String(selectedOrder.status || "").toLowerCase())
+                      ? "Retirado"
+                      : "Preparando"
+                  : selectedOrderIsAssigned
+                    ? "En camino"
+                    : "Preparando"}
               </Badge>
             </>
           ) : (
@@ -256,8 +266,12 @@ export function CentroPedidosClienteSheet({
                   <div className="flex items-start gap-2">
                     <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-blue-600" />
                     <p className="min-w-0 font-medium text-slate-900">
-                      <span className="mr-1 font-semibold text-slate-500">Entrega:</span>
-                      {selectedOrder.deliveryAddress || "Tucumán 2130, Rosario"}
+                      <span className="mr-1 font-semibold text-slate-500">
+                        {selectedOrderIsPickup ? "Retiro:" : "Entrega:"}
+                      </span>
+                      {selectedOrderIsPickup
+                        ? (selectedOrder.branch || selectedOrder.sucursal_origen || "Local del comercio")
+                        : (selectedOrder.deliveryAddress || "Tucumán 2130, Rosario")}
                     </p>
                   </div>
 
@@ -291,11 +305,15 @@ export function CentroPedidosClienteSheet({
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-slate-500">Repartidor</span>
+                    <span className="text-slate-500">
+                      {selectedOrderIsPickup ? "Modalidad" : "Repartidor"}
+                    </span>
                     <span className="font-semibold text-slate-900">
-                      {selectedOrderIsAssigned
-                        ? selectedOrderDriverName
-                        : "Buscando chofer..."}
+                      {selectedOrderIsPickup
+                        ? "🏪 Retiro en mostrador"
+                        : selectedOrderIsAssigned
+                          ? selectedOrderDriverName
+                          : "Buscando chofer..."}
                     </span>
                   </div>
                   <div className="flex items-center justify-between border-t border-slate-200 pt-2">

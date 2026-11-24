@@ -113,7 +113,7 @@ export async function GET(request: NextRequest) {
     if (auth.user.role === "Client") {
       query += "(cliente_id = $1 OR cliente_usuario_id = $1)";
     } else {
-      query += "(repartidor_id = $1 OR ((repartidor_id IS NULL OR repartidor_id = '') AND LOWER(TRIM(estado)) IN ('ready', 'confirmed', 'accepted', 'embalado')))";
+      query += "(repartidor_id = $1 OR ((repartidor_id IS NULL OR repartidor_id = '') AND LOWER(TRIM(estado)) IN ('ready', 'confirmed', 'accepted', 'embalado') AND LOWER(COALESCE(tipo_entrega, 'delivery')) = 'delivery'))";
     }
 
     // 1. Aislamiento por Cliente: cada comprador ve ÚNICAMENTE sus pedidos
@@ -146,7 +146,7 @@ export async function GET(request: NextRequest) {
       values.push(driverIdParam);
       idx++;
     } else if (viewParam === "driver_available") {
-      query += ` AND (repartidor_id IS NULL OR repartidor_id = '') AND LOWER(estado) IN ('ready', 'confirmed', 'pending', 'accepted', 'embalado')`;
+      query += ` AND (repartidor_id IS NULL OR repartidor_id = '') AND LOWER(estado) IN ('ready', 'confirmed', 'pending', 'accepted', 'embalado') AND LOWER(COALESCE(tipo_entrega, 'delivery')) = 'delivery'`;
     } else if (driverIdParam && !viewParam) {
       query += ` AND repartidor_id = $${idx}`;
       values.push(driverIdParam);

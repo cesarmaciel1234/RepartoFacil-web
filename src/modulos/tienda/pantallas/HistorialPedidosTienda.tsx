@@ -89,13 +89,20 @@ export function HistorialPedidosTienda({
         ) : (
           activeOrders.map((order) => {
             const status = String(order.status || "").trim().toLowerCase();
-            const label = ["assigned", "picked up", "in transit"].includes(status)
-              ? "En camino"
-              : ["ready", "embalado"].includes(status)
+            const isPickup = String(order.deliveryType || order.tipo_entrega || "").toLowerCase() === "pickup";
+            const label = isPickup
+              ? ["ready", "embalado"].includes(status)
                 ? "Listo para retirar"
                 : ["confirmed", "accepted"].includes(status)
-                  ? "Aceptado por el comercio"
-                  : "Esperando al comercio";
+                  ? "Preparando en mostrador"
+                  : "Esperando al comercio"
+              : ["assigned", "picked up", "in transit"].includes(status)
+                ? "En camino"
+                : ["ready", "embalado"].includes(status)
+                  ? "Listo para retirar"
+                  : ["confirmed", "accepted"].includes(status)
+                    ? "Aceptado por el comercio"
+                    : "Esperando al comercio";
             return (
               <button key={order.id} type="button" onClick={() => onSelectActiveOrder(order)}
                 className="flex w-full items-center justify-between gap-3 rounded-2xl border border-blue-100 bg-blue-50 p-4 text-left hover:bg-blue-100">
@@ -218,11 +225,15 @@ export function HistorialPedidosTienda({
                           🛵 Con Delivery
                         </span>
                       )}
-                      {order.deliveryAddress && (
+                      {String(order.deliveryType || order.tipo_entrega || "").toLowerCase() === "pickup" ? (
+                        <span className="truncate text-slate-500 text-xs">
+                          {order.branch || order.sucursal_origen || "Retiro en mostrador"}
+                        </span>
+                      ) : order.deliveryAddress ? (
                         <span className="truncate text-slate-500 text-xs">
                           {order.deliveryAddress}
                         </span>
-                      )}
+                      ) : null}
                     </div>
                     <p className="mt-2 text-sm font-extrabold text-slate-900">
                       {formatMoney(Number(order.total))}
