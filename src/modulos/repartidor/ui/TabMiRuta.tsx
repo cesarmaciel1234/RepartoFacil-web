@@ -1,24 +1,25 @@
 "use client";
 
-import React, { useMemo } from "react";
+import React, { useState, useEffect } from "react";
 import { DriverOrder } from "../motor/tipos";
 import { loadDriverProfile } from "../motor/driverService";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 import {
   Phone,
-  MapPin,
   Navigation,
   CheckCircle2,
   Banknote,
   ExternalLink,
   Store,
-  Package,
   PackageCheck,
   MessageSquare,
   Sparkles,
   Compass,
   Receipt,
+  Route,
+  MapPin,
 } from "lucide-react";
 
 interface TabMiRutaProps {
@@ -38,6 +39,29 @@ export function TabMiRuta({
 }: TabMiRutaProps) {
   const formatMoney = (val: number) => "$" + (val || 0).toLocaleString("es-AR");
 
+  // Estado reactivo del tipo de vehículo seleccionado para la navegación
+  const [vehicleType, setVehicleType] = useState<"motorcycle" | "car" | "bicycle">(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("rf_driver_vehicle");
+      if (saved === "car" || saved === "bicycle" || saved === "motorcycle") return saved;
+    }
+    const profile = loadDriverProfile();
+    const v = (profile?.vehicleType || "").toLowerCase();
+    if (v.includes("bici") || v.includes("bicycle")) return "bicycle";
+    if (v.includes("auto") || v.includes("car")) return "car";
+    return "motorcycle";
+  });
+
+  const handleVehicleChange = (v: "motorcycle" | "car" | "bicycle") => {
+    setVehicleType(v);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("rf_driver_vehicle", v);
+      window.dispatchEvent(new CustomEvent("rf_driver_vehicle_changed", { detail: { vehicle: v } }));
+    }
+  };
+
+  const travelmode = vehicleType === "bicycle" ? "bicycling" : "driving";
+
   if (activeOrders.length === 0) {
     return (
       <div className="py-12 text-center space-y-2">
@@ -54,6 +78,59 @@ export function TabMiRuta({
 
   return (
     <div className="space-y-4 pb-8">
+      {/* Selector Rápido de Vehículo de Navegación (Moto, Auto, Bici) */}
+      <div className="bg-white border border-yellow-300 rounded-2xl p-2.5 shadow-xs flex items-center justify-between gap-2">
+        <div className="flex items-center gap-1.5 min-w-0">
+          <span className="text-[11px] font-black text-[#2D3277] uppercase tracking-wide">
+            Vehículo activo:
+          </span>
+        </div>
+        <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
+          <button
+            type="button"
+            onClick={() => handleVehicleChange("motorcycle")}
+            className={cn(
+              "px-2.5 py-1 rounded-lg text-xs font-black transition-all flex items-center gap-1 active:scale-95",
+              vehicleType === "motorcycle"
+                ? "bg-[#FFE600] text-[#2D3277] shadow-xs border border-yellow-500 scale-102"
+                : "text-slate-600 hover:text-slate-900 hover:bg-slate-200"
+            )}
+            title="Navegar en Moto (Modo vehicular ágil)"
+          >
+            <span>🛵</span>
+            <span className="hidden sm:inline">Moto</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => handleVehicleChange("car")}
+            className={cn(
+              "px-2.5 py-1 rounded-lg text-xs font-black transition-all flex items-center gap-1 active:scale-95",
+              vehicleType === "car"
+                ? "bg-[#FFE600] text-[#2D3277] shadow-xs border border-yellow-500 scale-102"
+                : "text-slate-600 hover:text-slate-900 hover:bg-slate-200"
+            )}
+            title="Navegar en Auto / Utilitario"
+          >
+            <span>🚗</span>
+            <span className="hidden sm:inline">Auto</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => handleVehicleChange("bicycle")}
+            className={cn(
+              "px-2.5 py-1 rounded-lg text-xs font-black transition-all flex items-center gap-1 active:scale-95",
+              vehicleType === "bicycle"
+                ? "bg-[#FFE600] text-[#2D3277] shadow-xs border border-yellow-500 scale-102"
+                : "text-slate-600 hover:text-slate-900 hover:bg-slate-200"
+            )}
+            title="Navegar en Bicicleta (Ciclovías y senderos)"
+          >
+            <span>🚲</span>
+            <span className="hidden sm:inline">Bici</span>
+          </button>
+        </div>
+      </div>
+
       {activeOrders.map((order) => {
         const client = order.clientName || order.customerName || "Cliente";
         const phone = order.customerPhone || "+54 9 341 555-1234";
@@ -76,7 +153,7 @@ export function TabMiRuta({
           String(order.status).trim().toLowerCase()
         );
 
-        // ─── Navegación en dos paradas consecutivas: 1) Local de Retiro y 2) Domicilio Comprador ───
+        // ─── Coordenadas de Retiro y Entrega (2 Paradas Consecutivas) ───
         const storeCoords = order.storeCoords?.lat && order.storeCoords?.lng
           ? order.storeCoords
           : { lat: -32.9372, lng: -60.6542 };
@@ -87,81 +164,97 @@ export function TabMiRuta({
           ? `${order.destinationCoords!.lat},${order.destinationCoords!.lng}`
           : encodeURIComponent(order.deliveryAddress);
 
-        const driverProfile = loadDriverProfile();
-        const vehicleRaw = (driverProfile?.vehicleType || "Motorcycle").toLowerCase();
-        const travelmode = vehicleRaw.includes("bici") || vehicleRaw.includes("bicycle")
-          ? "bicycling"
-          : "driving";
-
-        // Destino activo según la parada en curso:
-        // Si no retiró -> Navegar al Local donde retira (Parada 1)
-        // Si ya retiró -> Navegar a la casa del comprador (Parada 2)
+        // Destino de la parada en curso
         const currentStopTarget = isPickedUp ? customerTarget : storeTarget;
-        const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${currentStopTarget}&travelmode=${travelmode}`;
-        const mapsStoreUrl = `https://www.google.com/maps/dir/?api=1&destination=${storeTarget}&travelmode=${travelmode}`;
-        const mapsCustomerUrl = `https://www.google.com/maps/dir/?api=1&destination=${customerTarget}&travelmode=${travelmode}`;
+
+        // URLs con dir_action=navigate y travelmode forzado para que no abra "a pie"
+        const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${currentStopTarget}&travelmode=${travelmode}&dir_action=navigate`;
+        const mapsStoreUrl = `https://www.google.com/maps/dir/?api=1&destination=${storeTarget}&travelmode=${travelmode}&dir_action=navigate`;
+        const mapsCustomerUrl = `https://www.google.com/maps/dir/?api=1&destination=${customerTarget}&travelmode=${travelmode}&dir_action=navigate`;
+        
+        // Ruta completa con waypoints (Parada 1: Local -> Parada 2: Casa Comprador)
+        const mapsFullRouteUrl = `https://www.google.com/maps/dir/?api=1&origin=Current+Location&destination=${customerTarget}&waypoints=${storeTarget}&travelmode=${travelmode}&dir_action=navigate`;
 
         const rawTicket = order.ticketId || order.ticket_id;
         const isNumericTicket = rawTicket && /^\d+$/.test(String(rawTicket).replace(/^#?RF-?/i, ""));
         const cleanTicket = rawTicket ? String(rawTicket).replace(/^#?RF-?/i, "") : "";
         const rawIdClean = String(order.id || "").replace(/^#?RF-?/i, "");
-        const shortId = rawIdClean.length > 5 ? rawIdClean.slice(0, 5) : rawIdClean;
-        const ticketDisplay = isNumericTicket ? `Ticket #${cleanTicket}` : `RF-${shortId}`;
+        const shortId = rawIdClean.length > 6 ? rawIdClean.slice(0, 6) : rawIdClean;
+        const ticketDisplay = isNumericTicket ? `Ticket #${cleanTicket}` : `#${shortId}`;
 
         return (
           <div
             key={order.id}
             className="bg-white border-2 border-yellow-400 rounded-3xl p-4 space-y-3.5 shadow-sm"
           >
-            {/* Header del Pedido Activo */}
-            <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-2.5">
+            {/* Header del Pedido Activo: Nombre de Cliente destacado + Ticket + Estado en Vivo */}
+            <div className="flex items-start justify-between gap-2 border-b border-slate-100 pb-3">
               <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+                <div className="flex items-center gap-2 flex-wrap">
+                  {/* Punto verde pulsante de conexión activa */}
+                  <span className="relative flex h-2.5 w-2.5" title="Transmisión activa en vivo">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500" />
+                  </span>
+
+                  {/* Nombre del Cliente destacado */}
+                  <h3 className="text-base font-black text-slate-900 truncate">
+                    {client}
+                  </h3>
+
+                  {/* Badge de Ticket Digital */}
                   <button
                     type="button"
                     onClick={() => onOpenOrderChat?.(order)}
-                    className="inline-flex items-center gap-1 font-black text-sm text-[#2D3277] hover:text-blue-700 active:scale-95 transition-all text-left group max-w-[160px] truncate"
-                    title={`Abrir chat del pedido #${order.id} en esta misma ventana`}
+                    className="inline-flex items-center gap-1 font-black text-[11px] bg-yellow-100 hover:bg-[#FFE600] text-[#2D3277] px-2 py-0.5 rounded-lg border border-yellow-400 active:scale-95 transition-all"
+                    title={`Ver chat y ticket ${ticketDisplay}`}
                   >
-                    <Receipt className="w-3.5 h-3.5 text-yellow-700 shrink-0" />
-                    <span className="truncate">{ticketDisplay.startsWith("Ticket") ? ticketDisplay : `#${ticketDisplay}`}</span>
+                    <Receipt className="w-3 h-3 text-[#2D3277]" />
+                    <span>{ticketDisplay}</span>
                   </button>
+                </div>
+
+                {/* Subtítulo de Estado del Pedido */}
+                <div className="mt-1 flex items-center gap-1.5 flex-wrap">
                   {isPickedUp ? (
-                    <Badge className="bg-blue-600 text-white font-black text-[10px] px-2 py-0.5 shadow-sm">
-                      🛵 EN VIAJE AL DOMICILIO
+                    <Badge className="bg-blue-600 text-white font-black text-[10px] px-2 py-0.5 shadow-xs">
+                      🛵 EN CAMINO AL DOMICILIO
                     </Badge>
                   ) : isPacked ? (
-                    <Badge className="bg-[#FFE600] text-[#2D3277] font-black text-[10px] px-2 py-0.5 animate-pulse shadow-sm shadow-yellow-500/30">
-                      📦 EMBALADO / LISTO PARA RETIRAR
+                    <Badge className="bg-[#FFE600] text-[#2D3277] font-black text-[10px] px-2 py-0.5 animate-pulse shadow-xs shadow-yellow-500/30">
+                      📦 LISTO PARA RETIRAR EN LOCAL
                     </Badge>
                   ) : (
-                    <Badge className="bg-yellow-50 text-yellow-900 border border-yellow-300 text-[10px] font-black px-2 py-0.5">
-                      🏪 EN PREPARACIÓN EN LOCAL
+                    <Badge className="bg-amber-100 text-amber-900 border border-amber-300 text-[10px] font-black px-2 py-0.5">
+                      🏪 PREPARANDO EN SUCURSAL
                     </Badge>
                   )}
+                  <span className="text-[11px] font-semibold text-slate-500 truncate max-w-[200px]">
+                    📍 {order.deliveryAddress}
+                  </span>
                 </div>
-                <span className="text-xs font-bold text-slate-700 block mt-0.5">{client}</span>
               </div>
 
-              <div className="text-right">
-                <span className="text-[10px] text-slate-500 uppercase font-bold block">
-                  Tu ganancia neta
+              {/* Ganancia neta */}
+              <div className="text-right shrink-0">
+                <span className="text-[9.5px] text-slate-400 uppercase font-black block">
+                  Tu Ganancia
                 </span>
-                <span className="text-base font-black text-[#2D3277]">
+                <span className="text-base font-black text-emerald-700">
                   {earnings == null ? "Sin dato" : `+${formatMoney(earnings)}`}
                 </span>
               </div>
             </div>
 
-            {/* Puntos de Ruta Reales (Navegación en dos paradas consecutivas: 1) Retiro en Comercio y 2) Entrega a Domicilio) */}
+            {/* Puntos de Ruta Reales (2 Paradas Consecutivas: 1) Retiro en Comercio y 2) Entrega a Domicilio) */}
             <div className="space-y-2.5">
               {/* PARADA 1: Retiro en Sucursal / Negocio */}
               <div
                 className={cn(
                   "p-3 rounded-2xl border text-xs transition-all",
                   !isPickedUp
-                    ? "bg-amber-50/80 border-amber-300 shadow-xs"
-                    : "bg-slate-50 border-slate-200 opacity-80"
+                    ? "bg-amber-50/90 border-amber-300 shadow-xs ring-1 ring-amber-300/60"
+                    : "bg-slate-50 border-slate-200 opacity-75"
                 )}
               >
                 <div className="flex items-start justify-between gap-2">
@@ -202,7 +295,7 @@ export function TabMiRuta({
                         ? "bg-[#FFE600] hover:bg-yellow-300 text-[#2D3277] border-yellow-500 font-extrabold"
                         : "bg-white hover:bg-slate-100 text-slate-600 border-slate-200"
                     )}
-                    title="Navegar en Google Maps hasta la sucursal de retiro"
+                    title="Navegar por GPS hasta la sucursal de retiro"
                   >
                     <Compass className="w-3 h-3 text-yellow-800" />
                     <span>GPS Local</span>
@@ -216,8 +309,8 @@ export function TabMiRuta({
                 className={cn(
                   "p-3 rounded-2xl border text-xs transition-all",
                   isPickedUp
-                    ? "bg-blue-50/80 border-blue-300 shadow-xs ring-1 ring-blue-400/30"
-                    : "bg-slate-50 border-slate-200 opacity-80"
+                    ? "bg-blue-50/90 border-blue-300 shadow-xs ring-1 ring-blue-400/50"
+                    : "bg-slate-50 border-slate-200 opacity-75"
                 )}
               >
                 <div className="flex items-start justify-between gap-2">
@@ -268,7 +361,7 @@ export function TabMiRuta({
                         ? "bg-blue-600 hover:bg-blue-700 text-white border-blue-700 font-extrabold"
                         : "bg-white hover:bg-slate-100 text-slate-600 border-slate-200"
                     )}
-                    title="Navegar en Google Maps hasta la casa del cliente"
+                    title="Navegar por GPS hasta el domicilio del comprador"
                   >
                     <Compass className="w-3 h-3 text-current" />
                     <span>GPS Cliente</span>
@@ -276,25 +369,38 @@ export function TabMiRuta({
                   </a>
                 </div>
               </div>
+
+              {/* Botón de RUTA COMPLETA DE 2 PARADAS (Local -> Cliente) */}
+              <a
+                href={mapsFullRouteUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="w-full h-9 rounded-xl bg-slate-100 hover:bg-yellow-50 text-slate-800 hover:text-[#2D3277] border border-slate-200 hover:border-yellow-400 font-black text-[11px] flex items-center justify-center gap-1.5 transition-all shadow-xs active:scale-98"
+                title="Abrir en Google Maps la ruta completa de ambas paradas en secuencia"
+              >
+                <Route className="w-3.5 h-3.5 text-yellow-700" />
+                <span>Navegar Ambas Paradas (Local ➔ Domicilio)</span>
+                <ExternalLink className="w-2.5 h-2.5 opacity-60" />
+              </a>
             </div>
 
-            {/* Acciones de Navegación, Llamada y Chat de Pedido */}
+            {/* Acciones de Navegación Rápida, Llamada y Chat */}
             <div className="grid grid-cols-3 gap-1.5">
               <a
                 href={mapsUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="h-10 rounded-xl bg-slate-50 hover:bg-yellow-50 text-slate-800 font-bold text-[11px] flex items-center justify-center gap-1 border border-slate-200 transition-all shadow-sm group px-1"
-                title={!isPickedUp ? "Navegar a Parada 1 (Local de Retiro)" : "Navegar a Parada 2 (Casa del Cliente)"}
+                className="h-10 rounded-xl bg-[#FFE600] hover:bg-yellow-300 text-[#2D3277] font-black text-[11px] flex items-center justify-center gap-1 border border-yellow-500 transition-all shadow-xs group px-1 active:scale-95"
+                title={!isPickedUp ? "Iniciar GPS a Parada 1 (Local)" : "Iniciar GPS a Parada 2 (Cliente)"}
               >
-                <Compass className="w-3.5 h-3.5 text-yellow-700 group-hover:rotate-45 transition-transform" />
-                <span>{!isPickedUp ? "GPS Local" : "GPS Cliente"}</span>
-                <ExternalLink className="w-2.5 h-2.5 text-slate-500" />
+                <Compass className="w-3.5 h-3.5 text-[#2D3277] group-hover:rotate-45 transition-transform" />
+                <span>{!isPickedUp ? "GPS Parada 1" : "GPS Parada 2"}</span>
+                <ExternalLink className="w-2.5 h-2.5 opacity-60" />
               </a>
 
               <a
                 href={`tel:${phone}`}
-                className="h-10 rounded-xl bg-white hover:bg-yellow-50 text-slate-800 font-bold text-[11px] flex items-center justify-center gap-1 border border-slate-200 transition-all shadow-sm px-1"
+                className="h-10 rounded-xl bg-white hover:bg-yellow-50 text-slate-800 font-bold text-[11px] flex items-center justify-center gap-1 border border-slate-200 transition-all shadow-xs px-1 active:scale-95"
                 title="Llamar al cliente"
               >
                 <Phone className="w-3.5 h-3.5 text-yellow-700" />
@@ -304,7 +410,7 @@ export function TabMiRuta({
               <button
                 type="button"
                 onClick={() => onOpenOrderChat?.(order)}
-                className="h-10 rounded-xl bg-yellow-50 hover:bg-yellow-100 text-yellow-900 font-bold text-[11px] flex items-center justify-center gap-1 border border-yellow-300 transition-all shadow-sm active:scale-95 px-1"
+                className="h-10 rounded-xl bg-white hover:bg-yellow-50 text-[#2D3277] font-bold text-[11px] flex items-center justify-center gap-1 border border-yellow-300 transition-all shadow-xs active:scale-95 px-1"
                 title="Abrir chat privado de esta entrega"
               >
                 <MessageSquare className="w-3.5 h-3.5 text-yellow-700" />
@@ -312,18 +418,18 @@ export function TabMiRuta({
               </button>
             </div>
 
-            {/* Distancia y Tiempo Real */}
+            {/* Distancia y Tiempo Estimado */}
             <div className="px-3 py-2 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between text-xs font-semibold">
-              <div className="flex items-center gap-1.5 text-slate-300">
+              <div className="flex items-center gap-1.5 text-slate-600">
                 <Navigation className="w-3.5 h-3.5 text-yellow-700" />
-                <span className="text-slate-600">Distancia estimada:</span>
+                <span>Distancia estimada:</span>
               </div>
               <span className="text-slate-900 font-bold font-mono">
                 {distanceDisplay} km · ~{minutesDisplay} min
               </span>
             </div>
 
-            {/* Detalle de Artículos con Número de Ticket y acceso fluido al chat en la misma ventana */}
+            {/* Detalle de Cortes a Entregar */}
             {Array.isArray(order.items) && order.items.length > 0 && (
               <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200 space-y-2">
                 <div className="flex items-center justify-between gap-1 pb-1.5 border-b border-slate-200/80">
@@ -337,7 +443,7 @@ export function TabMiRuta({
                     className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-[#FFE600] hover:bg-yellow-300 text-[#2D3277] text-[10px] sm:text-[11px] font-black border border-yellow-500 shadow-xs transition-all active:scale-95 group"
                     title="Abrir chat del pedido en la misma ventana"
                   >
-                    <span>Ticket #{ticketDisplay}</span>
+                    <span>{ticketDisplay}</span>
                     <MessageSquare className="w-2.5 h-2.5 text-[#2D3277] group-hover:scale-110 transition-transform" />
                   </button>
                 </div>
@@ -361,27 +467,12 @@ export function TabMiRuta({
                     ↕ Deslizá para ver los {order.items.length} cortes
                   </p>
                 )}
-                {/* Botón interactivo integrado para abrir el chat fluido */}
-                <button
-                  type="button"
-                  onClick={() => onOpenOrderChat?.(order)}
-                  className="w-full pt-1.5 mt-1 border-t border-slate-200/80 flex items-center justify-between text-[11px] font-extrabold text-[#2D3277] hover:text-blue-900 transition-colors group"
-                  title="Abrir chat en esta misma ventana"
-                >
-                  <span className="flex items-center gap-1 text-slate-600 group-hover:text-[#2D3277]">
-                    <MessageSquare className="w-3.5 h-3.5 text-yellow-700 group-hover:scale-110 transition-transform" />
-                    <span>Chat con cliente y negocio</span>
-                  </span>
-                  <span className="text-[10px] bg-yellow-100 group-hover:bg-[#FFE600] px-2 py-0.5 rounded-md text-yellow-900 group-hover:text-[#2D3277] font-black transition-colors">
-                    Abrir chat →
-                  </span>
-                </button>
               </div>
             )}
 
             {/* Aviso Destacado de Cobro en Efectivo */}
             {isCash && (
-              <div className="p-3 rounded-2xl bg-yellow-50 border-2 border-yellow-300 flex items-center justify-between text-xs shadow-sm">
+              <div className="p-3 rounded-2xl bg-yellow-50 border-2 border-yellow-300 flex items-center justify-between text-xs shadow-xs">
                 <div className="flex items-center gap-2 text-yellow-900 font-bold">
                   <Banknote className="w-5 h-5 shrink-0 text-yellow-700" />
                   <div>
@@ -397,7 +488,7 @@ export function TabMiRuta({
               </div>
             )}
 
-            {/* Botón según estado de la ruta: Primero Retirar, luego Entregar */}
+            {/* Botón Principal según estado: Primero Retirar en Local, luego Entregar al Cliente */}
             <div className="pt-1">
               {!isPickedUp ? (
                 <>
@@ -415,7 +506,7 @@ export function TabMiRuta({
                   </Button>
                   <p className="text-[10px] text-center text-slate-500 font-medium mt-1.5 flex items-center justify-center gap-1">
                     <Sparkles className="w-3 h-3 text-blue-600" />
-                    Presioná cuando tengas el pedido en tu poder para avisar al cliente.
+                    Presioná cuando tengas el paquete para pasar a la Parada 2 (Domicilio).
                   </p>
                 </>
               ) : (
