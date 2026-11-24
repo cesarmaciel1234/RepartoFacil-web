@@ -1,3 +1,16 @@
+export interface BranchInfo {
+  id: number;
+  nombre: string;
+  codigo?: string;
+  direccion?: string;
+  latitud?: number | null;
+  longitud?: number | null;
+  telefono?: string;
+  whatsapp?: string;
+  horario?: string;
+  esCentroDistribucion?: boolean;
+}
+
 export interface CompanyStore {
   id: string;
   name: string;
@@ -20,5 +33,7 @@ export interface CompanyStore {
   openingHours?: string;
   cobroFacilApiEndpoint?: string;
   isOpen: boolean;
-  sucursales?: { id: number; nombre: string }[];
+  sucursales?: BranchInfo[];
+  isMultiBranch?: boolean;
+  isSingleBranch?: boolean;
 }

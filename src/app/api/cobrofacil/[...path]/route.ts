@@ -310,11 +310,30 @@ export async function GET(
          WHERE e.activo = 1 ORDER BY e.id ASC`
       );
 
-      let sucursales: any[] = [];
+      const sucursalesPorEmpresa: Record<number, any[]> = {};
       try {
-        sucursales = await queryDb(
-          "SELECT DISTINCT sucursal_id, sucursal_nombre FROM pos_base ORDER BY sucursal_id"
+        const rows = await queryDb(
+          `SELECT id, empresa_id, nombre, codigo, direccion, latitud, longitud, telefono, whatsapp, horario, es_centro_distribucion
+           FROM public.sucursales
+           WHERE activo = 1
+           ORDER BY id ASC`
         );
+        for (const s of rows || []) {
+          const eid = Number(s.empresa_id);
+          if (!sucursalesPorEmpresa[eid]) sucursalesPorEmpresa[eid] = [];
+          sucursalesPorEmpresa[eid].push({
+            id: Number(s.id),
+            nombre: String(s.nombre || `Sucursal ${s.id}`),
+            codigo: s.codigo || "",
+            direccion: s.direccion || "",
+            latitud: s.latitud ? Number(s.latitud) : null,
+            longitud: s.longitud ? Number(s.longitud) : null,
+            telefono: s.telefono || "",
+            whatsapp: s.whatsapp || "",
+            horario: s.horario || "",
+            esCentroDistribucion: Boolean(s.es_centro_distribucion),
+          });
+        }
       } catch (error) {
         console.warn("[CobroFacil companies] No se pudieron cargar sucursales:", error);
       }
@@ -401,9 +420,9 @@ export async function GET(
               isOpenValue === undefined
                 ? true
                 : !["0", "false", "no", "cerrado"].includes(String(isOpenValue).toLowerCase()),
-            ...(isMaciel
-              ? { sucursales: sucursales.map((s) => ({ id: s.sucursal_id, nombre: s.sucursal_nombre })) }
-              : {}),
+            sucursales: sucursalesPorEmpresa[Number(row.id)] || [],
+            isMultiBranch: (sucursalesPorEmpresa[Number(row.id)] || []).length > 1,
+            isSingleBranch: (sucursalesPorEmpresa[Number(row.id)] || []).length <= 1,
           };
         });
 
