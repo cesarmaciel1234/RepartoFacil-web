@@ -10,6 +10,7 @@ const PRODUCT_IMAGE_BY_NAME = productImageManifest as Record<string, string>;
 type PosBaseRow = {
   columnas: unknown;
   filas: unknown;
+  sucursal_id?: number;
   sucursal_nombre?: string;
 };
 
@@ -94,6 +95,7 @@ function mapProduct(
     companyName: string;
     source: string;
     categoryMap?: Record<string, string>;
+    sucursal_id?: number;
   },
   warnings: string[]
 ) {
@@ -138,6 +140,7 @@ function mapProduct(
     isLowStock,
     companyId: options.companyId,
     companyName: options.companyName,
+    ...(options.sucursal_id != null ? { sucursal_id: options.sucursal_id } : {}),
     source: options.source,
     synchronizedFromPos: true,
   };
@@ -191,12 +194,22 @@ export async function GET(
       const warnings: string[] = [];
       const categoryMap: Record<string, string> = {};
       const branchIdParam = request.nextUrl.searchParams.get("sucursal_id");
-      const branchId = branchIdParam && !isNaN(Number(branchIdParam)) ? Number(branchIdParam) : 1;
+      const hasBranchFilter = branchIdParam !== null && branchIdParam !== "" && !isNaN(Number(branchIdParam));
+      const targetBranchId = hasBranchFilter ? Number(branchIdParam) : null;
+
+      let macielMultiBranch = true;
+      try {
+        const sucCount = await queryDb<{ total: number }>(
+          "SELECT COUNT(*)::integer AS total FROM public.sucursales WHERE empresa_id = 1 AND activo = 1"
+        );
+        if (sucCount[0] && Number(sucCount[0].total) <= 1) macielMultiBranch = false;
+      } catch (_) {}
 
       try {
-        const catRows = await queryDb<PosBaseRow>(
-          `SELECT columnas, filas FROM pos_base WHERE tabla = 'categorias' AND (sucursal_id = ${branchId} OR sucursal_id = 1 OR sucursal_id IS NULL) ORDER BY CASE WHEN sucursal_id = ${branchId} THEN 0 ELSE 1 END, id ASC`
-        );
+        const catSql = targetBranchId != null
+          ? `SELECT columnas, filas, sucursal_id FROM pos_base WHERE tabla = 'categorias' AND sucursal_id = ${targetBranchId} ORDER BY id ASC`
+          : `SELECT columnas, filas, sucursal_id FROM pos_base WHERE tabla = 'categorias' ORDER BY id ASC`;
+        const catRows = await queryDb<PosBaseRow>(catSql);
         for (const category of mapStoredRows(catRows, "pos_base.categorias", warnings)) {
           if (category.id !== undefined && category.nombre) {
             categoryMap[String(category.id)] = String(category.nombre);
@@ -206,28 +219,38 @@ export async function GET(
         console.warn("[CobroFacil inventory] No se pudieron cargar categorías:", error);
       }
 
-      const prodRows = await queryDb<PosBaseRow>(
-        `SELECT columnas, filas, sucursal_nombre FROM pos_base WHERE tabla = 'productos' AND (sucursal_id = ${branchId} OR sucursal_id = 1 OR sucursal_id IS NULL) ORDER BY CASE WHEN sucursal_id = ${branchId} THEN 0 ELSE 1 END, id ASC`
-      );
+      const prodSql = targetBranchId != null
+        ? `SELECT columnas, filas, sucursal_id, sucursal_nombre FROM pos_base WHERE tabla = 'productos' AND sucursal_id = ${targetBranchId} ORDER BY id ASC`
+        : `SELECT columnas, filas, sucursal_id, sucursal_nombre FROM pos_base WHERE tabla = 'productos' ORDER BY sucursal_id ASC, id ASC`;
+      const prodRows = await queryDb<PosBaseRow>(prodSql);
 
-      if (prodRows.length > 0) {
-        const macielCompanyId = "frigorifico-maciel";
-        const macielCompanyName = "Frigorífico Maciel";
-        const products = mapStoredRows(prodRows, "pos_base.productos", warnings)
+      const macielCompanyId = "frigorifico-maciel";
+      const macielCompanyName = "Frigorífico Maciel";
+      const products: NonNullable<ReturnType<typeof mapProduct>>[] = [];
+
+      for (const row of prodRows) {
+        const rowSid = row.sucursal_id != null ? Number(row.sucursal_id) : 1;
+        const branchCompId = macielMultiBranch ? `${macielCompanyId}-suc-${rowSid}` : macielCompanyId;
+        const mapped = mapStoredRows([row], "pos_base.productos", warnings)
           .map((item) =>
             mapProduct(
               item,
               {
-                idPrefix: "tpv-",
-                companyId: macielCompanyId,
+                idPrefix: `tpv-suc-${rowSid}-`,
+                companyId: branchCompId,
                 companyName: macielCompanyName,
-                source: `pos_base (sucursal ${branchId})`,
+                source: `pos_base (sucursal ${rowSid})`,
                 categoryMap,
+                sucursal_id: rowSid,
               },
               warnings
             )
           )
           .filter((item): item is NonNullable<typeof item> => item !== null);
+        products.push(...mapped);
+      }
+
+      if (true) {
 
         const otherCompaniesProducts: NonNullable<ReturnType<typeof mapProduct>>[] = [];
         try {

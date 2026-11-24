@@ -221,13 +221,17 @@ export async function POST(request: NextRequest) {
     const destLat = data.deliveryLat ?? data.destinationCoords?.lat ?? data.deliveryCoordinates?.lat ?? null;
     const destLng = data.deliveryLng ?? data.destinationCoords?.lng ?? data.deliveryCoordinates?.lng ?? null;
 
+    const sucursalId = verified.company.sucursal_id != null
+      ? Number(verified.company.sucursal_id)
+      : (data.sucursalId != null ? Number(data.sucursalId) : (data.sucursal_id != null ? Number(data.sucursal_id) : 1));
+
     const insertQuery = `
       INSERT INTO repartofacil_pedidos (
         id, cliente_id, cliente_usuario_id, cliente_nombre, cliente_telefono, direccion_entrega, tipo_entrega,
         metodo_pago, estado, empresa_id, empresa_slug, repartidor_id, repartidor_nombre, items,
         subtotal, costo_envio, total, ganancia_repartidor, distancia_km,
-        minutos_estimados, sucursal_origen, notas, ticket_id, delivery_lat, delivery_lng, created_at, updated_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, NOW(), NOW())
+        minutos_estimados, sucursal_origen, notas, ticket_id, delivery_lat, delivery_lng, sucursal_id, created_at, updated_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, NOW(), NOW())
       ON CONFLICT (id) DO NOTHING
       RETURNING *;
     `;
@@ -258,6 +262,7 @@ export async function POST(request: NextRequest) {
       null,
       destLat != null && !isNaN(Number(destLat)) ? Number(destLat) : null,
       destLng != null && !isNaN(Number(destLng)) ? Number(destLng) : null,
+      sucursalId,
     ];
 
     const result = await queryDb(insertQuery, values);

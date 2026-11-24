@@ -14,6 +14,7 @@ export interface Product {
   stockKg?: number;
   companyId?: string;
   companyName?: string;
+  sucursal_id?: number;
   distanceKm?: number;
 }
 

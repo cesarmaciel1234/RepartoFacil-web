@@ -46,6 +46,45 @@ function getDepartmentIcon(department: string) {
 export function productBelongsToCompany(product: Product, company: CompanyStore) {
   const productCompany = (product.companyId || "").toLowerCase();
   if (!productCompany) return false;
+
+  const productSucId = (product as any).sucursal_id ?? (product as any).branchId;
+  const companySucId = company.sucursal_id;
+
+  // Si el comercio es una sucursal específica: aislamiento estricto de inventario por local
+  if (companySucId != null) {
+    if (productSucId != null) {
+      return Number(productSucId) === Number(companySucId);
+    }
+    if (productCompany === company.id.toLowerCase()) {
+      return true;
+    }
+    if (productCompany.includes("-suc-")) {
+      return false;
+    }
+    // Si el producto no tiene sufijo -suc-, solo pertenece a la sucursal 1 si no es multirama
+    if (Number(companySucId) === 1 || !company.isMultiBranch) {
+      const candidates = [
+        company.id,
+        company.slug,
+        company.parentCompanyId,
+        company.parentSlug,
+      ]
+        .filter(Boolean)
+        .map((value) => String(value).toLowerCase());
+      if (
+        company.id === "frigorifico-maciel" ||
+        company.slug === "maciel" ||
+        company.parentCompanyId === "frigorifico-maciel" ||
+        company.parentSlug === "maciel"
+      ) {
+        candidates.push("maciel", "frigorifico-maciel");
+      }
+      return candidates.includes(productCompany);
+    }
+    return false;
+  }
+
+  // Comercio sin sucursales o vista consolidada
   const candidates = [
     company.id,
     company.slug,
