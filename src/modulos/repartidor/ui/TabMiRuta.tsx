@@ -391,10 +391,10 @@ export function TabMiRuta({
                 target="_blank"
                 rel="noreferrer"
                 className="h-10 rounded-xl bg-[#FFE600] hover:bg-yellow-300 text-[#2D3277] font-black text-[11px] flex items-center justify-center gap-1 border border-yellow-500 transition-all shadow-xs group px-1 active:scale-95"
-                title={!isPickedUp ? "Iniciar GPS a Parada 1 (Local)" : "Iniciar GPS a Parada 2 (Cliente)"}
+                title={!isPickedUp ? "Iniciar GPS a Parada 1 (Tienda donde retiras)" : "Iniciar GPS a Parada 2 (Domicilio del cliente)"}
               >
                 <Compass className="w-3.5 h-3.5 text-[#2D3277] group-hover:rotate-45 transition-transform" />
-                <span>{!isPickedUp ? "GPS Parada 1" : "GPS Parada 2"}</span>
+                <span>{!isPickedUp ? "GPS 1: Tienda" : "GPS 2: Cliente"}</span>
                 <ExternalLink className="w-2.5 h-2.5 opacity-60" />
               </a>
 
