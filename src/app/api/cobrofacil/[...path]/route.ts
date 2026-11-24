@@ -190,9 +190,12 @@ export async function GET(
     try {
       const warnings: string[] = [];
       const categoryMap: Record<string, string> = {};
+      const branchIdParam = request.nextUrl.searchParams.get("sucursal_id");
+      const branchId = branchIdParam && !isNaN(Number(branchIdParam)) ? Number(branchIdParam) : 1;
+
       try {
         const catRows = await queryDb<PosBaseRow>(
-          "SELECT columnas, filas FROM pos_base WHERE tabla = 'categorias' AND sucursal_id = 2 ORDER BY id ASC"
+          `SELECT columnas, filas FROM pos_base WHERE tabla = 'categorias' AND (sucursal_id = ${branchId} OR sucursal_id = 1 OR sucursal_id IS NULL) ORDER BY CASE WHEN sucursal_id = ${branchId} THEN 0 ELSE 1 END, id ASC`
         );
         for (const category of mapStoredRows(catRows, "pos_base.categorias", warnings)) {
           if (category.id !== undefined && category.nombre) {
@@ -204,7 +207,7 @@ export async function GET(
       }
 
       const prodRows = await queryDb<PosBaseRow>(
-        "SELECT columnas, filas, sucursal_nombre FROM pos_base WHERE tabla = 'productos' AND sucursal_id = 2 ORDER BY id ASC"
+        `SELECT columnas, filas, sucursal_nombre FROM pos_base WHERE tabla = 'productos' AND (sucursal_id = ${branchId} OR sucursal_id = 1 OR sucursal_id IS NULL) ORDER BY CASE WHEN sucursal_id = ${branchId} THEN 0 ELSE 1 END, id ASC`
       );
 
       if (prodRows.length > 0) {
@@ -218,7 +221,7 @@ export async function GET(
                 idPrefix: "tpv-",
                 companyId: macielCompanyId,
                 companyName: macielCompanyName,
-                source: "pos_base (sucursal 2)",
+                source: `pos_base (sucursal ${branchId})`,
                 categoryMap,
               },
               warnings
