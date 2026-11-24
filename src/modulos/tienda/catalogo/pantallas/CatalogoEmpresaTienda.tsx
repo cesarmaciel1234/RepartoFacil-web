@@ -6,6 +6,7 @@ import type { Product } from "@/data/mockProducts";
 import type { CatalogStatus } from "../hooks/useCatalogoTienda";
 import type { CartItem } from "../../motor/tipos";
 import { isCompanyCoordinates } from "../../motor/ubicacionComercio";
+import { haversineKm } from "../../motor/tarifaUberService";
 import { FiltroCategorias } from "../../ui/FiltroCategorias";
 import { TarjetaProducto } from "../../ui/TarjetaProducto";
 import { ResenasComercio } from "./ResenasComercio";
@@ -32,6 +33,9 @@ interface CatalogoEmpresaTiendaProps {
   catalogSize: number;
   catalogStatus: CatalogStatus;
   cart: CartItem[];
+  deliveryCoordinates?: { lat: number; lng: number } | null;
+  deliveryAddress?: string;
+  onOpenChangeAddress?: () => void;
   onRetry: () => void;
   onSearchChange: (value: string) => void;
   onCategorySelect: (category: string) => void;
@@ -52,6 +56,9 @@ export function CatalogoEmpresaTienda({
   catalogSize,
   catalogStatus,
   cart,
+  deliveryCoordinates,
+  deliveryAddress,
+  onOpenChangeAddress,
   onRetry,
   onSearchChange,
   onCategorySelect,
@@ -66,6 +73,16 @@ export function CatalogoEmpresaTienda({
     : company.address || company.name;
   const companyMapUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapQuery)}`;
   const isClosed = company.isOpen === false;
+
+  const distanceKm =
+    deliveryCoordinates && isCompanyCoordinates(company.coordinates)
+      ? haversineKm(
+          deliveryCoordinates.lat,
+          deliveryCoordinates.lng,
+          company.coordinates.lat,
+          company.coordinates.lng
+        )
+      : null;
 
   const handleShare = async () => {
     const url = window.location.href;
@@ -126,14 +143,38 @@ export function CatalogoEmpresaTienda({
               <h1 className="break-words text-lg font-black text-slate-900 sm:text-xl">
                 {company.name}
               </h1>
-              <p className="truncate text-xs font-medium text-slate-500">
+              <p className="truncate text-xs font-semibold text-slate-500">
                 {company.category}
-                {company.address ? ` · ${company.address}` : ""}
               </p>
             </div>
           </div>
 
-          {company.description && <p className="mt-3 text-sm text-slate-600">{company.description}</p>}
+          {/* Dirección y Distancia al Domicilio del Comprador */}
+          <div className="mt-3 flex items-center gap-2 flex-wrap text-xs">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 border border-slate-200 text-slate-800 font-bold">
+              <MapPin className="h-3.5 w-3.5 text-blue-600 shrink-0" />
+              <span>{company.address ? company.address : "Dirección comercial"}</span>
+            </div>
+            {distanceKm !== null ? (
+              <div className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 font-black shadow-xs animate-pulse">
+                <span>🎯 A {distanceKm < 1 ? `${Math.round(distanceKm * 1000)} m` : `${distanceKm.toFixed(1)} km`} de tu ubicación</span>
+              </div>
+            ) : deliveryAddress ? (
+              <div className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-slate-100 text-slate-600 text-[11px] font-semibold">
+                <span>📍 Calculando distancia...</span>
+              </div>
+            ) : onOpenChangeAddress ? (
+              <button
+                type="button"
+                onClick={onOpenChangeAddress}
+                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-yellow-100 hover:bg-yellow-200 border border-yellow-400 text-yellow-900 text-[11px] font-extrabold cursor-pointer transition-all active:scale-95"
+              >
+                <span>📍 Fijá tu dirección para ver la distancia</span>
+              </button>
+            ) : null}
+          </div>
+
+          {company.description && <p className="mt-2.5 text-sm text-slate-600">{company.description}</p>}
           {company.openingHours && <p className="mt-1 text-xs text-slate-600">Horario: {company.openingHours}</p>}
 
           <div className="mt-3 flex flex-wrap items-center gap-2 text-xs font-semibold text-slate-600">

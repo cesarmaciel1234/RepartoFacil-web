@@ -582,6 +582,9 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
             selectedCategory={selectedCategory}
             products={filteredProducts}
             cart={cart}
+            deliveryCoordinates={deliveryCoordinates}
+            deliveryAddress={deliveryAddress}
+            onOpenChangeAddress={() => setIsAddressModalOpen(true)}
             catalogStatus={catalogProductsStatus}
             onRetry={reloadCatalog}
             onSearchChange={setSearchQuery}

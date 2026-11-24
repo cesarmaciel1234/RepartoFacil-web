@@ -161,14 +161,14 @@ export function TabMiRuta({
         
         // Dirección física clara de la tienda (evita coordenadas ambiguas en el mismo barrio)
         const storeAddressClean = isAlfaroBranch
-          ? "Alfaro 1954, Hurlingham, Buenos Aires"
+          ? "Alfaro 1964, Hurlingham, Buenos Aires"
           : rawBranch.length > 5
           ? rawBranch
           : "Tucumán 2130, Rosario";
 
         const storeTarget = encodeURIComponent(storeAddressClean);
         const branchDisplay = isAlfaroBranch
-          ? "Frigorífico Maciel (Alfaro 1954, Hurlingham)"
+          ? "Frigorífico Maciel (Alfaro 1964, Hurlingham)"
           : rawBranch;
 
         // ─── 2. Destino del Domicilio del Comprador (Parada 2) ───
