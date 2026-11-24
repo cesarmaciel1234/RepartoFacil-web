@@ -1,2 +1,2 @@
-export const APP_VERSION = "6.9.4";
-export const APP_RELEASE = "v6.9.4-distancia-en-tarjetas-y-direccion-legible";
+export const APP_VERSION = "6.9.5";
+export const APP_RELEASE = "v6.9.5-lapiz-edicion-profesional-y-altura-exacta";
