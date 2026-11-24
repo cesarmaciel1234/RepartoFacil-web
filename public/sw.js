@@ -1,6 +1,6 @@
 // Se conserva la caché durante la migración: las versiones antiguas eliminan las demás.
-const CACHE_NAME = "repartofacil-v6.9.1";
-const RELEASE = "v6.9.1-dos-paradas-navegacion-vehiculo";
+const CACHE_NAME = "repartofacil-v6.9.2";
+const RELEASE = "v6.9.2-parada-1-tienda-obligatoria-estricta";
 
 const STATIC_PRECACHE = [
   "/manifest.webmanifest",
