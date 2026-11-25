@@ -4,6 +4,16 @@ import productImageManifest from "@/data/productImageManifest.json";
 
 export const dynamic = "force-dynamic";
 
+const CORS_HEADERS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization, x-client-id, x-role",
+};
+
+export async function OPTIONS() {
+  return new NextResponse(null, { status: 204, headers: CORS_HEADERS });
+}
+
 const BACKEND_URL = process.env.BACKEND_URL || "http://127.0.0.1:8000";
 const PRODUCT_IMAGE_BY_NAME = productImageManifest as Record<string, string>;
 
@@ -314,7 +324,7 @@ export async function GET(
           total: allProducts.length,
           products: allProducts,
           warnings,
-        });
+        }, { headers: CORS_HEADERS });
       }
     } catch (dbErr: any) {
       console.warn("[CobroFacil DB Query Fallback]:", dbErr.message);
@@ -485,6 +495,8 @@ export async function GET(
                 ? { coordinates: baseCompany.coordinates }
                 : {}),
             sucursal_id: sucUnica?.id || 1,
+            parentCompanyId: baseId,
+            parentSlug: slug,
             sucursales: sucs,
             isMultiBranch: false,
             isSingleBranch: true,
@@ -497,7 +509,7 @@ export async function GET(
         success: true,
         source: "crm-libro-local (PostgreSQL Render)",
         empresas: companyList,
-      });
+      }, { headers: CORS_HEADERS });
     } catch (dbErr: any) {
       console.warn("[CobroFacil DB Companies Fallback]:", dbErr.message);
     }

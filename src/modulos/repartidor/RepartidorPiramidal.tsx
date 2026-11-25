@@ -298,7 +298,10 @@ export function RepartidorPiramidal({ onSwitchToStore }: RepartidorPiramidalProp
           centerTrigger={mapCenterTrigger}
           currentUserId={driverProfile?.id}
           onSelectOrder={openOrderConversation}
-          onTakeOrder={handleTakeOrder}
+          onTakeOrder={(orderId) => {
+            const ord = availableOrders.find((o) => o.id === orderId);
+            if (ord) handleTakeOrder(ord);
+          }}
         />
       </div>
 

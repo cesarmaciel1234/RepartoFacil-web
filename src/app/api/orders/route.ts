@@ -221,8 +221,8 @@ export async function POST(request: NextRequest) {
     const destLat = data.deliveryLat ?? data.destinationCoords?.lat ?? data.deliveryCoordinates?.lat ?? null;
     const destLng = data.deliveryLng ?? data.destinationCoords?.lng ?? data.deliveryCoordinates?.lng ?? null;
 
-    const sucursalId = verified.company.sucursal_id != null
-      ? Number(verified.company.sucursal_id)
+    const sucursalId = (verified.company as any).sucursal_id != null
+      ? Number((verified.company as any).sucursal_id)
       : (data.sucursalId != null ? Number(data.sucursalId) : (data.sucursal_id != null ? Number(data.sucursal_id) : 1));
 
     const insertQuery = `

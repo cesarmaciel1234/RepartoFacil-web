@@ -457,13 +457,26 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
     if (typeof window !== "undefined") window.scrollTo({ top: 0 });
   };
 
-  const findCompanyByKey = (key: string | null) =>
-    key
-      ? companies.find(
-          (company) =>
-            company.slug === key || company.id === key || company.id === `empresa-${key}`
-        ) || null
-      : null;
+  const findCompanyByKey = (key: string | null) => {
+    if (!key) return null;
+    const normalizedKey = key.toLowerCase().trim();
+    return (
+      companies.find((company) => {
+        const id = (company.id || "").toLowerCase();
+        const slug = (company.slug || "").toLowerCase();
+        const parentId = ((company as any).parentCompanyId || "").toLowerCase();
+        const parentSlug = ((company as any).parentSlug || "").toLowerCase();
+        return (
+          slug === normalizedKey ||
+          id === normalizedKey ||
+          id === `empresa-${normalizedKey}` ||
+          parentId === normalizedKey ||
+          parentSlug === normalizedKey ||
+          (normalizedKey === "maciel" && (id.includes("maciel") || slug.includes("maciel")))
+        );
+      }) || null
+    );
+  };
 
   // Abrir la tienda indicada en la URL al cargar y responder al botón "atrás" del navegador
   useEffect(() => {

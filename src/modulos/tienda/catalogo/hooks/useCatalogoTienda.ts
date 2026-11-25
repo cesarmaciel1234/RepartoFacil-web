@@ -178,7 +178,7 @@ export function useCatalogoTienda({
       return { products: productsData.products, warnings };
     };
 
-    const load = async () => {
+    const load = async (retryCount = 0) => {
       if (loading) {
         refreshQueued = true;
         return;
@@ -186,15 +186,36 @@ export function useCatalogoTienda({
       loading = true;
       activeRequest = new AbortController();
       const request = activeRequest;
-      const timeout = window.setTimeout(() => request.abort(), 15000);
-      const [companiesResult, productsResult] = await Promise.allSettled([
-        loadCompanies(request.signal),
-        loadProducts(request.signal),
-      ]);
-      window.clearTimeout(timeout);
+      // 35 segundos de timeout para tolerar el inicio en frío (cold start) de Render
+      const timeout = window.setTimeout(() => request.abort(), 35000);
+      let companiesResult: PromiseSettledResult<CompanyStore[]>;
+      let productsResult: PromiseSettledResult<{ products: CatalogProduct[]; warnings: string[] }>;
+
+      try {
+        [companiesResult, productsResult] = await Promise.allSettled([
+          loadCompanies(request.signal),
+          loadProducts(request.signal),
+        ]);
+      } finally {
+        window.clearTimeout(timeout);
+      }
+
       if (cancelled) return;
 
-      if (companiesResult.status === "fulfilled" && navigator.onLine) {
+      const isOnline = typeof navigator === "undefined" || navigator.onLine !== false;
+      const companiesOk = companiesResult.status === "fulfilled" && isOnline;
+      const productsOk = productsResult.status === "fulfilled" && isOnline;
+
+      // Si falló alguno y aún nos quedan reintentos automáticos, reintentamos antes de dar error visible
+      if ((!companiesOk || !productsOk) && retryCount < 2 && !cancelled) {
+        loading = false;
+        console.warn(`[useCatalogoTienda] Reintentando carga de catálogo en 1.5s (intento ${retryCount + 1}/2)...`);
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+        if (cancelled) return;
+        return load(retryCount + 1);
+      }
+
+      if (companiesOk && companiesResult.status === "fulfilled") {
         setCompanies(companiesResult.value);
         setStatus("ready");
         setCompaniesCached(false);
@@ -210,11 +231,12 @@ export function useCatalogoTienda({
         if (companiesResult.status === "rejected") {
           console.warn("No se pudieron actualizar los comercios de Cobro Fácil:", companiesResult.reason);
         }
-        setCompaniesCached(true);
-        setStatus((current) => current === "ready" ? "ready" : "error");
+        const hasCache = Boolean(cachedCompanies?.data?.length);
+        setCompaniesCached(hasCache);
+        setStatus((current) => (current === "ready" && hasCache ? "ready" : "error"));
       }
 
-      if (productsResult.status === "fulfilled" && navigator.onLine) {
+      if (productsOk && productsResult.status === "fulfilled") {
         setProducts(productsResult.value.products);
         setProductsWarnings(productsResult.value.warnings);
         setProductsCached(false);
@@ -238,13 +260,15 @@ export function useCatalogoTienda({
         if (productsResult.status === "rejected") {
           console.warn("No se pudieron actualizar los productos de Cobro Fácil:", productsResult.reason);
         }
-        setProducts((current) => asCachedProducts(current));
-        setProductsCached(true);
+        const hasCache = Boolean(cachedProducts?.data?.length);
+        setProducts((current) => (hasCache ? asCachedProducts(current) : []));
+        setProductsCached(hasCache);
         setProductsWarnings([]);
         setProductsStatus("error");
       }
+
       loading = false;
-      if (refreshQueued && navigator.onLine) {
+      if (refreshQueued && isOnline) {
         refreshQueued = false;
         void load();
       }
@@ -252,21 +276,21 @@ export function useCatalogoTienda({
 
     void load();
     const timer = window.setInterval(() => {
-      if (navigator.onLine) void load();
+      const isOnline = typeof navigator === "undefined" || navigator.onLine !== false;
+      if (isOnline) void load();
     }, 60000);
     const handleOnline = () => void load();
     const handleOffline = () => {
-      setCompaniesCached(true);
-      setProductsCached(true);
+      const hasCompCache = Boolean(readCompaniesCache()?.data?.length);
+      const hasProdCache = Boolean(readProductsCache()?.data?.length);
+      setCompaniesCached(hasCompCache);
+      setProductsCached(hasProdCache);
       setProducts((current) => asCachedProducts(current));
       setProductsStatus("error");
     };
     const handleVisible = () => {
-      if (document.visibilityState === "visible" && navigator.onLine) {
-        setCompaniesCached(true);
-        setProductsCached(true);
-        setProducts((current) => asCachedProducts(current));
-        setProductsStatus("error");
+      const isOnline = typeof navigator === "undefined" || navigator.onLine !== false;
+      if (document.visibilityState === "visible" && isOnline) {
         void load();
       }
     };

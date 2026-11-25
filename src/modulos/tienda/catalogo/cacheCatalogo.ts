@@ -11,18 +11,13 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 export function isCatalogCompany(value: unknown): value is CompanyStore {
-  return isRecord(value) && typeof value.id === "string" && typeof value.name === "string" &&
-    typeof value.category === "string" && typeof value.categorySlug === "string" &&
-    typeof value.address === "string" && typeof value.phone === "string" &&
-    typeof value.isOpen === "boolean" && Array.isArray(value.badges) &&
-    ["rating", "ratingCount", "deliveryTimeMin", "deliveryTimeMax", "deliveryFee"]
-      .every((key) => typeof value[key] === "number" && Number.isFinite(value[key]));
+  return isRecord(value) && typeof value.id === "string" && Boolean(value.id.trim()) &&
+    typeof value.name === "string" && Boolean(value.name.trim());
 }
 
 export function isCatalogProduct(value: unknown): value is Product {
-  return isRecord(value) && typeof value.id === "string" &&
-    typeof value.name === "string" && typeof value.category === "string" &&
-    typeof value.unit === "string" && typeof value.description === "string";
+  return isRecord(value) && (typeof value.id === "string" || typeof value.id === "number") &&
+    typeof value.name === "string" && Boolean(value.name.trim());
 }
 
 function readCache<T>(key: string, validate: (value: unknown) => value is T): CatalogCache<T> | null {

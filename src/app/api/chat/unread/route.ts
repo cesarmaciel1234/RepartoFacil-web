@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
   try {
-    const auth = await authenticateOrderUser(request, ["Client", "Driver", "Admin"]);
+    const auth = await authenticateOrderUser(request, ["Client", "Driver"]);
     if (auth.response) return auth.response;
 
     const isDriver = auth.user.role === "Driver";

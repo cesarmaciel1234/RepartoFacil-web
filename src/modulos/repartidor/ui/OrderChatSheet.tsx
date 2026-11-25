@@ -352,7 +352,7 @@ export function OrderChatSheet({
   const displayDestAddress = deliveryAddress || activeOrder?.deliveryAddress || "Tucumán 2130, Rosario";
   const interlocutorName = isDriverViewer
     ? (clientName || activeOrder?.clientName || (activeOrder as any)?.customerName || "Cliente")
-    : (driverName || activeOrder?.driverName || "Repartidor");
+    : (driverName || (activeOrder as any)?.driverName || "Repartidor");
   const numericTicket = activeOrder?.ticketId || activeOrder?.ticket_id;
   const hasNumericTicket = numericTicket && /^\d+$/.test(String(numericTicket).replace(/^#?RF-?/i, ""));
   const cleanTicketStr = hasNumericTicket
