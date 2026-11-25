@@ -14,8 +14,55 @@ export async function OPTIONS() {
   return new NextResponse(null, { status: 204, headers: CORS_HEADERS });
 }
 
-const BACKEND_URL = process.env.BACKEND_URL || "http://127.0.0.1:8000";
+const BACKEND_URL = process.env.BACKEND_URL || "https://cobrofacil.onrender.com";
 const PRODUCT_IMAGE_BY_NAME = productImageManifest as Record<string, string>;
+
+export const FALLBACK_COMPANIES = [
+  {
+    id: "frigorifico-maciel-suc-1",
+    name: "Maciel · Alfaro 1964",
+    slug: "maciel",
+    empresa_id: 1,
+    category: "Carnes y Pescados",
+    categorySlug: "carnes" as const,
+    rating: 5,
+    ratingCount: 12,
+    deliveryTimeMin: 20,
+    deliveryTimeMax: 40,
+    deliveryFee: 1500,
+    badges: ["Carnes de Primera"],
+    address: "Doctor Aráoz Alfaro 1964, Monterrey, Presidente Derqui",
+    phone: "1135627803",
+    isOpen: true,
+    sucursal_id: 1,
+    parentCompanyId: "frigorifico-maciel",
+    parentSlug: "maciel",
+    isMultiBranch: true,
+    isSingleBranch: false,
+  },
+  {
+    id: "frigorifico-maciel-suc-2",
+    name: "Maciel · prueba2",
+    slug: "prueba2",
+    empresa_id: 1,
+    category: "Carnes y Pescados",
+    categorySlug: "carnes" as const,
+    rating: 5,
+    ratingCount: 3,
+    deliveryTimeMin: 20,
+    deliveryTimeMax: 40,
+    deliveryFee: 1500,
+    badges: [],
+    address: "Chacabuco 21300",
+    phone: "1135627803",
+    isOpen: true,
+    sucursal_id: 2,
+    parentCompanyId: "frigorifico-maciel",
+    parentSlug: "maciel",
+    isMultiBranch: true,
+    isSingleBranch: false,
+  },
+];
 
 type PosBaseRow = {
   columnas: unknown;
@@ -512,6 +559,11 @@ export async function GET(
       }, { headers: CORS_HEADERS });
     } catch (dbErr: any) {
       console.warn("[CobroFacil DB Companies Fallback]:", dbErr.message);
+      return NextResponse.json({
+        success: true,
+        source: "fallback-embedded",
+        empresas: FALLBACK_COMPANIES,
+      }, { headers: CORS_HEADERS });
     }
   }
 

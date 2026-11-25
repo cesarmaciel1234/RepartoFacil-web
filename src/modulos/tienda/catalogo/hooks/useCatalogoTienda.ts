@@ -112,14 +112,61 @@ export function departmentOf(product: CatalogProduct) {
     .toUpperCase();
 }
 
+const FALLBACK_COMPANIES: CompanyStore[] = [
+  {
+    id: "frigorifico-maciel-suc-1",
+    name: "Maciel · Alfaro 1964",
+    slug: "maciel",
+    empresa_id: 1,
+    category: "Carnes y Pescados",
+    categorySlug: "carnes",
+    rating: 5,
+    ratingCount: 12,
+    deliveryTimeMin: 20,
+    deliveryTimeMax: 40,
+    deliveryFee: 1500,
+    badges: ["Carnes de Primera"],
+    address: "Doctor Aráoz Alfaro 1964, Monterrey, Presidente Derqui",
+    phone: "1135627803",
+    isOpen: true,
+    sucursal_id: 1,
+    parentCompanyId: "frigorifico-maciel",
+    parentSlug: "maciel",
+    isMultiBranch: true,
+    isSingleBranch: false,
+  },
+  {
+    id: "frigorifico-maciel-suc-2",
+    name: "Maciel · prueba2",
+    slug: "prueba2",
+    empresa_id: 1,
+    category: "Carnes y Pescados",
+    categorySlug: "carnes",
+    rating: 5,
+    ratingCount: 3,
+    deliveryTimeMin: 20,
+    deliveryTimeMax: 40,
+    deliveryFee: 1500,
+    badges: [],
+    address: "Chacabuco 21300",
+    phone: "1135627803",
+    isOpen: true,
+    sucursal_id: 2,
+    parentCompanyId: "frigorifico-maciel",
+    parentSlug: "maciel",
+    isMultiBranch: true,
+    isSingleBranch: false,
+  },
+];
+
 export function useCatalogoTienda({
   selectedCompany,
   selectedCategory,
   searchQuery,
 }: UseCatalogoTiendaParams) {
   const [products, setProducts] = useState<CatalogProduct[]>([]);
-  const [companies, setCompanies] = useState<CompanyStore[]>([]);
-  const [status, setStatus] = useState<CatalogStatus>("loading");
+  const [companies, setCompanies] = useState<CompanyStore[]>(FALLBACK_COMPANIES);
+  const [status, setStatus] = useState<CatalogStatus>("ready");
   const [productsStatus, setProductsStatus] = useState<CatalogStatus>("loading");
   const [productsWarnings, setProductsWarnings] = useState<string[]>([]);
   const [companiesCached, setCompaniesCached] = useState(false);
@@ -144,12 +191,16 @@ export function useCatalogoTienda({
       setCompaniesSavedAt(cachedCompanies.savedAt);
       setCompaniesCached(true);
       setStatus("ready");
+    } else {
+      setCompanies(FALLBACK_COMPANIES);
+      setStatus("ready");
+      setCompaniesCached(false);
     }
     if (cachedProducts) {
       setProducts(asCachedProducts(cachedProducts.data));
       setProductsSavedAt(cachedProducts.savedAt);
       setProductsCached(true);
-      setProductsStatus("error");
+      setProductsStatus("ready");
     }
 
     const loadCompanies = async (signal: AbortSignal): Promise<CompanyStore[]> => {
@@ -232,8 +283,15 @@ export function useCatalogoTienda({
           console.warn("No se pudieron actualizar los comercios de Cobro Fácil:", companiesResult.reason);
         }
         const hasCache = Boolean(cachedCompanies?.data?.length);
-        setCompaniesCached(hasCache);
-        setStatus((current) => (current === "ready" && hasCache ? "ready" : "error"));
+        if (hasCache && cachedCompanies?.data) {
+          setCompanies(cachedCompanies.data);
+          setCompaniesCached(true);
+          setStatus("ready");
+        } else {
+          setCompanies(FALLBACK_COMPANIES);
+          setCompaniesCached(false);
+          setStatus("ready");
+        }
       }
 
       if (productsOk && productsResult.status === "fulfilled") {

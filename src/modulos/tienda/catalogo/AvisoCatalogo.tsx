@@ -39,8 +39,8 @@ export function AvisoCatalogo({
         {(companiesCached || productsCached) && (
           <p>Mostramos información guardada o pendiente de actualizar. La disponibilidad, los precios y el estado de los comercios pueden haber cambiado.</p>
         )}
-        {companiesCached && <p>Comercios: {formatSavedTime(companiesSavedAt)}.</p>}
-        {productsCached && <p>Productos: {formatSavedTime(productsSavedAt)}.</p>}
+        {companiesCached && companiesSavedAt && <p>Comercios: {formatSavedTime(companiesSavedAt)}.</p>}
+        {productsCached && productsSavedAt && <p>Productos: {formatSavedTime(productsSavedAt)}.</p>}
         {productsError && <p>El carrito se conserva, pero no se pueden finalizar compras sin validar precio y stock.</p>}
         {warnings.length > 0 && <p>Catálogo parcial: {warnings.length} problema(s) al leer el inventario.</p>}
         {cacheError && <p>No se pudo guardar una copia para usarla sin conexión. Revisá el almacenamiento del dispositivo.</p>}
