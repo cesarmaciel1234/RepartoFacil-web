@@ -10,6 +10,7 @@ import { useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { doc } from '@/firebase/local-firestore';
 import { Truck, User, Package, Navigation as NavIcon, AlertTriangle } from 'lucide-react';
 import { renderToStaticMarkup } from 'react-dom/server';
+import { formatShortOrderCode, STORE_DEFAULT_DERQUI } from '@/modulos/repartidor/motor/tipos';
 
 const fixLeafletIcons = () => {
   // @ts-ignore
@@ -68,41 +69,55 @@ const createFleetDriverIcon = (vehicleType?: string, isBusy: boolean = false) =>
   });
 };
 
-const createStoreBasketIcon = (count: number = 0) => {
+const createStoreBasketIcon = (count: number = 0, isParada1: boolean = false) => {
   const iconHtml = renderToStaticMarkup(
     <div className="relative flex flex-col items-center">
-      <div className="w-10 h-10 rounded-2xl bg-[#047857] border-2 border-white shadow-xl flex items-center justify-center text-lg text-white">
-        🧺
+      <div className={cn(
+        "w-10 h-10 rounded-2xl border-2 shadow-xl flex items-center justify-center text-lg text-white",
+        isParada1 ? "bg-amber-500 border-amber-300" : "bg-[#047857] border-white"
+      )}>
+        {isParada1 ? "🏪" : "🧺"}
       </div>
-      {count > 0 && (
+      {isParada1 ? (
+        <span className="absolute -top-2 px-1.5 py-0.5 rounded-full bg-[#2D3277] text-white border border-yellow-300 text-[8.5px] font-black uppercase shadow tracking-wider">
+          Parada 1
+        </span>
+      ) : count > 0 ? (
         <span className="absolute -top-1.5 -right-1.5 min-w-4 h-4 px-1 rounded-full bg-amber-400 text-slate-900 border border-white text-[9px] font-black flex items-center justify-center shadow">
           {count}
         </span>
-      )}
-      <div className="w-2.5 h-2.5 bg-[#047857] rotate-45 border-r border-b border-white -mt-1 shadow-xs" />
+      ) : null}
+      <div className={cn(
+        "w-2.5 h-2.5 rotate-45 border-r border-b -mt-1 shadow-xs",
+        isParada1 ? "bg-amber-500 border-amber-300" : "bg-[#047857] border-white"
+      )} />
     </div>
   );
   return L.divIcon({
     html: iconHtml,
     className: 'store-basket-icon',
-    iconSize: [40, 44],
-    iconAnchor: [20, 44],
+    iconSize: [44, 46],
+    iconAnchor: [22, 46],
   });
 };
 
-const createOrderPinIcon = (orderId: string, isMyRoute: boolean = false) => {
-  const clean = orderId.replace(/^#?RF-?/i, "");
-  const shortId = clean.length > 5 ? clean.slice(0, 4) : clean;
+const createOrderPinIcon = (orderId: string, isMyRoute: boolean = false, isParada2: boolean = false) => {
+  const shortFormatted = formatShortOrderCode(orderId);
   const iconHtml = renderToStaticMarkup(
     <div className="relative flex flex-col items-center">
       <div className={cn(
         "px-2 py-0.5 rounded-xl border-2 shadow-lg flex items-center gap-1 text-[10px] font-black tracking-tight",
         isMyRoute
-          ? "bg-[#FFE600] border-[#2D3277] text-[#2D3277]"
+          ? "bg-[#FFE600] border-[#2D3277] text-[#2D3277] ring-2 ring-yellow-400/40"
           : "bg-blue-600 border-white text-white"
       )}>
         <span>📦</span>
-        <span>#{shortId}</span>
+        <span>{shortFormatted}</span>
+        {isParada2 && (
+          <span className="ml-1 text-[8px] bg-[#2D3277] text-yellow-300 px-1 py-0.2 rounded font-black uppercase">
+            Parada 2
+          </span>
+        )}
       </div>
       <div className={cn(
         "w-2 h-2 rotate-45 -mt-1 border-r border-b",
@@ -113,8 +128,8 @@ const createOrderPinIcon = (orderId: string, isMyRoute: boolean = false) => {
   return L.divIcon({
     html: iconHtml,
     className: 'order-pin-icon',
-    iconSize: [60, 28],
-    iconAnchor: [30, 28],
+    iconSize: [isParada2 ? 94 : 70, 30],
+    iconAnchor: [isParada2 ? 47 : 35, 30],
   });
 };
 
@@ -199,6 +214,10 @@ interface InteractiveMapProps {
   alerts?: any[] | null;
   activeOrders?: any[] | null;
   availableOrders?: any[] | null;
+  previewOrder?: any | null;
+  onSelectPreviewOrder?: (order: any) => void;
+  hasActiveOrder?: boolean;
+  isOrderPickedUp?: boolean;
   fleet?: any[] | null;
   heading?: number;
   zoom?: number;
@@ -216,6 +235,10 @@ export default function InteractiveMap({
   alerts,
   activeOrders,
   availableOrders,
+  previewOrder,
+  onSelectPreviewOrder,
+  hasActiveOrder = false,
+  isOrderPickedUp = false,
   fleet,
   heading = 0, 
   zoom = 14,
@@ -278,42 +301,63 @@ export default function InteractiveMap({
     );
   }
 
-  // 1. Comercios / Puntos de retiro con icon de canasto 🧺
+  // Detectar Modo en Viaje: repartidor tiene un pedido activo asignado
+  const isInTripMode = Boolean((hasActiveOrder || (activeOrders && activeOrders.length > 0)));
+  const currentActiveOrder = activeOrders && activeOrders.length > 0 ? activeOrders[0] : null;
+
+  // En Modo En Viaje: Coordenadas de la Parada 1 (Tienda) y Parada 2 (Cliente)
+  const tripStoreCoords: [number, number] = currentActiveOrder?.storeCoords?.lat && currentActiveOrder?.storeCoords?.lng
+    ? [currentActiveOrder.storeCoords.lat, currentActiveOrder.storeCoords.lng]
+    : [STORE_DEFAULT_DERQUI.coords.lat, STORE_DEFAULT_DERQUI.coords.lng];
+  const tripStoreName = currentActiveOrder?.branch || STORE_DEFAULT_DERQUI.name;
+  const tripStoreAddress = STORE_DEFAULT_DERQUI.address;
+
+  const tripDestCoords: [number, number] | null = currentActiveOrder?.destinationCoords?.lat && currentActiveOrder?.destinationCoords?.lng
+    ? [currentActiveOrder.destinationCoords.lat, currentActiveOrder.destinationCoords.lng]
+    : null;
+
+  // En Modo Exploración: Conexión entre Negocio de origen y entrega al tocar un paquete azul
+  const previewStoreCoords: [number, number] = previewOrder?.storeCoords?.lat && previewOrder?.storeCoords?.lng
+    ? [previewOrder.storeCoords.lat, previewOrder.storeCoords.lng]
+    : [STORE_DEFAULT_DERQUI.coords.lat, STORE_DEFAULT_DERQUI.coords.lng];
+
+  const previewDestCoords: [number, number] | null = previewOrder?.destinationCoords?.lat && previewOrder?.destinationCoords?.lng
+    ? [previewOrder.destinationCoords.lat, previewOrder.destinationCoords.lng]
+    : null;
+
+  // Tiendas para Modo Exploración
   const storesMap = new Map<string, { name: string; address: string; coords: [number, number]; count: number }>();
-  storesMap.set("maciel-central", {
-    name: "Frigorífico Maciel - Central",
-    address: "Tucumán 2130, Rosario",
-    coords: [-32.9372, -60.6542],
-    count: (availableOrders?.length || 0) + (activeOrders?.length || 0),
-  });
+  if (!isInTripMode) {
+    storesMap.set("maciel-derqui", {
+      name: STORE_DEFAULT_DERQUI.name,
+      address: STORE_DEFAULT_DERQUI.address,
+      coords: [STORE_DEFAULT_DERQUI.coords.lat, STORE_DEFAULT_DERQUI.coords.lng],
+      count: (availableOrders?.length || 0),
+    });
 
-  [...(activeOrders || []), ...(availableOrders || [])].forEach((o) => {
-    if (o?.storeCoords?.lat && o?.storeCoords?.lng) {
-      const key = `${o.storeCoords.lat},${o.storeCoords.lng}`;
-      const existing = storesMap.get(key);
-      if (existing) {
-        existing.count += 1;
-      } else {
-        storesMap.set(key, {
-          name: o.branch || "Punto de Retiro",
-          address: o.branch || "Sucursal",
-          coords: [o.storeCoords.lat, o.storeCoords.lng],
-          count: 1,
-        });
+    (availableOrders || []).forEach((o) => {
+      if (o?.storeCoords?.lat && o?.storeCoords?.lng) {
+        const key = `${o.storeCoords.lat},${o.storeCoords.lng}`;
+        const existing = storesMap.get(key);
+        if (existing) {
+          existing.count += 1;
+        } else {
+          storesMap.set(key, {
+            name: o.branch || STORE_DEFAULT_DERQUI.name,
+            address: o.branch || STORE_DEFAULT_DERQUI.address,
+            coords: [o.storeCoords.lat, o.storeCoords.lng],
+            count: 1,
+          });
+        }
       }
-    }
-  });
+    });
+  }
 
-  // 2. Pedidos en el mapa (Entregas a clientes) con icon de paquete 📦
-  const allOrdersToRender = [
-    ...(activeOrders || []).map((o) => ({ ...o, isMyActive: true })),
-    ...(availableOrders || []).map((o) => ({ ...o, isMyActive: false })),
-  ].filter((o) => o?.destinationCoords?.lat && o?.destinationCoords?.lng);
-
-  // 3. Flota de repartidores activos (simulados/reales) con icons de 🛵 🚲 🚗
-  const effectiveFleet = (fleet && fleet.length > 0)
+  // Flota simulada solo para Modo Exploración
+  const effectiveFleet = (!isInTripMode && fleet && fleet.length > 0)
     ? fleet
-    : [
+    : !isInTripMode
+    ? [
         {
           id: "fleet-1",
           firstName: "Lucas",
@@ -332,16 +376,8 @@ export default function InteractiveMap({
           currentLongitude: center[1] + 0.0045,
           isBusy: true,
         },
-        {
-          id: "fleet-3",
-          firstName: "Diego",
-          lastName: "A.",
-          vehicleType: "Car",
-          currentLatitude: center[0] + 0.0021,
-          currentLongitude: center[1] - 0.0038,
-          isBusy: false,
-        },
-      ];
+      ]
+    : [];
 
   const getAlertColor = (type: string) => {
     switch (type) {
@@ -407,116 +443,203 @@ export default function InteractiveMap({
             );
           })}
 
-          {/* ─── 1. Comercios / Sucursales con icono de canasto 🧺 ─── */}
-          {Array.from(storesMap.values()).map((store, idx) => (
-            <Marker
-              key={`store-${idx}`}
-              position={store.coords}
-              icon={createStoreBasketIcon(store.count)}
-              zIndexOffset={1500}
-            >
-              <Popup>
-                <div className="p-1 min-w-[150px]">
-                  <div className="flex items-center gap-1.5 mb-1">
-                    <span className="text-base">🧺</span>
-                    <span className="font-black text-xs text-emerald-950 uppercase tracking-tight">Comercio / Retiro</span>
-                  </div>
-                  <p className="font-extrabold text-xs text-slate-900">{store.name}</p>
-                  <p className="text-[10px] text-slate-500 mt-0.5">{store.address}</p>
-                  <div className="mt-1.5 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[9.5px] font-black">
-                    <span>📦 {store.count} pedido{store.count === 1 ? '' : 's'}</span>
-                  </div>
-                </div>
-              </Popup>
-            </Marker>
-          ))}
-
-          {/* ─── 2. Pedidos en el mapa (Entregas a Domicilio) 📦 ─── */}
-          {allOrdersToRender.map((order) => {
-            const isMyActive = Boolean(order.isMyActive);
-            const pos: [number, number] = [order.destinationCoords.lat, order.destinationCoords.lng];
-            const clean = String(order.ticketId || order.id || "").replace(/^#?RF-?/i, "");
-            const shortTicket = clean.length > 5 ? clean.slice(0, 5) : clean;
-            return (
+          {/* ─── MODO EN VIAJE: Solo Repartidor (moto amarilla), Parada 1 (Tienda) y Parada 2 (Cliente) ─── */}
+          {isInTripMode && currentActiveOrder && (
+            <>
+              {/* Parada 1: Retiro en Comercio */}
               <Marker
-                key={`order-pin-${order.id}`}
-                position={pos}
-                icon={createOrderPinIcon(order.id, isMyActive)}
-                zIndexOffset={isMyActive ? 2500 : 1800}
+                position={tripStoreCoords}
+                icon={createStoreBasketIcon(1, true)}
+                zIndexOffset={2600}
               >
                 <Popup>
                   <div className="p-1 min-w-[170px] space-y-1">
-                    <div className="flex items-center justify-between gap-1">
-                      <span className={cn(
-                        "px-1.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider",
-                        isMyActive ? "bg-yellow-100 text-yellow-900 border border-yellow-300" : "bg-blue-100 text-blue-800 border border-blue-200"
-                      )}>
-                        {isMyActive ? "🛵 En tu ruta" : "✨ Disponible"}
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-base">🏪</span>
+                      <span className="font-black text-[10px] text-amber-900 bg-amber-100 border border-amber-300 px-2 py-0.5 rounded-full uppercase tracking-wider">
+                        Parada 1: Retiro
                       </span>
-                      <span className="font-mono text-[10px] font-bold text-slate-500">#{shortTicket}</span>
                     </div>
-                    <p className="font-black text-xs text-slate-900">{order.customerName || order.clientName || 'Cliente'}</p>
-                    <p className="text-[10px] text-slate-600 line-clamp-2">📍 {order.deliveryAddress}</p>
-                    <div className="flex items-center justify-between text-xs font-black text-slate-900 pt-1 border-t border-slate-100">
-                      <span className="text-[10px] text-slate-500 font-semibold">Ganancia:</span>
-                      <span className="text-emerald-600 font-black">+{formatMoney(order.driverEarnings || 1600)}</span>
+                    <p className="font-extrabold text-xs text-slate-900">{tripStoreName}</p>
+                    <p className="text-[10px] text-slate-500">{tripStoreAddress}</p>
+                    <div className="pt-1 border-t border-slate-100 flex items-center justify-between text-[10px]">
+                      <span className="font-bold text-slate-500">Estado:</span>
+                      <span className={cn(
+                        "font-black px-1.5 py-0.2 rounded",
+                        isOrderPickedUp ? "text-emerald-700 bg-emerald-50" : "text-amber-800 bg-amber-50"
+                      )}>
+                        {isOrderPickedUp ? "✅ Ya retirado" : "⏳ Retirar en mostrador"}
+                      </span>
                     </div>
-                    {onSelectOrder && isMyActive && (
-                      <button
-                        type="button"
-                        onClick={() => onSelectOrder(order)}
-                        className="w-full mt-1.5 py-1 px-2 rounded-lg bg-yellow-400 hover:bg-yellow-500 text-[#2D3277] font-black text-[10px] shadow-xs active:scale-95 transition-all"
-                      >
-                        Ver detalles / Chat
-                      </button>
-                    )}
-                    {onTakeOrder && !isMyActive && (
-                      <button
-                        type="button"
-                        onClick={() => onTakeOrder(order.id)}
-                        className="w-full mt-1.5 py-1 px-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-black text-[10px] shadow-xs active:scale-95 transition-all"
-                      >
-                        Aceptar y llevar 🛵
-                      </button>
-                    )}
                   </div>
                 </Popup>
               </Marker>
-            );
-          })}
 
-          {/* ─── 3. Flota de repartidores activos (Bici 🚲, Moto 🛵, Auto 🚗) ─── */}
-          {effectiveFleet.map((driver) => {
-            if (typeof driver.currentLatitude !== 'number' || typeof driver.currentLongitude !== 'number') return null;
-            if (driver.id === currentUserId) return null; // El repartidor propio se renderiza con su icono central
-            const vehicle = driver.vehicleType || "Motorcycle";
-            return (
-              <Marker
-                key={`fleet-${driver.id}`}
-                position={[driver.currentLatitude, driver.currentLongitude]}
-                icon={createFleetDriverIcon(vehicle, Boolean(driver.isBusy))}
-                zIndexOffset={800}
-              >
-                <Popup>
-                  <div className="p-1 min-w-[120px]">
-                    <div className="flex items-center gap-1.5 mb-1">
-                      <span className="text-base">{getVehicleEmoji(vehicle)}</span>
-                      <span className={cn(
-                        "font-black text-[9px] uppercase px-1.5 py-0.5 rounded-full inline-block",
-                        driver.isBusy ? "bg-amber-100 text-amber-800" : "bg-emerald-100 text-emerald-800"
-                      )}>
-                        {driver.isBusy ? "En viaje" : "En línea"}
-                      </span>
+              {/* Parada 2: Entrega en domicilio del cliente */}
+              {tripDestCoords && (
+                <Marker
+                  position={tripDestCoords}
+                  icon={createOrderPinIcon(currentActiveOrder.id, true, true)}
+                  zIndexOffset={2800}
+                >
+                  <Popup>
+                    <div className="p-1 min-w-[170px] space-y-1">
+                      <div className="flex items-center justify-between gap-1">
+                        <span className="px-1.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-yellow-100 text-yellow-900 border border-yellow-300">
+                          Parada 2: Entrega
+                        </span>
+                        <span className="font-mono text-[10px] font-bold text-slate-500">
+                          {formatShortOrderCode(currentActiveOrder.id)}
+                        </span>
+                      </div>
+                      <p className="font-black text-xs text-slate-900">
+                        {currentActiveOrder.customerName || currentActiveOrder.clientName || 'Cliente'}
+                      </p>
+                      <p className="text-[10px] text-slate-600 line-clamp-2">📍 {currentActiveOrder.deliveryAddress}</p>
+                      <div className="flex items-center justify-between text-xs font-black text-slate-900 pt-1 border-t border-slate-100">
+                        <span className="text-[10px] text-slate-500 font-semibold">Ganancia:</span>
+                        <span className="text-emerald-600 font-black">+{formatMoney(currentActiveOrder.driverEarnings || 1600)}</span>
+                      </div>
+                      {onSelectOrder && (
+                        <button
+                          type="button"
+                          onClick={() => onSelectOrder(currentActiveOrder)}
+                          className="w-full mt-1.5 py-1 px-2 rounded-lg bg-yellow-400 hover:bg-yellow-500 text-[#2D3277] font-black text-[10px] shadow-xs active:scale-95 transition-all"
+                        >
+                          Ver detalles / Chat
+                        </button>
+                      )}
                     </div>
-                    <p className="font-black text-xs text-slate-900">{driver.firstName} {driver.lastName || ''}</p>
-                    <p className="text-[9.5px] text-slate-500">{vehicle === "Bicycle" ? "Bicicleta" : vehicle === "Car" ? "Automóvil" : "Motocicleta"}</p>
-                  </div>
-                </Popup>
-              </Marker>
-            );
-          })}
+                  </Popup>
+                </Marker>
+              )}
+            </>
+          )}
 
-          {destination && typeof destination[0] === 'number' && typeof destination[1] === 'number' && (
+          {/* ─── MODO EXPLORACIÓN (Sin pedido activo): Paquetes disponibles en azul + Línea punteada de origen ─── */}
+          {!isInTripMode && (
+            <>
+              {/* Línea punteada celeste conectando Negocio con Destino del pedido seleccionado */}
+              {previewDestCoords && (
+                <Polyline
+                  positions={[previewStoreCoords, previewDestCoords]}
+                  pathOptions={{
+                    color: '#0284c7',
+                    dashArray: '8, 8',
+                    weight: 4,
+                    opacity: 0.9,
+                  }}
+                />
+              )}
+
+              {/* 1. Tiendas / Comercios en Exploración */}
+              {Array.from(storesMap.values()).map((store, idx) => (
+                <Marker
+                  key={`store-${idx}`}
+                  position={store.coords}
+                  icon={createStoreBasketIcon(store.count, false)}
+                  zIndexOffset={1500}
+                >
+                  <Popup>
+                    <div className="p-1 min-w-[150px]">
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <span className="text-base">🧺</span>
+                        <span className="font-black text-xs text-emerald-950 uppercase tracking-tight">Comercio / Retiro</span>
+                      </div>
+                      <p className="font-extrabold text-xs text-slate-900">{store.name}</p>
+                      <p className="text-[10px] text-slate-500 mt-0.5">{store.address}</p>
+                      <div className="mt-1.5 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[9.5px] font-black">
+                        <span>📦 {store.count} pedido{store.count === 1 ? '' : 's'}</span>
+                      </div>
+                    </div>
+                  </Popup>
+                </Marker>
+              ))}
+
+              {/* 2. Paquetes Disponibles en Azul */}
+              {(availableOrders || []).map((order) => {
+                if (!order?.destinationCoords?.lat || !order?.destinationCoords?.lng) return null;
+                const pos: [number, number] = [order.destinationCoords.lat, order.destinationCoords.lng];
+                const shortTicket = formatShortOrderCode(order.ticketId || order.id);
+                const isSelectedPreview = previewOrder?.id === order.id;
+
+                return (
+                  <Marker
+                    key={`order-pin-${order.id}`}
+                    position={pos}
+                    icon={createOrderPinIcon(order.id, false, false)}
+                    zIndexOffset={isSelectedPreview ? 2500 : 1800}
+                    eventHandlers={{
+                      click: () => onSelectPreviewOrder?.(order),
+                    }}
+                  >
+                    <Popup>
+                      <div className="p-1 min-w-[170px] space-y-1">
+                        <div className="flex items-center justify-between gap-1">
+                          <span className="px-1.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-blue-100 text-blue-800 border border-blue-200">
+                            ✨ Disponible
+                          </span>
+                          <span className="font-mono text-[10px] font-bold text-slate-500">{shortTicket}</span>
+                        </div>
+                        <p className="font-black text-xs text-slate-900">{order.customerName || order.clientName || 'Cliente'}</p>
+                        <p className="text-[10px] text-slate-600 line-clamp-2">📍 {order.deliveryAddress}</p>
+                        <div className="flex items-center justify-between text-xs font-black text-slate-900 pt-1 border-t border-slate-100">
+                          <span className="text-[10px] text-slate-500 font-semibold">Ganancia:</span>
+                          <span className="text-emerald-600 font-black">+{formatMoney(order.driverEarnings || 1600)}</span>
+                        </div>
+                        {hasActiveOrder ? (
+                          <div className="w-full mt-1.5 py-1 px-2 rounded-lg bg-slate-100 text-slate-500 text-[9.5px] font-bold text-center border border-slate-200">
+                            Completá tu entrega actual para tomar otro pedido
+                          </div>
+                        ) : onTakeOrder ? (
+                          <button
+                            type="button"
+                            onClick={() => onTakeOrder(order.id)}
+                            className="w-full mt-1.5 py-1 px-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-black text-[10px] shadow-xs active:scale-95 transition-all"
+                          >
+                            Aceptar y llevar 🛵
+                          </button>
+                        ) : null}
+                      </div>
+                    </Popup>
+                  </Marker>
+                );
+              })}
+
+              {/* 3. Flota en Exploración */}
+              {effectiveFleet.map((driver) => {
+                if (typeof driver.currentLatitude !== 'number' || typeof driver.currentLongitude !== 'number') return null;
+                if (driver.id === currentUserId) return null;
+                const vehicle = driver.vehicleType || "Motorcycle";
+                return (
+                  <Marker
+                    key={`fleet-${driver.id}`}
+                    position={[driver.currentLatitude, driver.currentLongitude]}
+                    icon={createFleetDriverIcon(vehicle, Boolean(driver.isBusy))}
+                    zIndexOffset={800}
+                  >
+                    <Popup>
+                      <div className="p-1 min-w-[120px]">
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <span className="text-base">{getVehicleEmoji(vehicle)}</span>
+                          <span className={cn(
+                            "font-black text-[9px] uppercase px-1.5 py-0.5 rounded-full inline-block",
+                            driver.isBusy ? "bg-amber-100 text-amber-800" : "bg-emerald-100 text-emerald-800"
+                          )}>
+                            {driver.isBusy ? "En viaje" : "En línea"}
+                          </span>
+                        </div>
+                        <p className="font-black text-xs text-slate-900">{driver.firstName} {driver.lastName || ''}</p>
+                        <p className="text-[9.5px] text-slate-500">{vehicle === "Bicycle" ? "Bicicleta" : vehicle === "Car" ? "Automóvil" : "Motocicleta"}</p>
+                      </div>
+                    </Popup>
+                  </Marker>
+                );
+              })}
+            </>
+          )}
+
+          {!isInTripMode && destination && typeof destination[0] === 'number' && typeof destination[1] === 'number' && (
             <Marker position={destination}>
               <Popup>
                 <div className="p-1">

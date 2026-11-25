@@ -15,6 +15,7 @@ import { useDriverOrders } from "./motor/useDriverOrders";
 import { useDriverGps } from "./motor/useDriverGps";
 import { loadDriverProfile, clearDriverProfile } from "./motor/driverService";
 import type { DriverOrder, DriverProfile } from "./motor/tipos";
+import { STORE_DEFAULT_DERQUI } from "./motor/tipos";
 import { DriverTopBar } from "./ui/DriverTopBar";
 import { TabPedidosDisponibles } from "./ui/TabPedidosDisponibles";
 import { TabMiRuta } from "./ui/TabMiRuta";
@@ -47,6 +48,7 @@ export function RepartidorPiramidal({ onSwitchToStore }: RepartidorPiramidalProp
   const [isWalletModalOpen, setIsWalletModalOpen] = useState(false);
   const [isNavigating, setIsNavigating] = useState(false);
   const [mapCenterTrigger, setMapCenterTrigger] = useState(0);
+  const [previewOrder, setPreviewOrder] = useState<DriverOrder | null>(null);
 
   // Bottom Sheet drag state
   const [isExpanded, setIsExpanded] = useState(false);
@@ -279,7 +281,7 @@ export function RepartidorPiramidal({ onSwitchToStore }: RepartidorPiramidalProp
         : null
       : activeOrder.storeCoords?.lat && activeOrder.storeCoords?.lng
       ? [activeOrder.storeCoords.lat, activeOrder.storeCoords.lng]
-      : [-32.9372, -60.6542]
+      : [STORE_DEFAULT_DERQUI.coords.lat, STORE_DEFAULT_DERQUI.coords.lng]
     : null;
 
   return (
@@ -287,12 +289,16 @@ export function RepartidorPiramidal({ onSwitchToStore }: RepartidorPiramidalProp
       {/* ─── 1. Mapa Interactivo de Fondo (Full Screen) ─── */}
       <div className="absolute inset-0 z-0">
         <InteractiveMap
-          center={coords ? [coords.lat, coords.lng] : [-32.9372, -60.6542]}
+          center={coords ? [coords.lat, coords.lng] : [STORE_DEFAULT_DERQUI.coords.lat, STORE_DEFAULT_DERQUI.coords.lng]}
           destination={activeNavDestination}
           heading={heading}
           alerts={null}
           activeOrders={myActiveOrders}
           availableOrders={availableOrders}
+          previewOrder={myActiveOrders.length === 0 ? previewOrder : null}
+          onSelectPreviewOrder={(order) => setPreviewOrder(order)}
+          hasActiveOrder={myActiveOrders.length > 0}
+          isOrderPickedUp={isOrderPickedUp}
           driverVehicle={driverProfile?.vehicleType || "Motorcycle"}
           isNavigating={isNavigating}
           centerTrigger={mapCenterTrigger}
@@ -493,6 +499,9 @@ export function RepartidorPiramidal({ onSwitchToStore }: RepartidorPiramidalProp
                 orders={availableOrders}
                 onAcceptOrder={handleTakeOrder}
                 pendingOrderIds={pendingActions.map((action) => action.order.id)}
+                hasActiveOrder={myActiveOrders.length > 0}
+                previewOrderId={previewOrder?.id}
+                onPreviewOrder={(order) => setPreviewOrder(order)}
               />
             )}
 

@@ -278,7 +278,7 @@ export default function LocationPickerMap({
     <div className={cn("relative h-full w-full overflow-hidden", className)}>
       <div className="absolute inset-0 z-0">
         <MapContainer
-          center={initialCenter || [-32.9372, -60.6542]}
+          center={initialCenter || [-34.486522, -58.833579]}
           zoom={15}
           scrollWheelZoom={true}
           className="h-full w-full"

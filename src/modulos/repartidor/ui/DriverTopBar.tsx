@@ -2,7 +2,7 @@
 
 import React from "react";
 import { Sparkles, User, Truck, MessageCircle } from "lucide-react";
-import { DriverProfile, DriverOrder } from "../motor/tipos";
+import { DriverProfile, DriverOrder, formatShortOrderCode } from "../motor/tipos";
 
 interface DriverTopBarProps {
   driverProfile: DriverProfile | null;
@@ -114,7 +114,7 @@ export function DriverTopBar({
             </div>
             <div className="flex flex-col min-w-0 pr-0.5 overflow-hidden">
               <span className="text-[10px] sm:text-[11px] font-black text-[#2D3277] leading-tight truncate">
-                {formatOrderId(activeOrder.id)}
+                {formatShortOrderCode(activeOrder.id)}
               </span>
               <span className="text-[8px] sm:text-[9px] font-bold text-emerald-600 leading-tight uppercase tracking-tight truncate">
                 En curso

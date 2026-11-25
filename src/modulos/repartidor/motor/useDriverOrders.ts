@@ -214,8 +214,17 @@ export function useDriverOrders(currentDriverId?: string | null) {
       setShowLoginModal(true);
       return;
     }
+    // Límite estricto de 1 pedido activo a la vez
+    if (myActiveOrders.length > 0) {
+      toast({
+        variant: "destructive",
+        title: "Límite de 1 pedido activo",
+        description: "Completá tu entrega actual para tomar otro pedido.",
+      });
+      return;
+    }
     queueAction("assign", order, activeDriverId);
-  }, [currentDriverId, queueAction]);
+  }, [currentDriverId, myActiveOrders, queueAction, toast]);
 
   const confirmOrderAfterLogin = useCallback((driverId: string) => {
     setShowLoginModal(false);

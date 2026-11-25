@@ -1,9 +1,10 @@
 "use client";
 
 import React from "react";
-import { DriverOrder } from "../motor/tipos";
+import { DriverOrder, formatShortOrderCode } from "../motor/tipos";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 import {
   MapPin,
   Clock,
@@ -21,9 +22,19 @@ interface TabPedidosDisponiblesProps {
   orders: DriverOrder[];
   onAcceptOrder: (order: DriverOrder) => void;
   pendingOrderIds: string[];
+  hasActiveOrder?: boolean;
+  previewOrderId?: string | null;
+  onPreviewOrder?: (order: DriverOrder) => void;
 }
 
-export function TabPedidosDisponibles({ orders, onAcceptOrder, pendingOrderIds }: TabPedidosDisponiblesProps) {
+export function TabPedidosDisponibles({
+  orders,
+  onAcceptOrder,
+  pendingOrderIds,
+  hasActiveOrder = false,
+  previewOrderId = null,
+  onPreviewOrder,
+}: TabPedidosDisponiblesProps) {
   const formatMoney = (val: number) => "$" + (val || 0).toLocaleString("es-AR");
 
   if (orders.length === 0) {
@@ -42,6 +53,18 @@ export function TabPedidosDisponibles({ orders, onAcceptOrder, pendingOrderIds }
 
   return (
     <div className="space-y-3 pb-8">
+      {hasActiveOrder && (
+        <div className="bg-amber-50 border border-amber-300 text-amber-950 rounded-2xl p-3.5 text-xs flex items-center gap-2.5 font-bold shadow-xs">
+          <span className="text-base">⚠️</span>
+          <div>
+            <p className="font-black text-amber-950">Viaje en curso activo</p>
+            <p className="text-[11px] text-amber-800 font-medium">
+              Completá tu entrega actual para tomar otro pedido.
+            </p>
+          </div>
+        </div>
+      )}
+
       {orders.map((order) => {
         const client = order.clientName || order.customerName || "Cliente";
         const earnings = order.driverEarnings;
@@ -55,11 +78,18 @@ export function TabPedidosDisponibles({ orders, onAcceptOrder, pendingOrderIds }
         const isPacked = ["ready", "embalado"].includes(
           String(order.status).trim().toLowerCase()
         );
+        const isSelected = previewOrderId === order.id;
 
         return (
           <div
             key={order.id}
-            className="bg-white border border-slate-200 hover:border-yellow-400 rounded-2xl p-4 space-y-3 transition-all duration-200 shadow-sm hover:shadow-md"
+            onClick={() => onPreviewOrder?.(order)}
+            className={cn(
+              "bg-white border rounded-2xl p-4 space-y-3 transition-all duration-200 shadow-sm cursor-pointer",
+              isSelected
+                ? "border-sky-500 ring-2 ring-sky-300 bg-sky-50/20 shadow-md"
+                : "border-slate-200 hover:border-yellow-400 hover:shadow-md"
+            )}
           >
             {/* Header: Ganancia del Repartidor (Estilo Uber) + ID */}
             <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-2.5">
@@ -82,7 +112,7 @@ export function TabPedidosDisponibles({ orders, onAcceptOrder, pendingOrderIds }
 
               <div className="text-right">
                 <span className="font-mono text-xs font-black text-slate-800 block">
-                  #{order.id}
+                  {formatShortOrderCode(order.id)}
                 </span>
                 <span className="text-[10px] text-slate-500 font-medium">
                   {order.estimatedMinutes || 20} min est.
@@ -166,12 +196,26 @@ export function TabPedidosDisponibles({ orders, onAcceptOrder, pendingOrderIds }
 
             {/* Botón Aceptar Pedido */}
             <Button
-              onClick={() => onAcceptOrder(order)}
-              disabled={pendingOrderIds.includes(order.id)}
-              className="w-full h-11 rounded-xl bg-[#FFE600] hover:bg-yellow-300 text-[#2D3277] font-extrabold text-xs flex items-center justify-center gap-2 shadow-md shadow-yellow-500/20 active:scale-98 transition-all"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (!hasActiveOrder) onAcceptOrder(order);
+              }}
+              disabled={hasActiveOrder || pendingOrderIds.includes(order.id)}
+              className={cn(
+                "w-full h-11 rounded-xl font-extrabold text-xs flex items-center justify-center gap-2 transition-all",
+                hasActiveOrder
+                  ? "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed opacity-80"
+                  : "bg-[#FFE600] hover:bg-yellow-300 text-[#2D3277] shadow-md shadow-yellow-500/20 active:scale-98"
+              )}
             >
-              <span>{pendingOrderIds.includes(order.id) ? "PENDIENTE DE CONFIRMACIÓN" : `ACEPTAR PEDIDO (${totalDist} km total)`}</span>
-              <ArrowRight className="w-4 h-4" />
+              <span>
+                {hasActiveOrder
+                  ? "Completá tu entrega actual para tomar otro pedido"
+                  : pendingOrderIds.includes(order.id)
+                  ? "PENDIENTE DE CONFIRMACIÓN"
+                  : `ACEPTAR PEDIDO (${totalDist} km total)`}
+              </span>
+              {!hasActiveOrder && <ArrowRight className="w-4 h-4" />}
             </Button>
           </div>
         );

@@ -15,11 +15,11 @@ export interface TarifaEstimada {
   estimatedMinutes: number;
 }
 
-// Ubicación Central Frigorífico Maciel (Sucursal Tucumán 2130, Rosario)
+// Ubicación Central Frigorífico Maciel (Sucursal Alfaro 1964, Presidente Derqui)
 export const MARKET_CENTRAL = {
-  name: "Frigorífico Maciel - Central",
-  address: "Tucumán 2130, Rosario",
-  coords: { lat: -32.9372, lng: -60.6542 },
+  name: "Frigorífico Maciel (Alfaro 1964)",
+  address: "Doctor Aráoz Alfaro 1964, Presidente Derqui, Buenos Aires",
+  coords: { lat: -34.486522, lng: -58.833579 },
 };
 
 // Estimación de distancia haversine en KM

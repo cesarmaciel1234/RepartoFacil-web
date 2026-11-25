@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { DriverOrder } from "../motor/tipos";
+import { DriverOrder, formatShortOrderCode, STORE_DEFAULT_DERQUI } from "../motor/tipos";
 import { loadDriverProfile } from "../motor/driverService";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -154,21 +154,25 @@ export function TabMiRuta({
         );
 
         // ─── 1. Destino Físico Exacto de la Tienda de Retiro (Parada 1) ───
-        const rawBranch = order.branch || "Frigorífico Maciel";
+        const rawBranch = order.branch || STORE_DEFAULT_DERQUI.name;
         const isAlfaroBranch =
           rawBranch.toLowerCase().includes("alfaro") ||
-          rawBranch.toLowerCase().includes("maciel");
+          rawBranch.toLowerCase().includes("maciel") ||
+          rawBranch.toLowerCase().includes("derqui");
         
-        // Dirección física clara de la tienda (evita coordenadas ambiguas en el mismo barrio)
+        // Dirección física real de la sucursal de Cobro Fácil en Presidente Derqui
         const storeAddressClean = isAlfaroBranch
-          ? "Alfaro 1964, Hurlingham, Buenos Aires"
+          ? STORE_DEFAULT_DERQUI.address
           : rawBranch.length > 5
           ? rawBranch
-          : "Tucumán 2130, Rosario";
+          : STORE_DEFAULT_DERQUI.address;
 
-        const storeTarget = encodeURIComponent(storeAddressClean);
+        const storeTarget = order.storeCoords?.lat && order.storeCoords?.lng
+          ? `${order.storeCoords.lat},${order.storeCoords.lng}`
+          : `${STORE_DEFAULT_DERQUI.coords.lat},${STORE_DEFAULT_DERQUI.coords.lng}`;
+
         const branchDisplay = isAlfaroBranch
-          ? "Frigorífico Maciel (Alfaro 1964, Hurlingham)"
+          ? STORE_DEFAULT_DERQUI.name + " · Pte. Derqui"
           : rawBranch;
 
         // ─── 2. Destino del Domicilio del Comprador (Parada 2) ───
@@ -189,12 +193,7 @@ export function TabMiRuta({
         // Si ya retiró -> Ir al Comprador (Parada 2)
         const mapsActiveUrl = isPickedUp ? mapsCustomerUrl : mapsStoreUrl;
 
-        const rawTicket = order.ticketId || order.ticket_id;
-        const isNumericTicket = rawTicket && /^\d+$/.test(String(rawTicket).replace(/^#?RF-?/i, ""));
-        const cleanTicket = rawTicket ? String(rawTicket).replace(/^#?RF-?/i, "") : "";
-        const rawIdClean = String(order.id || "").replace(/^#?RF-?/i, "");
-        const shortId = rawIdClean.length > 6 ? rawIdClean.slice(0, 6) : rawIdClean;
-        const ticketDisplay = isNumericTicket ? `Ticket #${cleanTicket}` : `#${shortId}`;
+        const ticketDisplay = formatShortOrderCode(order.ticketId || order.id);
 
         return (
           <div

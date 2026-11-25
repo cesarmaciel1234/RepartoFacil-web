@@ -97,3 +97,21 @@ export interface TelemetryState {
   requestCompassPermission?: () => Promise<boolean>;
 }
 
+export function formatShortOrderCode(idOrTicket?: string | null): string {
+  if (!idOrTicket) return "#RF-0000";
+  const str = String(idOrTicket).trim();
+  const clean = str.replace(/^#?RF-?/i, "");
+  const shortPart = clean.slice(0, 4).toUpperCase();
+  return `#RF-${shortPart}`;
+}
+
+export const STORE_DEFAULT_DERQUI = {
+  name: "Frigorífico Maciel (Alfaro 1964)",
+  address: "Doctor Aráoz Alfaro 1964, Presidente Derqui, Buenos Aires",
+  coords: {
+    lat: -34.486522,
+    lng: -58.833579,
+  },
+};
+
+
