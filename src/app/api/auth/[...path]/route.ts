@@ -33,14 +33,14 @@ async function readBackendJson(response: Response) {
 async function forwardAuth(path: string, init: AuthInit) {
   const url = `${BACKEND_URL}/api/auth/${path}`;
   const deadline = Date.now() + AUTH_TIMEOUT_MS;
-  let gatewayAttempts = 0;
+  let attempts = 0;
 
   while (true) {
     const remaining = deadline - Date.now();
     if (remaining <= 500) break;
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), remaining);
+    const timeoutId = setTimeout(() => controller.abort(), Math.min(25_000, remaining));
     try {
       const response = await fetch(url, {
         method: init.method,
@@ -54,25 +54,25 @@ async function forwardAuth(path: string, init: AuthInit) {
         return NextResponse.json(data, { status: response.status });
       }
 
-      const canRetryGateway = GATEWAY_STATUSES.has(response.status) && gatewayAttempts < 4 && deadline - Date.now() > 1000;
-      console.error(`[Auth Proxy] ${init.method} ${path}: respuesta no JSON`, response.status);
-      if (!canRetryGateway) break;
-      gatewayAttempts += 1;
-      await sleep(Math.min(5000, deadline - Date.now() - 500));
+      const isGateway = GATEWAY_STATUSES.has(response.status);
+      console.warn(`[Auth Proxy] ${init.method} ${path}: backend respondió HTTP ${response.status} (despertando instancia Render...)`);
+      if (!isGateway || deadline - Date.now() <= 1500) break;
+      attempts += 1;
+      await sleep(Math.min(3000, deadline - Date.now() - 500));
     } catch (error) {
       const name = error instanceof Error ? error.name : "UnknownError";
-      console.error(`[Auth Proxy Error] ${init.method} ${path}:`, name);
-      const canRetryNetwork = init.retryNetwork && gatewayAttempts < 4 && deadline - Date.now() > 1000;
-      if (!canRetryNetwork) break;
-      gatewayAttempts += 1;
-      await sleep(Math.min(5000, deadline - Date.now() - 500));
+      console.warn(`[Auth Proxy] ${init.method} ${path}: conexión en espera (${name}), backend de Render despertando... Intento #${attempts + 1}`);
+      const canRetry = init.retryNetwork && deadline - Date.now() > 2000;
+      if (!canRetry) break;
+      attempts += 1;
+      await sleep(Math.min(3000, deadline - Date.now() - 500));
     } finally {
       clearTimeout(timeoutId);
     }
   }
 
   return NextResponse.json(
-    { detail: "Servicio de autenticación no disponible. Intentá nuevamente." },
+    { detail: "Servicio de autenticación no disponible. El servidor está despertando, reintentá en unos segundos." },
     { status: 503 }
   );
 }
@@ -86,7 +86,7 @@ export async function POST(
   const authHeader = request.headers.get("authorization");
   if (authHeader) headers.Authorization = authHeader;
   const body = await request.text();
-  return forwardAuth(path.join("/"), { method: "POST", headers, body, retryNetwork: false });
+  return forwardAuth(path.join("/"), { method: "POST", headers, body, retryNetwork: true });
 }
 
 export async function GET(
