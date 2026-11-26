@@ -107,10 +107,12 @@ export function formatShortOrderCode(idOrTicket?: string | null): string {
 
 export const STORE_DEFAULT_DERQUI = {
   name: "Frigorífico Maciel (Alfaro 1964)",
+  branchName: "Frigorífico Maciel · Presidente Derqui",
   address: "Doctor Aráoz Alfaro 1964, Presidente Derqui, Buenos Aires",
+  city: "Presidente Derqui",
   coords: {
-    lat: -34.486522,
-    lng: -58.833579,
+    lat: -34.486479,
+    lng: -58.833601,
   },
 };
 

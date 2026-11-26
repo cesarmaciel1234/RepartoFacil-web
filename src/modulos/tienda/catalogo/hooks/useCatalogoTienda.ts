@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Product } from "@/data/mockProducts";
 import type { CompanyStore } from "@/data/mockCompanies";
+import { FALLBACK_COMPANIES, FALLBACK_PRODUCTS } from "@/data/fallbackCatalog";
 import {
   asCachedProducts,
   isCatalogCompany,
@@ -112,62 +113,15 @@ export function departmentOf(product: CatalogProduct) {
     .toUpperCase();
 }
 
-const FALLBACK_COMPANIES: CompanyStore[] = [
-  {
-    id: "frigorifico-maciel-suc-1",
-    name: "Maciel · Alfaro 1964",
-    slug: "maciel",
-    empresa_id: 1,
-    category: "Carnes y Pescados",
-    categorySlug: "carnes",
-    rating: 5,
-    ratingCount: 12,
-    deliveryTimeMin: 20,
-    deliveryTimeMax: 40,
-    deliveryFee: 1500,
-    badges: ["Carnes de Primera"],
-    address: "Doctor Aráoz Alfaro 1964, Monterrey, Presidente Derqui",
-    phone: "1135627803",
-    isOpen: true,
-    sucursal_id: 1,
-    parentCompanyId: "frigorifico-maciel",
-    parentSlug: "maciel",
-    isMultiBranch: true,
-    isSingleBranch: false,
-  },
-  {
-    id: "frigorifico-maciel-suc-2",
-    name: "Maciel · prueba2",
-    slug: "prueba2",
-    empresa_id: 1,
-    category: "Carnes y Pescados",
-    categorySlug: "carnes",
-    rating: 5,
-    ratingCount: 3,
-    deliveryTimeMin: 20,
-    deliveryTimeMax: 40,
-    deliveryFee: 1500,
-    badges: [],
-    address: "Chacabuco 21300",
-    phone: "1135627803",
-    isOpen: true,
-    sucursal_id: 2,
-    parentCompanyId: "frigorifico-maciel",
-    parentSlug: "maciel",
-    isMultiBranch: true,
-    isSingleBranch: false,
-  },
-];
-
 export function useCatalogoTienda({
   selectedCompany,
   selectedCategory,
   searchQuery,
 }: UseCatalogoTiendaParams) {
-  const [products, setProducts] = useState<CatalogProduct[]>([]);
+  const [products, setProducts] = useState<CatalogProduct[]>(FALLBACK_PRODUCTS as CatalogProduct[]);
   const [companies, setCompanies] = useState<CompanyStore[]>(FALLBACK_COMPANIES);
   const [status, setStatus] = useState<CatalogStatus>("ready");
-  const [productsStatus, setProductsStatus] = useState<CatalogStatus>("loading");
+  const [productsStatus, setProductsStatus] = useState<CatalogStatus>("ready");
   const [productsWarnings, setProductsWarnings] = useState<string[]>([]);
   const [companiesCached, setCompaniesCached] = useState(false);
   const [productsCached, setProductsCached] = useState(false);
@@ -200,6 +154,10 @@ export function useCatalogoTienda({
       setProducts(asCachedProducts(cachedProducts.data));
       setProductsSavedAt(cachedProducts.savedAt);
       setProductsCached(true);
+      setProductsStatus("ready");
+    } else {
+      setProducts(FALLBACK_PRODUCTS as CatalogProduct[]);
+      setProductsCached(false);
       setProductsStatus("ready");
     }
 
@@ -261,7 +219,7 @@ export function useCatalogoTienda({
       if ((!companiesOk || !productsOk) && retryCount < 2 && !cancelled) {
         loading = false;
         console.warn(`[useCatalogoTienda] Reintentando carga de catálogo en 1.5s (intento ${retryCount + 1}/2)...`);
-        await new Promise((resolve) => setTimeout(resolve, 1500));
+        await new Promise((resolve) => window.setTimeout(resolve, 1500));
         if (cancelled) return;
         return load(retryCount + 1);
       }
@@ -319,10 +277,16 @@ export function useCatalogoTienda({
           console.warn("No se pudieron actualizar los productos de Cobro Fácil:", productsResult.reason);
         }
         const hasCache = Boolean(cachedProducts?.data?.length);
-        setProducts((current) => (hasCache ? asCachedProducts(current) : []));
-        setProductsCached(hasCache);
+        if (hasCache) {
+          setProducts((current) => asCachedProducts(current));
+          setProductsCached(true);
+        } else {
+          // En modo incógnito o primera visita sin red, garantizar catálogo de respaldo
+          setProducts(FALLBACK_PRODUCTS as CatalogProduct[]);
+          setProductsCached(false);
+        }
         setProductsWarnings([]);
-        setProductsStatus("error");
+        setProductsStatus("ready");
       }
 
       loading = false;

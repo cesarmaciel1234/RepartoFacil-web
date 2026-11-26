@@ -130,7 +130,18 @@ export function ModalCheckout({
     unit: string,
     city: string
   ) => {
-    const streetWithNum = num.trim() ? `${street.trim()} ${num.trim()}` : street.trim();
+    let streetTrimmed = street.trim();
+    let numTrimmed = num.trim();
+    if (numTrimmed && streetTrimmed.endsWith(` ${numTrimmed}`)) {
+      streetTrimmed = streetTrimmed.slice(0, -numTrimmed.length).trim();
+    } else if (/\s+\d+[\w-]*$/.test(streetTrimmed)) {
+      const match = streetTrimmed.match(/^(.*?)\s+(\d+[\w-]*)$/);
+      if (match) {
+        streetTrimmed = match[1].trim();
+        numTrimmed = match[2].trim();
+      }
+    }
+    const streetWithNum = numTrimmed ? `${streetTrimmed} ${numTrimmed}` : streetTrimmed;
     const combined = [streetWithNum, unit.trim(), city.trim()].filter(Boolean).join(", ");
     setForm((p) => ({ ...p, deliveryAddress: combined }));
   };
@@ -154,7 +165,7 @@ export function ModalCheckout({
     const initialAddr =
       profileAddress || selectedDeliveryAddress || saved.deliveryAddress || "";
     const parsed = parseAddressParts(initialAddr);
-    setStreetInput(parsed.street);
+    setStreetInput(initialAddr);
     setNumberInput(parsed.number);
     setCitySuffix(parsed.city);
     if (parsed.unit) setAddressUnit(parsed.unit);
@@ -223,9 +234,18 @@ export function ModalCheckout({
     }
     setFormError("");
 
-    const streetWithNum = numberInput.trim()
-      ? `${streetInput.trim()} ${numberInput.trim()}`
-      : streetInput.trim();
+    let streetTrimmed = streetInput.trim();
+    let numTrimmed = numberInput.trim();
+    if (numTrimmed && streetTrimmed.endsWith(` ${numTrimmed}`)) {
+      streetTrimmed = streetTrimmed.slice(0, -numTrimmed.length).trim();
+    } else if (/\s+\d+[\w-]*$/.test(streetTrimmed)) {
+      const match = streetTrimmed.match(/^(.*?)\s+(\d+[\w-]*)$/);
+      if (match) {
+        streetTrimmed = match[1].trim();
+        numTrimmed = match[2].trim();
+      }
+    }
+    const streetWithNum = numTrimmed ? `${streetTrimmed} ${numTrimmed}` : streetTrimmed;
     const finalAddress = [streetWithNum, addressUnit.trim(), citySuffix.trim()]
       .filter(Boolean)
       .join(", ");
@@ -390,6 +410,7 @@ export function ModalCheckout({
                       </label>
                       <Input
                         placeholder="Ej. San Lorenzo o Tucumán"
+                        autoComplete="street-address"
                         value={streetInput}
                         onChange={(e) => {
                           const val = e.target.value;

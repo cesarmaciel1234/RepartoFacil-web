@@ -114,6 +114,7 @@ test("el chat del repartidor no lee ni guarda caché compartida y se cierra al c
     "@/components/ui/sheet": stub, "@/components/ui/button": stub, "@/components/ui/input": stub,
     "@/components/ui/badge": stub, "lucide-react": stub,
     "../motor/driverService": { loadDriverProfile: () => ({}), loadClientProfile: () => null },
+    "../motor/tipos": { formatShortOrderCode: (id) => id },
     "@/components/ModalTicketDigital": stub, "./OrderChatMessageList": stub,
     "@/lib/clientAuth": { authHeaders: () => ({ Authorization: authorization }) },
   }, {
@@ -125,7 +126,10 @@ test("el chat del repartidor no lee ni guarda caché compartida y se cierra al c
     window: {
       addEventListener(name, callback) { listeners.set(name, callback); },
       removeEventListener() {},
+      dispatchEvent() {},
+      CustomEvent: class CustomEvent { constructor(name, init) { this.name = name; this.detail = init?.detail; } },
     },
+    CustomEvent: class CustomEvent { constructor(name, init) { this.name = name; this.detail = init?.detail; } },
     setInterval: () => 1,
     clearInterval() {},
     fetch: () => new Promise((resolve) => { resolveFetch = resolve; }),
@@ -134,9 +138,16 @@ test("el chat del repartidor no lee ni guarda caché compartida y se cierra al c
     isOpen: true, onOpenChange: (open) => { closed = !open; },
     activeOrder: { id: "pedido-1" }, viewerRole: "driver",
   });
-  const cleanup = effects[0]();
+  const cleanups = [];
+  while (effects.length) {
+    const fn = effects.shift();
+    const c = fn();
+    if (typeof c === "function") cleanups.push(c);
+  }
+  const cleanup = () => cleanups.forEach((c) => c());
   authorization = "Bearer second";
-  listeners.get("repartofacil-driver-auth")();
+  const listener = listeners.get("repartofacil-driver-auth");
+  if (listener) listener();
   resolveFetch({ ok: true, json: async () => ({ success: true, messages: [{ content: "Privado" }] }) });
   await new Promise((resolve) => setImmediate(resolve));
   assert.equal(closed, true);

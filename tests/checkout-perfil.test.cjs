@@ -78,6 +78,7 @@ test("el acceso de repartidor solo aparece sin sesión activa de comprador", () 
   const harness = componentHarness("src/modulos/tienda/pantallas/PerfilCliente.tsx", {
     "lucide-react": icons,
     "@/components/AppVersion": { AppVersion: "AppVersion" },
+    "@/modulos/repartidor/motor/driverService": { clearDriverProfile: () => {}, loadDriverProfile: () => null, loadClientProfile: () => null },
   });
   let switched = false;
   const props = {

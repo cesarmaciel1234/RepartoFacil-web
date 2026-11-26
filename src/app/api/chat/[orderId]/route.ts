@@ -18,35 +18,30 @@ export async function GET(
   try {
     const auth = await authenticateOrderUser(request, ["Client", "Driver"]);
     if (auth.response) return auth.response;
-    const markRead = request.nextUrl?.searchParams.get("read") === "1";
+    const markRead = request.nextUrl?.searchParams.get("read") === "1" && auth.user.role === "Client";
 
-    if (markRead) {
-      await queryDb(
-        `WITH visible_messages AS MATERIALIZED (
+    const markReadCte = markRead
+      ? `WITH visible_messages AS MATERIALIZED (
            SELECT m.id, m.author_role FROM repartofacil_pedidos p
-           JOIN repartofacil_chat_mensajes m ON m.order_id = p.id
+           LEFT JOIN repartofacil_chat_mensajes m ON m.order_id = p.id
            WHERE p.id = $1 AND ${accessCondition(auth.user, "$2")}
-         )
-         INSERT INTO repartofacil_chat_lecturas (usuario_id, mensaje_id)
-         SELECT $2, id FROM visible_messages 
-         WHERE (
-           ($3 = 'Driver' AND LOWER(COALESCE(author_role, '')) <> 'driver')
-           OR ($3 = 'Client' AND LOWER(COALESCE(author_role, '')) <> 'client')
-           OR ($3 NOT IN ('Driver', 'Client'))
-         )
-         ON CONFLICT (usuario_id, mensaje_id) DO NOTHING`,
-        [orderId, auth.user.id, auth.user.role]
-      ).catch(() => {});
-    }
+         ),
+         marked AS (
+           INSERT INTO repartofacil_chat_lecturas (usuario_id, mensaje_id)
+           SELECT $2, id FROM visible_messages 
+           WHERE LOWER(COALESCE(author_role, '')) <> 'client' AND id IS NOT NULL
+           ON CONFLICT (usuario_id, mensaje_id) DO NOTHING
+         ) `
+      : "";
 
     const rows = await queryDb(
-      `SELECT m.id, m.order_id, m.author_role, m.author_name, m.content, m.timestamp_str, m.created_at,
+      `${markReadCte}SELECT m.id, m.order_id, m.author_role, m.author_name, m.content, m.timestamp_str, m.created_at,
               EXISTS (
                 SELECT 1 FROM repartofacil_chat_lecturas l
                 WHERE l.mensaje_id = m.id AND l.usuario_id <> $2
               ) AS is_read
        FROM repartofacil_pedidos p
-       JOIN repartofacil_chat_mensajes m ON m.order_id = p.id
+       LEFT JOIN repartofacil_chat_mensajes m ON m.order_id = p.id
        WHERE p.id = $1 AND ${accessCondition(auth.user, "$2")}
        ORDER BY m.created_at ASC, m.id ASC`,
       [orderId, auth.user.id]

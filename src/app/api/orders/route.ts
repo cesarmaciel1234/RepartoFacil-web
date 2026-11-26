@@ -57,8 +57,8 @@ function mapDbRowToOrder(row: any) {
     distanceToStoreKm: 0.8,
     distanceToDeliveryKm: Number(row.distancia_km) || 1.8,
     estimatedMinutes: Number(row.minutos_estimados) || 20,
-    branch: row.sucursal_origen || "Frigorífico Maciel (Alfaro 1964, Presidente Derqui)",
-    storeCoords: { lat: -34.486522, lng: -58.833579 },
+    branch: row.sucursal_origen || "Frigorífico Maciel (Alfaro 1964) · Pte. Derqui",
+    storeCoords: { lat: -34.486479, lng: -58.833601 },
     destinationCoords: (row.delivery_lat != null && row.delivery_lng != null)
       ? { lat: Number(row.delivery_lat), lng: Number(row.delivery_lng) }
       : { lat: -34.4895, lng: -58.8315 },
@@ -304,6 +304,7 @@ export async function PATCH(request: NextRequest) {
 
     if ((!driverAction && !isCancellation && !isPacked) ||
         (driverAction && auth.user.role !== "Driver") ||
+        (isPacked && auth.user.role === "Driver") ||
         (isCancellation && auth.user.role !== "Client")) {
       return NextResponse.json({ error: "La cuenta no puede realizar esta acción." }, { status: 403 });
     }

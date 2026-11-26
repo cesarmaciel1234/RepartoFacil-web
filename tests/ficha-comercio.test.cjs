@@ -16,10 +16,19 @@ test("el catálogo publica la ficha vigente y las estrellas verificadas, no dato
     require(name) {
       if (name === "next/server") return { NextResponse: { json: (body, options) => ({ body, status: options?.status ?? 200 }) } };
       if (name === "@/data/productImageManifest.json") return {};
-      if (name === "@/lib/db") return { queryDb: async (sql) => sql.includes("public.empresas e")
-        ? [{ id: 3, nombre: "Empresa registrada", slug: "comercio", company_data: {},
-            public_profile: profile, promedio: "4.5", cantidad: "2" }]
-        : [] };
+      if (name === "@/data/fallbackCatalog") return {
+        FALLBACK_COMPANIES: [],
+        FALLBACK_PRODUCTS: [],
+        FALLBACK_PRODUCTS_SUC_1: [],
+        FALLBACK_PRODUCTS_SUC_2: [],
+      };
+      if (name === "@/lib/db") return {
+        isDatabaseConfigured: () => true,
+        queryDb: async (sql) => sql.includes("public.empresas e")
+          ? [{ id: 3, nombre: "Empresa registrada", slug: "comercio", company_data: {},
+              public_profile: profile, promedio: "4.5", cantidad: "2" }]
+          : []
+      };
       throw new Error(`Dependencia inesperada: ${name}`);
     },
   });

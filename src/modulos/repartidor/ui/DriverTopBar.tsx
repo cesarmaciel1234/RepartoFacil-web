@@ -104,7 +104,7 @@ export function DriverTopBar({
             type="button"
             onClick={onFocusActiveRoute}
             className="h-9 sm:h-10 px-2 sm:px-2.5 rounded-full bg-white hover:bg-yellow-50 border border-yellow-400 shadow-sm flex items-center gap-1.5 active:scale-95 transition-all text-left shrink min-w-0 max-w-[125px] sm:max-w-[170px]"
-            title={`Pedido activo ${activeOrder.id} · Toca para centrar la ruta en vivo`}
+            title={`Pedido activo ${formatShortOrderCode(activeOrder.id)} · Toca para centrar la ruta en vivo`}
           >
             <div className="relative flex items-center justify-center shrink-0">
               <span className="animate-ping absolute inline-flex h-2.5 w-2.5 rounded-full bg-emerald-400 opacity-75" />

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
-const BACKEND_URL = process.env.BACKEND_URL || "http://127.0.0.1:8000";
+const BACKEND_URL = process.env.BACKEND_URL || "https://cobrofacil.onrender.com";
 const AUTH_TIMEOUT_MS = 60_000;
 const GATEWAY_STATUSES = new Set([502, 503, 504]);
 
@@ -17,10 +17,17 @@ function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-async function readBackendJson(response: Response) {
+async function readBackendJson(response: any) {
+  if (typeof response.json === "function" && typeof response.text !== "function") {
+    try {
+      return await response.json();
+    } catch {
+      return null;
+    }
+  }
   const text = await response.text();
   const trimmed = text.trim();
-  const contentType = response.headers.get("content-type") || "";
+  const contentType = response.headers?.get?.("content-type") || "";
   const looksJson = contentType.includes("json") || trimmed.startsWith("{") || trimmed.startsWith("[");
   if (!looksJson) return null;
   try {
@@ -40,7 +47,7 @@ async function forwardAuth(path: string, init: AuthInit) {
     if (remaining <= 500) break;
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), Math.min(25_000, remaining));
+    const timeoutId = setTimeout(() => controller.abort(), AUTH_TIMEOUT_MS);
     try {
       const response = await fetch(url, {
         method: init.method,
@@ -55,13 +62,18 @@ async function forwardAuth(path: string, init: AuthInit) {
       }
 
       const isGateway = GATEWAY_STATUSES.has(response.status);
-      console.warn(`[Auth Proxy] ${init.method} ${path}: backend respondió HTTP ${response.status} (despertando instancia Render...)`);
+      if (typeof console !== "undefined" && typeof console.warn === "function") {
+        console.warn(`[Auth Proxy] ${init.method} ${path}: backend respondió HTTP ${response.status} (despertando instancia Render...)`);
+      }
       if (!isGateway || deadline - Date.now() <= 1500) break;
       attempts += 1;
       await sleep(Math.min(3000, deadline - Date.now() - 500));
     } catch (error) {
+      if (controller.signal.aborted) break;
       const name = error instanceof Error ? error.name : "UnknownError";
-      console.warn(`[Auth Proxy] ${init.method} ${path}: conexión en espera (${name}), backend de Render despertando... Intento #${attempts + 1}`);
+      if (typeof console !== "undefined" && typeof console.warn === "function") {
+        console.warn(`[Auth Proxy] ${init.method} ${path}: conexión en espera (${name}), backend de Render despertando... Intento #${attempts + 1}`);
+      }
       const canRetry = init.retryNetwork && deadline - Date.now() > 2000;
       if (!canRetry) break;
       attempts += 1;

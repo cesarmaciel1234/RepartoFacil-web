@@ -10,7 +10,7 @@ services:
       - key: NODE_ENV
         value: production
       - key: BACKEND_URL
-        value: https://repartofacil-backend.onrender.com
+        value: https://cobrofacil.onrender.com
       - key: NEXT_PUBLIC_FIREBASE_API_KEY
         sync: false
       - key: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN

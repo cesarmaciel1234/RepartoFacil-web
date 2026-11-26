@@ -119,9 +119,14 @@ test("el catálogo restaura datos sin conexión y los actualiza al reconectar", 
   const exports = {};
   vm.runInNewContext(compiled, {
     exports, console, navigator, fetch, window: fakeWindow, document: fakeDocument, AbortController,
+    setTimeout, clearTimeout, setInterval, clearInterval,
     require: (name) => {
       if (name === "react") return react;
       if (name === "../cacheCatalogo") return catalog;
+      if (name === "@/data/fallbackCatalog") return {
+        FALLBACK_COMPANIES: [company],
+        FALLBACK_PRODUCTS: [],
+      };
       throw new Error(`Dependencia inesperada: ${name}`);
     },
   });

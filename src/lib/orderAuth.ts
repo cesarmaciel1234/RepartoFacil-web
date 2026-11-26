@@ -19,7 +19,7 @@ export async function authenticateOrderUser(
     return { response: NextResponse.json({ error: "Iniciá sesión para continuar." }, { status: 401 }) };
   }
 
-  const backend = process.env.BACKEND_URL || "http://127.0.0.1:8000";
+  const backend = process.env.BACKEND_URL || "https://cobrofacil.onrender.com";
   const deadline = Date.now() + 60_000;
   try {
     let response: Response | null = null;
@@ -31,7 +31,7 @@ export async function authenticateOrderUser(
         cache: "no-store",
         signal: AbortSignal.timeout(remaining),
       });
-      const contentType = response.headers.get("content-type") || "";
+      const contentType = response.headers?.get?.("content-type") || "";
       const gateway = [502, 503, 504].includes(response.status) && !contentType.includes("json");
       if (!gateway) break;
       console.error("[Order Auth] El backend todavía está arrancando", response.status);

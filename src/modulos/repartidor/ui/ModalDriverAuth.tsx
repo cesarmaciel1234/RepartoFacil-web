@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { DriverOrder, DriverProfile } from "../motor/tipos";
+import { DriverOrder, DriverProfile, formatShortOrderCode } from "../motor/tipos";
 import { saveDriverProfile } from "../motor/driverService";
 import {
   Dialog,
@@ -225,7 +225,7 @@ export function ModalDriverAuth({
           </DialogTitle>
           <DialogDescription className="text-xs text-slate-500 mt-0.5">
             {pendingOrder
-              ? `Iniciá sesión para tomar el pedido #${pendingOrder.id}. Una vez logueado, tu sesión queda guardada.`
+              ? `Iniciá sesión para tomar el pedido ${formatShortOrderCode(pendingOrder.id)}. Una vez logueado, tu sesión queda guardada.`
               : "Conectate a la central de repartos. Tu sesión quedará guardada en el dispositivo."}
           </DialogDescription>
         </DialogHeader>

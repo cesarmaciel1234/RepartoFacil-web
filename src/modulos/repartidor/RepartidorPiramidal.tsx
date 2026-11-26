@@ -482,16 +482,28 @@ export function RepartidorPiramidal({ onSwitchToStore }: RepartidorPiramidalProp
             )}
           >
             {(pendingActions.length > 0 || syncError) && (
-              <div role="status" className="mx-4 mb-3 rounded-xl border border-amber-300 bg-amber-50 p-3 text-xs text-amber-950">
+              <div
+                role={pendingActions.length > 0 ? "status" : "alert"}
+                className={cn(
+                  "mx-4 mb-3 rounded-xl border p-3 text-xs",
+                  pendingActions.length > 0
+                    ? "border-amber-300 bg-amber-50 text-amber-950"
+                    : "border-red-300 bg-red-50 text-red-950"
+                )}
+              >
                 <p className="font-bold">
-                  {pendingActions.length} acción{pendingActions.length === 1 ? "" : "es"} pendiente{pendingActions.length === 1 ? "" : "s"} de confirmación
+                  {pendingActions.length > 0
+                    ? `${pendingActions.length} acción${pendingActions.length === 1 ? "" : "es"} pendiente${pendingActions.length === 1 ? "" : "s"} de confirmación`
+                    : "El servidor rechazó la acción"}
                 </p>
                 <p className="mt-1">
                   {syncError || "No se confirma la asignación ni la ganancia hasta que responda el servidor."}
                 </p>
-                <button type="button" onClick={() => void syncPending()} className="mt-2 font-bold underline">
-                  Reintentar sincronización
-                </button>
+                {pendingActions.length > 0 && (
+                  <button type="button" onClick={() => void syncPending()} className="mt-2 font-bold underline">
+                    Reintentar sincronización
+                  </button>
+                )}
               </div>
             )}
             {activeTab === "pedidos" && (

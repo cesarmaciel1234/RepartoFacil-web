@@ -19,6 +19,7 @@ import {
   ArrowDown,
 } from "lucide-react";
 import { loadClientProfile, loadDriverProfile } from "../motor/driverService";
+import { formatShortOrderCode } from "../motor/tipos";
 import { ModalTicketDigital } from "@/components/ModalTicketDigital";
 import { OrderChatMessageList } from "./OrderChatMessageList";
 import { authHeaders } from "@/lib/clientAuth";
@@ -353,12 +354,7 @@ export function OrderChatSheet({
   const interlocutorName = isDriverViewer
     ? (clientName || activeOrder?.clientName || (activeOrder as any)?.customerName || "Cliente")
     : (driverName || (activeOrder as any)?.driverName || "Repartidor");
-  const numericTicket = activeOrder?.ticketId || activeOrder?.ticket_id;
-  const hasNumericTicket = numericTicket && /^\d+$/.test(String(numericTicket).replace(/^#?RF-?/i, ""));
-  const cleanTicketStr = hasNumericTicket
-    ? String(numericTicket).replace(/^#?RF-?/i, "")
-    : String(activeOrder?.id || orderId || "").replace(/^#?RF-?/i, "").slice(0, 5);
-  const ticketLabel = hasNumericTicket ? `Ticket #${cleanTicketStr}` : `#RF-${cleanTicketStr}`;
+  const ticketLabel = formatShortOrderCode(activeOrder?.id || orderId);
   const backButtonLabel = customBackButtonLabel || (isDriverViewer ? "Volver a mensajes" : embedded ? "Volver al pedido" : "Volver a mensajes");
 
   const chatContent = (

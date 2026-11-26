@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { queryDb } from "@/lib/db";
+import { queryDb, isDatabaseConfigured } from "@/lib/db";
 import productImageManifest from "@/data/productImageManifest.json";
+import {
+  FALLBACK_COMPANIES,
+  FALLBACK_PRODUCTS,
+  FALLBACK_PRODUCTS_SUC_1,
+  FALLBACK_PRODUCTS_SUC_2,
+} from "@/data/fallbackCatalog";
 
 export const dynamic = "force-dynamic";
 
@@ -16,53 +22,6 @@ export async function OPTIONS() {
 
 const BACKEND_URL = process.env.BACKEND_URL || "https://cobrofacil.onrender.com";
 const PRODUCT_IMAGE_BY_NAME = productImageManifest as Record<string, string>;
-
-export const FALLBACK_COMPANIES = [
-  {
-    id: "frigorifico-maciel-suc-1",
-    name: "Maciel · Alfaro 1964",
-    slug: "maciel",
-    empresa_id: 1,
-    category: "Carnes y Pescados",
-    categorySlug: "carnes" as const,
-    rating: 5,
-    ratingCount: 12,
-    deliveryTimeMin: 20,
-    deliveryTimeMax: 40,
-    deliveryFee: 1500,
-    badges: ["Carnes de Primera"],
-    address: "Doctor Aráoz Alfaro 1964, Monterrey, Presidente Derqui",
-    phone: "1135627803",
-    isOpen: true,
-    sucursal_id: 1,
-    parentCompanyId: "frigorifico-maciel",
-    parentSlug: "maciel",
-    isMultiBranch: true,
-    isSingleBranch: false,
-  },
-  {
-    id: "frigorifico-maciel-suc-2",
-    name: "Maciel · prueba2",
-    slug: "prueba2",
-    empresa_id: 1,
-    category: "Carnes y Pescados",
-    categorySlug: "carnes" as const,
-    rating: 5,
-    ratingCount: 3,
-    deliveryTimeMin: 20,
-    deliveryTimeMax: 40,
-    deliveryFee: 1500,
-    badges: [],
-    address: "Chacabuco 21300",
-    phone: "1135627803",
-    isOpen: true,
-    sucursal_id: 2,
-    parentCompanyId: "frigorifico-maciel",
-    parentSlug: "maciel",
-    isMultiBranch: true,
-    isSingleBranch: false,
-  },
-];
 
 type PosBaseRow = {
   columnas: unknown;
@@ -247,12 +206,13 @@ export async function GET(
 
   // 1. Obtener productos directamente desde la base de datos PostgreSQL de Cobro Fácil (crm-libro-local)
   if (pathStr === "products" || pathStr === "sync-inventory") {
-    try {
-      const warnings: string[] = [];
-      const categoryMap: Record<string, string> = {};
-      const branchIdParam = request.nextUrl.searchParams.get("sucursal_id");
-      const hasBranchFilter = branchIdParam !== null && branchIdParam !== "" && !isNaN(Number(branchIdParam));
-      const targetBranchId = hasBranchFilter ? Number(branchIdParam) : null;
+    if (isDatabaseConfigured()) {
+      try {
+        const warnings: string[] = [];
+        const categoryMap: Record<string, string> = {};
+        const branchIdParam = request.nextUrl.searchParams.get("sucursal_id");
+        const hasBranchFilter = branchIdParam !== null && branchIdParam !== "" && !isNaN(Number(branchIdParam));
+        const targetBranchId = hasBranchFilter ? Number(branchIdParam) : null;
 
       let macielMultiBranch = true;
       try {
@@ -377,11 +337,13 @@ export async function GET(
       console.warn("[CobroFacil DB Query Fallback]:", dbErr.message);
     }
   }
+}
 
   // 2. Empresas reales directamente desde crm-libro-local (PostgreSQL)
   if (pathStr === "companies") {
-    try {
-      const dbEmpresas = await queryDb(
+    if (isDatabaseConfigured()) {
+      try {
+        const dbEmpresas = await queryDb(
         `SELECT e.id, e.nombre, e.slug, e.cuit, to_jsonb(e) AS company_data,
           to_jsonb(p) AS public_profile, r.promedio, r.cantidad
          FROM public.empresas e
@@ -566,23 +528,62 @@ export async function GET(
       }, { headers: CORS_HEADERS });
     }
   }
+}
 
-  // 3. Fallback a proxy de backend si existe
+  // 3. Fallback a proxy de backend con protección alta disponibilidad
   const search = request.nextUrl.search;
   const url = `${BACKEND_URL}/api/cobrofacil/${pathStr}${search}`;
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 25000);
+    const timeoutId = setTimeout(() => controller.abort(), 12000);
 
     const res = await fetch(url, {
       cache: "no-store",
       signal: controller.signal,
     }).finally(() => clearTimeout(timeoutId));
 
-    const data = await res.json();
-    return NextResponse.json(data, { status: res.status });
+    if (res.ok) {
+      const data = await res.json();
+      return NextResponse.json(data, { status: res.status });
+    }
+    throw new Error(`Backend retornó status HTTP ${res.status}`);
   } catch (error) {
-    console.error(`[CobroFacil API] No se pudo consultar ${pathStr}:`, error);
+    console.error(`[CobroFacil API] Falló proxy para ${pathStr}:`, error);
+
+    // Si falló products (o backend dormido en Render), devolver de inmediato el catálogo de respaldo
+    if (pathStr === "products" || pathStr === "sync-inventory") {
+      const branchIdParam = request.nextUrl.searchParams.get("sucursal_id");
+      const targetBranchId = branchIdParam ? Number(branchIdParam) : null;
+      const fallbackList = targetBranchId === 2
+        ? FALLBACK_PRODUCTS_SUC_2
+        : targetBranchId === 1
+          ? FALLBACK_PRODUCTS_SUC_1
+          : FALLBACK_PRODUCTS;
+
+      return NextResponse.json(
+        {
+          success: true,
+          source: "fallback-embedded (resiliencia alta disponibilidad)",
+          terminal: "MACIEL - REPARTOFACIL CACHE",
+          total: fallbackList.length,
+          products: fallbackList,
+          warnings: ["Catálogo de respaldo activo mientras se conecta el TPV."],
+        },
+        { headers: CORS_HEADERS }
+      );
+    }
+
+    if (pathStr === "companies") {
+      return NextResponse.json(
+        {
+          success: true,
+          source: "fallback-embedded",
+          empresas: FALLBACK_COMPANIES,
+        },
+        { headers: CORS_HEADERS }
+      );
+    }
+
     return NextResponse.json(
       { error: "No se pudo consultar Cobro Fácil. Intenta nuevamente más tarde." },
       { status: 503 }

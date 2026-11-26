@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
-import { DriverOrder, DriverWallet } from "./tipos";
+import { DriverOrder, DriverWallet, formatShortOrderCode } from "./tipos";
 import {
   loadLocalOrders,
   saveLocalOrders,
@@ -117,15 +117,21 @@ export function useDriverOrders(currentDriverId?: string | null) {
     try {
       const pending = loadPendingDriverActions(currentDriverId);
       setPendingActions(pending);
-      if (pending.length === 0) {
-        setSyncError(null);
+      if (pending.length === 0) return;
+      if (!navigator.onLine) {
+        setSyncError("No hay conexión con el servidor. La acción sigue pendiente de confirmación.");
         return;
       }
-      if (!navigator.onLine) return;
       const results = await syncPendingDriverActions(currentDriverId);
       if (loadDriverProfile()?.id !== currentDriverId) return;
-      setPendingActions(loadPendingDriverActions(currentDriverId));
-      setSyncError(null);
+      const remaining = loadPendingDriverActions(currentDriverId);
+      setPendingActions(remaining);
+      const rejected = results.filter((result) => result.status === "rejected" && result.message);
+      if (rejected.length > 0) {
+        setSyncError(rejected.map((result) => result.message).join(" "));
+      } else if (remaining.length === 0) {
+        setSyncError(null);
+      }
       setLocalOrders(loadLocalOrders());
       setWallet(loadDriverWallet());
       for (const result of results) {
@@ -137,11 +143,11 @@ export function useDriverOrders(currentDriverId?: string | null) {
                   : result.action.type === "pickup"
                   ? "Retiro confirmado"
                   : "Entrega confirmada",
-              description: `El servidor confirmó el pedido #${result.action.order.id}.`,
+              description: `El servidor confirmó el pedido ${formatShortOrderCode(result.action.order.id)}.`,
             }
           : {
               variant: "destructive",
-              title: `No se pudo confirmar #${result.action.order.id}`,
+              title: `No se pudo confirmar ${formatShortOrderCode(result.action.order.id)}`,
               description: result.message,
             });
       }

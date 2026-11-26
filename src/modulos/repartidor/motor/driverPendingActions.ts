@@ -90,6 +90,14 @@ function isOrder(value: unknown, orderId: string): value is DriverOrder {
     typeof order.total === "number" && Number.isFinite(order.total);
 }
 
+function serverRejectionMessage(status: number, data: unknown): string {
+  const record = data && typeof data === "object" ? data as { error?: unknown; detail?: unknown } : {};
+  const error = typeof record.error === "string" ? record.error.trim() : "";
+  const detail = typeof record.detail === "string" ? record.detail.trim() : "";
+  const text = [error, detail && detail !== error ? detail : ""].filter(Boolean).join(" — ");
+  return text ? `HTTP ${status}: ${text}` : `HTTP ${status}`;
+}
+
 export async function syncPendingDriverActions(driverId: string): Promise<DriverActionResult[]> {
   if (!navigator.locks) {
     throw new Error("Este navegador no permite sincronizar acciones pendientes de forma segura.");
@@ -114,15 +122,16 @@ export async function syncPendingDriverActions(driverId: string): Promise<Driver
           }),
         });
       } catch {
-        break;
+        throw new Error("No hay conexión con el servidor. La acción sigue pendiente de confirmación.");
       }
 
       if (loadDriverProfile()?.id !== driverId) break;
-      if (response.status >= 500 || [408, 425, 429].includes(response.status)) break;
-      if (response.status === 401 || response.status === 403) {
-        throw new Error("La sesión no permite sincronizar. Volvé a iniciar sesión.");
+      let data: unknown = null;
+      try {
+        data = await response.json();
+      } catch {
+        data = null;
       }
-      const data: unknown = await response.json();
       if (!response.ok) {
         const error = data && typeof data === "object" ? data as { error?: unknown; order?: unknown } : {};
         if (isOrder(error.order, action.order.id)) storeServerOrder(error.order);
@@ -130,7 +139,7 @@ export async function syncPendingDriverActions(driverId: string): Promise<Driver
         results.push({
           action,
           status: "rejected",
-          message: typeof error.error === "string" ? error.error : `Error HTTP ${response.status}`,
+          message: serverRejectionMessage(response.status, data),
         });
         continue;
       }

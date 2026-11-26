@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
-const BACKEND_URL = process.env.BACKEND_URL || "http://127.0.0.1:8000";
+const BACKEND_URL = process.env.BACKEND_URL || "https://cobrofacil.onrender.com";
 
 function rejectLegacyOrders() {
   return NextResponse.json({ error: "Usá la API protegida de pedidos." }, { status: 410 });

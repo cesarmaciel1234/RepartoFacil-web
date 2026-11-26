@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
-import { queryDb } from "@/lib/db";
+import { queryDb, isDatabaseConfigured } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
-const BACKEND_URL = process.env.BACKEND_URL || "http://127.0.0.1:8000";
+// Por defecto apunta a la instancia de producción en Render
+const BACKEND_URL = process.env.BACKEND_URL || "https://cobrofacil.onrender.com";
 
 export async function GET() {
   const result: Record<string, any> = {
@@ -12,8 +13,8 @@ export async function GET() {
     backend: "pending",
   };
 
-  // 1. Despertar / calentar conexión a PostgreSQL (si está configurada)
-  if (process.env.DATABASE_URL) {
+  // 1. Despertar / calentar conexión a PostgreSQL (solo si cuenta con esquema postgres:// o postgresql:// válido)
+  if (isDatabaseConfigured()) {
     try {
       await queryDb("SELECT 1 AS alive");
       result.postgres = "connected";
@@ -21,13 +22,13 @@ export async function GET() {
       result.postgres = `error: ${err?.message || err}`;
     }
   } else {
-    result.postgres = "skipped_no_env";
+    result.postgres = "skipped_invalid_or_missing_env";
   }
 
   // 2. Enviar señal HTTP a Render para despertar el backend de FastAPI
   try {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 20000);
+    const timeout = setTimeout(() => controller.abort(), 8000);
 
     const res = await fetch(`${BACKEND_URL}/health`, {
       cache: "no-store",

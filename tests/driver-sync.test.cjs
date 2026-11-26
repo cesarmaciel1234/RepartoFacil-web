@@ -80,7 +80,7 @@ test("una entrega sin conexión queda pendiente y se acredita solo una vez al re
     }) };
   });
   queue.queueDriverAction("deliver", order, profile);
-  assert.equal((await queue.syncPendingDriverActions(profile.id)).length, 0);
+  await assert.rejects(queue.syncPendingDriverActions(profile.id), /sigue pendiente/);
   assert.equal(queue.loadPendingDriverActions(profile.id).length, 1);
   assert.equal(wallet.loadDriverWallet().balance, 0);
 
@@ -114,11 +114,25 @@ test("una asignación rechazada no queda confirmada ni acredita dinero", async (
   assert.equal(wallet.loadDriverWallet().balance, 0);
 });
 
-test("un fallo temporal del servidor conserva la acción pendiente", async () => {
-  const { queue } = setupQueue(async () => ({ ok: false, status: 503 }));
-  queue.queueDriverAction("assign", order, profile);
-  assert.equal((await queue.syncPendingDriverActions(profile.id)).length, 0);
-  assert.equal(queue.loadPendingDriverActions(profile.id).length, 1);
+test("un rechazo 4xx o 5xx muestra el error del servidor y sale de la cola", async () => {
+  for (const response of [
+    { status: 401, body: { error: "La sesión no es válida o expiró." } },
+    { status: 404, body: { error: "Pedido no encontrado" } },
+    { status: 500, body: { error: "Error al actualizar el pedido en PostgreSQL", detail: "column driver_last_ping does not exist" } },
+  ]) {
+    const { queue } = setupQueue(async () => ({
+      ok: false,
+      status: response.status,
+      json: async () => response.body,
+    }));
+    queue.queueDriverAction("assign", order, profile);
+    const results = await queue.syncPendingDriverActions(profile.id);
+    assert.equal(results[0].status, "rejected");
+    assert.match(results[0].message, new RegExp(`HTTP ${response.status}`));
+    assert.match(results[0].message, new RegExp(response.body.error.replace(/[.]/g, "\\.")));
+    if (response.body.detail) assert.match(results[0].message, /driver_last_ping/);
+    assert.equal(queue.loadPendingDriverActions(profile.id).length, 0);
+  }
 });
 
 test("una entrega confirmada sin liquidación válida no se acredita ni se borra de la cola", async () => {
