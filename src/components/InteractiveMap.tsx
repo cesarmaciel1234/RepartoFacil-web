@@ -560,7 +560,7 @@ export default function InteractiveMap({
               {(availableOrders || []).map((order) => {
                 if (!order?.destinationCoords?.lat || !order?.destinationCoords?.lng) return null;
                 const pos: [number, number] = [order.destinationCoords.lat, order.destinationCoords.lng];
-                const shortTicket = formatShortOrderCode(order.ticketId || order.id);
+                const shortTicket = formatShortOrderCode(order.id);
                 const isSelectedPreview = previewOrder?.id === order.id;
 
                 return (

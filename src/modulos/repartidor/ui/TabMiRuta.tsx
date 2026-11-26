@@ -193,7 +193,7 @@ export function TabMiRuta({
         // Si ya retiró -> Ir al Comprador (Parada 2)
         const mapsActiveUrl = isPickedUp ? mapsCustomerUrl : mapsStoreUrl;
 
-        const ticketDisplay = formatShortOrderCode(order.ticketId || order.id);
+        const ticketDisplay = formatShortOrderCode(order.id);
 
         return (
           <div

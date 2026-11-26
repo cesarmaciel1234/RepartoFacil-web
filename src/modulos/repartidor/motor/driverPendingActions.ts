@@ -33,16 +33,21 @@ export function loadPendingDriverActions(driverId: string): PendingDriverAction[
     if (!key?.startsWith(prefix)) continue;
     const raw = localStorage.getItem(key);
     if (!raw) continue;
-    const action: PendingDriverAction = JSON.parse(raw);
-    if (
-      action.driverId !== driverId ||
-      !action.order?.id ||
-      (action.type !== "assign" && action.type !== "deliver" && action.type !== "pickup") ||
-      key !== actionKey(driverId, action.order.id)
-    ) {
-      throw new Error("No se pudo validar una acción pendiente del repartidor.");
+    try {
+      const action: PendingDriverAction = JSON.parse(raw);
+      if (
+        action.driverId !== driverId ||
+        !action.order?.id ||
+        (action.type !== "assign" && action.type !== "deliver" && action.type !== "pickup") ||
+        key !== actionKey(driverId, action.order.id)
+      ) {
+        localStorage.removeItem(key);
+        continue;
+      }
+      actions.push(action);
+    } catch {
+      localStorage.removeItem(key);
     }
-    actions.push(action);
   }
   return actions;
 }
@@ -53,9 +58,6 @@ export function queueDriverAction(
   driver: DriverProfile
 ): void {
   const key = actionKey(driver.id, order.id);
-  if (localStorage.getItem(key)) {
-    throw new Error("Este pedido ya tiene una acción pendiente de sincronización.");
-  }
   const action: PendingDriverAction = {
     type,
     driverId: driver.id,
