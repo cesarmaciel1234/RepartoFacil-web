@@ -135,7 +135,9 @@ function mapProduct(
   const price = finiteNumber(item.precio);
   const rawStock = item.stock ?? item.stock_actual ?? item.cantidad ?? item.stockKg ?? item.existencia;
   const parsedStock = finiteNumber(rawStock);
-  const stockKg = parsedStock !== undefined ? parsedStock : 999;
+  // En carnicerías/TPV, el stock a menudo viene en 0.0 para productos activos pesables cortados a demanda.
+  // Si tiene precio válido y no está explícitamente dado de baja, asignar stock disponible por defecto (999).
+  const stockKg = parsedStock !== undefined && parsedStock > 0 ? parsedStock : 999;
   const image = getProductImage(name);
   const code = String(item.codigo || productId);
 
@@ -245,7 +247,9 @@ export async function GET(
       }
 
       const prodSql = targetBranchId != null
-        ? `SELECT columnas, filas, sucursal_id, sucursal_nombre FROM pos_base WHERE tabla = 'productos' AND sucursal_id = ${targetBranchId} ORDER BY id DESC`
+        ? (targetBranchId === 1
+            ? "SELECT columnas, filas, sucursal_id, sucursal_nombre FROM pos_base WHERE tabla = 'productos' AND (sucursal_id = 1 OR sucursal_id = 2) ORDER BY id DESC"
+            : `SELECT columnas, filas, sucursal_id, sucursal_nombre FROM pos_base WHERE tabla = 'productos' AND sucursal_id = ${targetBranchId} ORDER BY id DESC`)
         : `SELECT columnas, filas, sucursal_id, sucursal_nombre FROM pos_base WHERE tabla = 'productos' ORDER BY id DESC`;
       const prodRows = await queryDb<PosBaseRow>(prodSql);
 
@@ -254,7 +258,11 @@ export async function GET(
       const rawProducts: NonNullable<ReturnType<typeof mapProduct>>[] = [];
 
       for (const row of prodRows) {
-        const rowSid = macielMultiBranch && row.sucursal_id != null ? Number(row.sucursal_id) : 1;
+        // En pos_base, las terminales de Alfaro 1964 suben con sucursal_id 1 o 2.
+        // Mapear sucursal_id 2 a 1 para que pertenezca a la sucursal activa Alfaro 1964.
+        const rawSid = row.sucursal_id != null ? Number(row.sucursal_id) : 1;
+        const normalizedSid = rawSid === 2 ? 1 : rawSid;
+        const rowSid = macielMultiBranch ? normalizedSid : 1;
         const branchCompId = macielMultiBranch ? `${macielCompanyId}-suc-${rowSid}` : `${macielCompanyId}-suc-1`;
         const mapped = mapStoredRows([row], "pos_base.productos", warnings)
           .map((item) =>
