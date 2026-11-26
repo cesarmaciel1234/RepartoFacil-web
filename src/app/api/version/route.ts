@@ -35,6 +35,7 @@ export async function GET() {
       "Selector estructurado y editable de Calle y Altura / Número de casa para comprador",
       "Selector de punto GPS exacto en el mapa con geocodificación inversa",
       "Navegación GPS por coordenadas exactas y cálculo de ETA con fórmula Haversine en chofer y despacho",
+      "Aislamiento de catálogo limpio sin advertencias por comercios o sucursales vacías ni esquemas no publicados",
     ],
   });
 }

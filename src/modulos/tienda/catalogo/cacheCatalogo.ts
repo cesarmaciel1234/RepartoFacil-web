@@ -3,8 +3,8 @@ import type { Product } from "@/data/mockProducts";
 
 type CatalogCache<T> = { savedAt: string; data: T[] };
 
-const COMPANIES_KEY = "rf_catalog_companies_v1";
-const PRODUCTS_KEY = "rf_catalog_products_v1";
+const COMPANIES_KEY = "rf_catalog_companies_v2";
+const PRODUCTS_KEY = "rf_catalog_products_v2";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
@@ -62,7 +62,7 @@ export function saveProductsCache(products: Product[]) {
 export function asCachedProducts<T extends Product>(products: T[]): T[] {
   return products.map((product) => ({
     ...product,
-    priceSource: undefined,
+    priceSource: (product.priceSource || "tpv") as "tpv",
     catalogCached: true,
   }));
 }

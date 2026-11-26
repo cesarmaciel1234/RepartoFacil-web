@@ -28,18 +28,18 @@ export function TarjetaProducto({
 }: TarjetaProductoProps) {
   const formatMoney = (val: number) => "$" + val.toLocaleString("es-AR");
   const canPurchase = isProductPurchasable(product);
-  const priceIsValid = product.priceSource === "tpv" && hasValidPrice(product);
-  const cachedPriceIsValid = product.catalogCached && hasValidPrice(product);
-  const displayedPrice = hasValidPrice(product) && (priceIsValid || cachedPriceIsValid)
+  const priceIsValid = hasValidPrice(product);
+  const cachedPriceIsValid = Boolean(product.catalogCached) && hasValidPrice(product);
+  const displayedPrice = hasValidPrice(product)
     ? product.price
     : null;
   const stockIsValid = hasValidStock(product);
-  const stockIsCurrent = product.priceSource === "tpv" && stockIsValid;
+  const stockIsCurrent = stockIsValid;
   const stockAtLimit =
     stockIsValid && quantityInCart >= product.stockKg;
   const pendingData = [
     !product.image ? "Foto pendiente" : "",
-    !priceIsValid && !cachedPriceIsValid ? "Precio pendiente" : "",
+    !priceIsValid ? "Precio pendiente" : "",
     !stockIsCurrent
       ? "Stock pendiente"
       : product.stockKg < 0
@@ -159,7 +159,7 @@ export function TarjetaProducto({
                 <span>Agregar</span>
               </>
             ) : (
-              <span>{product.catalogCached ? "Sin actualizar" : productAvailabilityMessage(product)}</span>
+              <span>{productAvailabilityMessage(product) || (product.catalogCached ? "Sin actualizar" : "No disponible")}</span>
             )}
           </Button>
         ) : (

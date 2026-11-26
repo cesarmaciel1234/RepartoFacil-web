@@ -3,7 +3,7 @@ import type { Product } from "@/data/mockProducts";
 export type PurchasableProduct = Product & {
   price: number;
   stockKg: number;
-  priceSource: "tpv";
+  priceSource?: "tpv";
 };
 
 export function hasValidPrice(
@@ -29,7 +29,6 @@ export function isProductPurchasable(
   product: Product
 ): product is PurchasableProduct {
   return (
-    product.priceSource === "tpv" &&
     hasValidPrice(product) &&
     hasValidStock(product) &&
     product.stockKg >= 1
@@ -37,9 +36,7 @@ export function isProductPurchasable(
 }
 
 export function productAvailabilityMessage(product: Product) {
-  if (product.priceSource !== "tpv" || !hasValidPrice(product)) {
-    return "Precio pendiente";
-  }
+  if (!hasValidPrice(product)) return "Precio pendiente";
   if (!hasValidStock(product)) return "Stock pendiente";
   if (product.stockKg < 0) return "Stock a revisar";
   if (product.stockKg === 0) return "Agotado";

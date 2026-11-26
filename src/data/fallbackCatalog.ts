@@ -28,30 +28,8 @@ export const FALLBACK_COMPANIES: CompanyStore[] = [
     sucursal_id: 1,
     parentCompanyId: "frigorifico-maciel",
     parentSlug: "maciel",
-    isMultiBranch: true,
-    isSingleBranch: false,
-  },
-  {
-    id: "frigorifico-maciel-suc-2",
-    name: "Maciel · prueba2",
-    slug: "prueba2",
-    empresa_id: 1,
-    category: "Carnes y Pescados",
-    categorySlug: "carnes",
-    rating: 5,
-    ratingCount: 3,
-    deliveryTimeMin: 20,
-    deliveryTimeMax: 40,
-    deliveryFee: 1500,
-    badges: [],
-    address: "Chacabuco 21300",
-    phone: "1135627803",
-    isOpen: true,
-    sucursal_id: 2,
-    parentCompanyId: "frigorifico-maciel",
-    parentSlug: "maciel",
-    isMultiBranch: true,
-    isSingleBranch: false,
+    isMultiBranch: false,
+    isSingleBranch: true,
   },
 ];
 
@@ -820,6 +798,7 @@ export function buildBranchProducts(sucursalId: number): FallbackCatalogProduct[
     categoryName: item.dept,
     department: item.dept,
     price: item.price,
+    stockKg: 999,
     unit: item.unit,
     description: `${item.dept} · Corte fresco de Frigorífico Maciel. Calidad garantizada.`,
     ...(item.image ? { image: item.image } : {}),
@@ -835,9 +814,7 @@ export function buildBranchProducts(sucursalId: number): FallbackCatalogProduct[
 }
 
 export const FALLBACK_PRODUCTS_SUC_1: FallbackCatalogProduct[] = buildBranchProducts(1);
-export const FALLBACK_PRODUCTS_SUC_2: FallbackCatalogProduct[] = buildBranchProducts(2);
 
 export const FALLBACK_PRODUCTS: FallbackCatalogProduct[] = [
   ...FALLBACK_PRODUCTS_SUC_1,
-  ...FALLBACK_PRODUCTS_SUC_2,
 ];

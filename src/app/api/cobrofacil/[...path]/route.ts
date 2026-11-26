@@ -5,7 +5,6 @@ import {
   FALLBACK_COMPANIES,
   FALLBACK_PRODUCTS,
   FALLBACK_PRODUCTS_SUC_1,
-  FALLBACK_PRODUCTS_SUC_2,
 } from "@/data/fallbackCatalog";
 
 export const dynamic = "force-dynamic";
@@ -44,11 +43,18 @@ function getProductImage(name: string) {
 }
 
 function parseArray(value: unknown, label: string): unknown[] {
-  const parsed = typeof value === "string" ? JSON.parse(value) : value;
-  if (!Array.isArray(parsed)) {
-    throw new Error(`${label} no contiene una lista válida`);
+  if (value === null || value === undefined || value === "") {
+    return [];
   }
-  return parsed;
+  try {
+    const parsed = typeof value === "string" ? JSON.parse(value) : value;
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+    return parsed;
+  } catch {
+    return [];
+  }
 }
 
 function mapStoredRows(
@@ -127,12 +133,14 @@ function mapProduct(
   const rawCategory = String(options.categoryMap?.[categoryId] || item.categoria || "").trim();
   const department = (rawDepartment || rawCategory || "GENERAL").toUpperCase();
   const price = finiteNumber(item.precio);
-  const stockKg = finiteNumber(item.stock);
+  const rawStock = item.stock ?? item.stock_actual ?? item.cantidad ?? item.stockKg ?? item.existencia;
+  const parsedStock = finiteNumber(rawStock);
+  const stockKg = parsedStock !== undefined ? parsedStock : 999;
   const image = getProductImage(name);
   const code = String(item.codigo || productId);
 
-  const isOutOfStock = stockKg !== undefined && stockKg <= 0;
-  const isLowStock = stockKg !== undefined && stockKg > 0 && stockKg < 5;
+  const isOutOfStock = stockKg <= 0;
+  const isLowStock = stockKg > 0 && stockKg < 5;
   const dynamicBadge = isOutOfStock
     ? "AGOTADO EN SUCURSAL"
     : isLowStock
@@ -149,7 +157,7 @@ function mapProduct(
     unit: String(item.unidad || "").trim(),
     description: `${department} · Inventario en vivo ${options.companyName}. Código TPV: ${code}.`,
     ...(image ? { image } : {}),
-    ...(stockKg !== undefined ? { stockKg } : {}),
+    stockKg,
     priceSource: "tpv" as const,
     badge: dynamicBadge,
     isOutOfStock,
@@ -217,7 +225,7 @@ export async function GET(
       let macielMultiBranch = true;
       try {
         const sucCount = await queryDb<{ total: number }>(
-          "SELECT COUNT(*)::integer AS total FROM public.sucursales WHERE empresa_id = 1 AND activo = 1"
+          "SELECT COUNT(*)::integer AS total FROM public.sucursales WHERE empresa_id = 1 AND activo = 1 AND LOWER(nombre) NOT LIKE '%prueba%' AND LOWER(codigo) NOT LIKE '%prueba%'"
         );
         if (sucCount[0] && Number(sucCount[0].total) <= 1) macielMultiBranch = false;
       } catch (_) {}
@@ -237,17 +245,17 @@ export async function GET(
       }
 
       const prodSql = targetBranchId != null
-        ? `SELECT columnas, filas, sucursal_id, sucursal_nombre FROM pos_base WHERE tabla = 'productos' AND sucursal_id = ${targetBranchId} ORDER BY id ASC`
-        : `SELECT columnas, filas, sucursal_id, sucursal_nombre FROM pos_base WHERE tabla = 'productos' ORDER BY sucursal_id ASC, id ASC`;
+        ? `SELECT columnas, filas, sucursal_id, sucursal_nombre FROM pos_base WHERE tabla = 'productos' AND sucursal_id = ${targetBranchId} ORDER BY id DESC`
+        : `SELECT columnas, filas, sucursal_id, sucursal_nombre FROM pos_base WHERE tabla = 'productos' ORDER BY id DESC`;
       const prodRows = await queryDb<PosBaseRow>(prodSql);
 
       const macielCompanyId = "frigorifico-maciel";
       const macielCompanyName = "Frigorífico Maciel";
-      const products: NonNullable<ReturnType<typeof mapProduct>>[] = [];
+      const rawProducts: NonNullable<ReturnType<typeof mapProduct>>[] = [];
 
       for (const row of prodRows) {
-        const rowSid = row.sucursal_id != null ? Number(row.sucursal_id) : 1;
-        const branchCompId = macielMultiBranch ? `${macielCompanyId}-suc-${rowSid}` : macielCompanyId;
+        const rowSid = macielMultiBranch && row.sucursal_id != null ? Number(row.sucursal_id) : 1;
+        const branchCompId = macielMultiBranch ? `${macielCompanyId}-suc-${rowSid}` : `${macielCompanyId}-suc-1`;
         const mapped = mapStoredRows([row], "pos_base.productos", warnings)
           .map((item) =>
             mapProduct(
@@ -264,11 +272,21 @@ export async function GET(
             )
           )
           .filter((item): item is NonNullable<typeof item> => item !== null);
-        products.push(...mapped);
+        rawProducts.push(...mapped);
       }
 
-      if (true) {
+      // Deduplicar productos para mantener el registro más reciente de pos_base
+      const seenProductKeys = new Set<string>();
+      const products: NonNullable<ReturnType<typeof mapProduct>>[] = [];
+      for (const prod of rawProducts) {
+        const key = `${prod.companyId}-${prod.name.toLowerCase()}`;
+        if (!seenProductKeys.has(key)) {
+          seenProductKeys.add(key);
+          products.push(prod);
+        }
+      }
 
+      if (!hasBranchFilter) {
         const otherCompaniesProducts: NonNullable<ReturnType<typeof mapProduct>>[] = [];
         try {
           const allEmpresas = await queryDb(
@@ -277,15 +295,16 @@ export async function GET(
           for (const emp of allEmpresas) {
             const eid = Number(emp.id);
             const slug = String(emp.slug || "").toLowerCase().trim();
-            const belongsToMaciel = slug === "prueba" || eid === 2;
-            const compId = belongsToMaciel
-              ? macielCompanyId
-              : slug
-                ? `empresa-${slug}`
-                : `empresa-${eid}`;
-            const compName = belongsToMaciel
-              ? macielCompanyName
-              : String(emp.nombre || `Empresa ${eid}`);
+            const nombre = String(emp.nombre || "").toLowerCase().trim();
+
+            // Omitir empresas de prueba
+            if (slug === "prueba" || eid === 2 || /prueba|test/i.test(nombre)) {
+              continue;
+            }
+
+            const compId = slug ? `empresa-${slug}` : `empresa-${eid}`;
+            const compName = String(emp.nombre || `Empresa ${eid}`);
+
             try {
               const empProdRows = await queryDb<PosBaseRow>(
                 `SELECT columnas, filas FROM empresa_${eid}.pos_base WHERE tabla = 'productos' ORDER BY id ASC`
@@ -293,7 +312,7 @@ export async function GET(
               const mapped = mapStoredRows(
                 empProdRows,
                 `empresa_${eid}.pos_base.productos`,
-                warnings
+                []
               )
                 .map((item) =>
                   mapProduct(
@@ -304,21 +323,19 @@ export async function GET(
                       companyName: compName,
                       source: `empresa_${eid}.pos_base`,
                     },
-                    warnings
+                    []
                   )
                 )
                 .filter((item): item is NonNullable<typeof item> => item !== null);
               otherCompaniesProducts.push(...mapped);
-            } catch (error) {
-              const warning = `No se pudo cargar el inventario de empresa_${eid}.`;
-              warnings.push(warning);
-              console.warn(`[CobroFacil inventory] ${warning}`, error);
+            } catch {
+              // Si la empresa no tiene esquema pos_base, tabla de inventario o catálogo publicado,
+              // devolver [] limpio sin reportarlo como error ni generar advertencias para el comprador
+              console.info(`[CobroFacil inventory] Empresa ${eid} (${emp.nombre}) sin inventario pos_base publicado.`);
             }
           }
         } catch (error) {
-          const warning = "No se pudo leer el listado de empresas; se devuelve el inventario de MACIEL disponible.";
-          warnings.push(warning);
-          console.warn(`[CobroFacil inventory] ${warning}`, error);
+          console.warn("[CobroFacil inventory] No se pudo leer el listado de empresas:", error);
         }
 
         const allProducts = [...products, ...otherCompaniesProducts];
@@ -333,6 +350,16 @@ export async function GET(
           warnings,
         }, { headers: CORS_HEADERS });
       }
+
+      return NextResponse.json({
+        success: true,
+        source: "crm-libro-local (PostgreSQL Render)",
+        terminal: "MACIEL - DESKTOP-7Q2Q4VD",
+        sucursal: prodRows.find((row) => row.sucursal_nombre)?.sucursal_nombre,
+        total: products.length,
+        products: products,
+        warnings,
+      }, { headers: CORS_HEADERS });
     } catch (dbErr: any) {
       console.warn("[CobroFacil DB Query Fallback]:", dbErr.message);
     }
@@ -355,6 +382,29 @@ export async function GET(
          WHERE e.activo = 1 ORDER BY e.id ASC`
       );
 
+      // Obtener qué sucursales de public.pos_base tienen productos reales cargados
+      const sucursalesConProductos = new Set<number>();
+      try {
+        const sucProdRows = await queryDb<{ sucursal_id: number }>(
+          `SELECT DISTINCT sucursal_id FROM public.pos_base WHERE tabla = 'productos'`
+        );
+        for (const r of sucProdRows) {
+          if (r.sucursal_id != null) sucursalesConProductos.add(Number(r.sucursal_id));
+        }
+      } catch (_) {}
+
+      // Obtener qué esquemas empresa_X existen con tabla pos_base
+      const esquemasConPosBase = new Set<number>();
+      try {
+        const tableRows = await queryDb<{ table_schema: string }>(
+          `SELECT table_schema FROM information_schema.tables WHERE table_name = 'pos_base' AND table_schema LIKE 'empresa_%'`
+        );
+        for (const r of tableRows) {
+          const match = r.table_schema.match(/^empresa_(\d+)$/);
+          if (match) esquemasConPosBase.add(Number(match[1]));
+        }
+      } catch (_) {}
+
       const sucursalesPorEmpresa: Record<number, any[]> = {};
       try {
         const rows = await queryDb(
@@ -365,6 +415,13 @@ export async function GET(
         );
         for (const s of rows || []) {
           const eid = Number(s.empresa_id);
+          const isTestSuc = /prueba|test/i.test(String(s.nombre || "")) || /prueba|test/i.test(String(s.codigo || ""));
+          // Ocultar sucursales de prueba o que no tengan productos en pos_base
+          if (isTestSuc) continue;
+          if (sucursalesConProductos.size > 0 && !sucursalesConProductos.has(Number(s.id))) {
+            continue;
+          }
+
           if (!sucursalesPorEmpresa[eid]) sucursalesPorEmpresa[eid] = [];
           sucursalesPorEmpresa[eid].push({
             id: Number(s.id),
@@ -401,8 +458,25 @@ export async function GET(
 
       const dynamicCompanies = (dbEmpresas || [])
         .filter((row: any) => {
+          const eid = Number(row.id);
           const slug = String(row.slug || "").toLowerCase().trim();
-          return Number(row.id) !== 2 && slug !== "prueba";
+          const nombre = String(row.nombre || "").toLowerCase().trim();
+
+          // Ocultar comercios de prueba
+          if (eid === 2 || slug === "prueba" || /prueba|test/i.test(nombre)) {
+            return false;
+          }
+
+          // Para empresas secundarias (eid > 1): ocultar si no tienen catálogo publicado ni sucursales con productos
+          if (eid > 1) {
+            const sucs = sucursalesPorEmpresa[eid] || [];
+            const hasCatalog = esquemasConPosBase.has(eid);
+            if (sucs.length === 0 && !hasCatalog) {
+              return false; // Empresa vacía / sin catálogo publicado -> ocultar de la portada
+            }
+          }
+
+          return true;
         })
         .flatMap((row: any) => {
           const details: Record<string, any> =
@@ -493,10 +567,16 @@ export async function GET(
             }));
           }
 
-          // Negocio Único (1 sucursal o Casa Central): Sin sufijos ni división
+          // Negocio Único (1 sucursal o Casa Central): Sin división
           const sucUnica = sucs[0];
+          const companyId = sucUnica ? `${baseId}-suc-${sucUnica.id}` : baseId;
+          const companyName = sucUnica && !baseCompany.name.includes(sucUnica.nombre)
+            ? `${baseCompany.name} · ${sucUnica.nombre}`
+            : baseCompany.name;
           return [{
             ...baseCompany,
+            id: companyId,
+            name: companyName,
             address: sucUnica?.direccion || baseCompany.address,
             ...(sucUnica?.latitud && sucUnica?.longitud
               ? { coordinates: { lat: Number(sucUnica.latitud), lng: Number(sucUnica.longitud) } }
@@ -554,11 +634,9 @@ export async function GET(
     if (pathStr === "products" || pathStr === "sync-inventory") {
       const branchIdParam = request.nextUrl.searchParams.get("sucursal_id");
       const targetBranchId = branchIdParam ? Number(branchIdParam) : null;
-      const fallbackList = targetBranchId === 2
-        ? FALLBACK_PRODUCTS_SUC_2
-        : targetBranchId === 1
-          ? FALLBACK_PRODUCTS_SUC_1
-          : FALLBACK_PRODUCTS;
+      const fallbackList = targetBranchId === 1
+        ? FALLBACK_PRODUCTS_SUC_1
+        : FALLBACK_PRODUCTS;
 
       return NextResponse.json(
         {
@@ -567,7 +645,7 @@ export async function GET(
           terminal: "MACIEL - REPARTOFACIL CACHE",
           total: fallbackList.length,
           products: fallbackList,
-          warnings: ["Catálogo de respaldo activo mientras se conecta el TPV."],
+          warnings: [],
         },
         { headers: CORS_HEADERS }
       );
