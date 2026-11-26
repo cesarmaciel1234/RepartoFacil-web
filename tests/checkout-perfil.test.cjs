@@ -282,3 +282,57 @@ test("al iniciar sesión conserva el teléfono registrado sin sobrescribir el pe
   assert.equal(savedProfile.phone, "3411234567");
   assert.equal(savedProfile.address, "Calle 123");
 });
+
+test("ModalCheckout pasa el teléfono de la sucursal normalizado al link de WhatsApp", () => {
+  let linkGeneratedWith = null;
+  const harness = componentHarness("src/modulos/tienda/ui/ModalCheckout.tsx", {
+    "../motor/pedidoService": {
+      loadSavedCustomer: () => ({}),
+      buildWhatsAppLink: (order, phone) => {
+        linkGeneratedWith = { order, phone };
+        return `https://wa.me/${phone}`;
+      },
+    },
+    "../motor/tarifaUberService": { calcularTarifaEnvio: () => ({ totalDeliveryFee: 100 }) },
+    "@/modulos/repartidor/motor/driverService": { loadClientProfile: () => null },
+    "@/components/ui/dialog": uiComponents,
+    "@/components/ui/button": uiComponents,
+    "@/components/ui/input": uiComponents,
+    "@/components/ui/textarea": uiComponents,
+    "@/components/ui/badge": uiComponents,
+    "lucide-react": icons,
+  });
+
+  const sampleOrder = {
+    id: "ord-123",
+    customerName: "Juan",
+    customerPhone: "1122334455",
+    deliveryType: "delivery",
+    deliveryAddress: "Alfaro 1964",
+    paymentMethod: "cash",
+    items: [],
+    subtotal: 1000,
+    deliveryFee: 200,
+    total: 1200,
+    status: "Pending",
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    source: "web",
+  };
+
+  const props = {
+    isOpen: true,
+    cartTotal: 1200,
+    isSubmitting: false,
+    orderConfirmed: sampleOrder,
+    onConfirmOrder: async () => {},
+    onCloseConfirmed: () => {},
+    sucursalPhone: "1135627803",
+  };
+
+  const tree = harness.render("ModalCheckout", props);
+  const waLink = nodes(tree).find((n) => n.type === "a" && n.props?.href?.includes("wa.me"));
+  assert.ok(waLink, "Debe renderizar link de WhatsApp");
+  assert.equal(linkGeneratedWith.phone, "5491135627803");
+  assert.equal(waLink.props.href, "https://wa.me/5491135627803");
+});

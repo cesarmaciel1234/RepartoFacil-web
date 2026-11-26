@@ -57,8 +57,7 @@ self.addEventListener("fetch", (event) => {
     url.pathname.startsWith("/api/") ||
     url.hostname.includes("firestore.googleapis.com") ||
     url.hostname.includes("identitytoolkit.googleapis.com") ||
-    url.hostname.includes("cobrofacil.onrender.com") ||
-    url.hostname.includes("repartofacil-backend.onrender.com")
+    url.hostname.includes("cobrofacil.onrender.com")
   ) {
     return;
   }

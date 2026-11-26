@@ -711,6 +711,14 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
           companyCarts.find((companyCart) => companyCart.companyId === checkoutCompanyId)
             ?.company?.freeDeliveryThreshold
         }
+        companyPhone={
+          companyCarts.find((companyCart) => companyCart.companyId === checkoutCompanyId)
+            ?.company?.phone
+        }
+        sucursalPhone={
+          companyCarts.find((companyCart) => companyCart.companyId === checkoutCompanyId)
+            ?.company?.phone
+        }
         profileAddress={
           isValidDeliveryAddress(clientProfile?.address)
             ? clientProfile.address

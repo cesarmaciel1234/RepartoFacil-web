@@ -4,49 +4,45 @@
 
 ---
 
-## 🏗️ 1. Arquitectura del Sistema y Separación de Roles
+## 🏗️ 1. Arquitectura del Sistema (2 Webs + 1 Backend + 1 DB en `public`)
 
-La tienda Next.js, la API FastAPI y Cobro Fácil son servicios separados. La
-tienda y Cobro Fácil comparten PostgreSQL para los pedidos, pero cada servicio
-debe recibir su propia variable `DATABASE_URL` en Render. La API de pedidos de
-la tienda consulta PostgreSQL desde `src/lib/db.ts`; no depende de la SQLite
-local que FastAPI puede usar en desarrollo. Para el estado operativo, las
-limitaciones y las mejoras prioritarias, consultar [PRODUCCION.md](./PRODUCCION.md).
+La plataforma opera con un frontend PWA Next.js (`repartofacil`), un backend centralizado
+en Python/Flask (`cobrofacil`), y una base de datos PostgreSQL unificada (`crm_libro_local` en Render)
+donde el 100% de las tablas residen en el esquema `public`.
+
+El antiguo servicio `repartofacil-backend` (FastAPI) ha sido eliminado; todas las rutas
+proxy de autenticación (`/api/auth/*`), base/inventario (`/api/db/*`) y catálogo (`/api/cobrofacil/*`)
+son resueltas directamente por `cobrofacil.onrender.com`.
 
 ```mermaid
 flowchart TD
-    subgraph Frontend["Frontend Next.js (PWA Mobile First)"]
+    subgraph Frontend["Frontend Next.js (Reparto Fácil - E-Commerce)"]
         UI_Cliente["🛍️ Módulo Tienda (Cliente)\n- Búsqueda global multitienda ('coca', 'asado')\n- Carrito multitienda\n- Distancia y locales en tiempo real"]
         UI_Repartidor["🚚 Módulo Repartidor\n- Telemetría fusionada (GPS + Brújula + Giroscopio)\n- Seguimiento en vivo de pedido en curso\n- Píldora de estado activa y centrado de ruta"]
         UI_Chat["💬 Chat Tripartito (Campana)\n- Canal en vivo Cliente ⇄ Repartidor ⇄ Empresa\n- Persistente y preparado para CobroFácil"]
     end
 
     subgraph NextAPI["API Routes Next.js"]
-        OrdersAPI["/api/orders\nPostgreSQL compartido"]
-        ChatAPI["/api/chat/*\nPostgreSQL compartido"]
-        CustodioAPI["/api/orders/custodio\nPostgreSQL compartido"]
-        ProxyAuth["/api/auth/*"]
-        ProxyCF["/api/cobrofacil/*"]
-        ProxyDB["/api/db/*"]
+        OrdersAPI["/api/orders\nPostgreSQL directo"]
+        ChatAPI["/api/chat/*\nPostgreSQL directo"]
+        CustodioAPI["/api/orders/custodio\nPostgreSQL directo"]
+        ProxyAuth["/api/auth/*\nProxy a Cobro Fácil"]
+        ProxyCF["/api/cobrofacil/*\nProxy a Cobro Fácil"]
+        ProxyDB["/api/db/*\nProxy a Cobro Fácil"]
     end
 
-    subgraph BackendAPI["Backend FastAPI"]
-        AuthEngine["Motor Auth & Roles"]
-        DBEngine["Motor de Colecciones"]
+    subgraph BackendAPI["Backend Unificado: Cobro Fácil (Flask en Render)"]
+        AuthEngine["Motor Auth & Roles (JWT)\n/api/auth/*"]
+        PosEngine["Motor TPV & Sync\n/api/pos/*"]
+        CatalogEngine["Motor Catálogo & Stock\n/api/cobrofacil/*"]
     end
 
-    subgraph BaseDeDatos["PostgreSQL compartido por tienda y CRM"]
-        Col_Orders[("repartofacil_pedidos\n- Pedidos de la tienda\n- Bandeja de Cobro Fácil")]
-        Col_Chat[("repartofacil_chat_mensajes")]
-        Col_Companies[("Empresas, sucursales,\ncatálogo y stock")]
-    end
-
-    subgraph BackendDB["Persistencia configurada para FastAPI"]
-        Col_Auth[("Autenticación y colecciones\nsegún DATABASE_URL del backend")]
-    end
-
-    subgraph CloudExt["Ecosistema en la Nube"]
-        CobroFacil["🏢 Cobro Fácil CRM en Render\nRecepción de pedidos e inventario"]
+    subgraph BaseDeDatos["PostgreSQL Render (crm_libro_local - Esquema public)"]
+        Col_Orders[("public.repartofacil_pedidos")]
+        Col_Chat[("public.repartofacil_chat_mensajes")]
+        Col_Companies[("public.empresas & public.sucursales")]
+        Col_Catalog[("public.pos_base & public.pos_novedad")]
+        Col_Users[("public.usuarios")]
     end
 
     UI_Cliente --> ProxyAuth
@@ -56,13 +52,12 @@ flowchart TD
     ChatAPI --> Col_Chat
     ChatAPI --> Col_Orders
     CustodioAPI --> Col_Orders
-    ProxyCF --> BackendAPI
+    ProxyCF --> CatalogEngine
     ProxyAuth --> AuthEngine
-    ProxyDB --> DBEngine
-    AuthEngine --> Col_Auth
-    DBEngine --> Col_Auth
-    CobroFacil <--> Col_Orders
-    CobroFacil <--> Col_Companies
+    ProxyDB --> PosEngine
+    AuthEngine --> Col_Users
+    CatalogEngine --> Col_Catalog
+    PosEngine --> Col_Catalog
 ```
 
 ---

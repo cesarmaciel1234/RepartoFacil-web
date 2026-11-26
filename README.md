@@ -19,8 +19,8 @@ misma base de datos PostgreSQL.
 - `src/modulos/repartidor/`: radar, rutas, telemetría y billetera del repartidor.
 - `src/firebase/`, `src/lib/` y `src/components/`: integraciones e infraestructura
   compartida.
-- `backend/`: servicio FastAPI independiente; sus variables de entorno no se
-  heredan del servicio Next.js.
+- Backend unificado: Las peticiones proxy de autenticación, catálogo y sincronización
+  apuntan directamente a `Cobro Fácil` (`https://cobrofacil.onrender.com`).
 
 La tienda y Cobro Fácil son servicios web separados aunque usen la misma base.
 Cada servicio debe recibir su propia variable `DATABASE_URL` en Render. El

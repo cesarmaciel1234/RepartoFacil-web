@@ -7,8 +7,8 @@ interrumpir los flujos existentes.
 
 | Servicio | Función | Conexión relevante |
 | --- | --- | --- |
-| Render `repartofacil` | Aplicación Next.js y API propia de pedidos/chat | `DATABASE_URL` para `/api/orders`, `/api/chat` y custodio; `BACKEND_URL` para los proxies al backend |
-| Render `repartofacil-backend` | API FastAPI para autenticación y otras rutas proxy | Configuración independiente; no hereda variables del servicio Next.js |
+| Render `repartofacil` | Aplicación Next.js y API propia de pedidos/chat | `DATABASE_URL` para `/api/orders`, `/api/chat` y custodio; `BACKEND_URL` para proxies a `cobrofacil` |
+| Render `cobrofacil` | Backend y ERP unificado (Flask/Python) | Maneja autenticación, TPV, sincronización y base multi-tenant en PostgreSQL |
 | Cobro Fácil CRM | Operación comercial y recepción de pedidos | Puede compartir la misma base PostgreSQL que la tienda |
 
 Hay más de un manifiesto de Render (`render.yaml` y `backend/render.yaml`).

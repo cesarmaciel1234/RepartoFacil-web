@@ -58,6 +58,20 @@ interface ModalCheckoutProps {
   onConfirmOrder: (formData: CheckoutFormData, clientId: string) => Promise<void>;
   orderConfirmed: OrderData | null;
   onCloseConfirmed: () => void;
+  sucursalPhone?: string;
+  companyPhone?: string;
+}
+
+export function normalizeWhatsAppPhone(rawPhone?: string): string {
+  if (!rawPhone) return "";
+  const digits = rawPhone.replace(/\D/g, "");
+  if (!digits) return "";
+  if (digits.startsWith("549")) return digits;
+  if (digits.startsWith("54")) return `549${digits.slice(2)}`;
+  if (digits.startsWith("0")) return `549${digits.replace(/^0+/, "")}`;
+  if (digits.length === 10) return `549${digits}`;
+  if (digits.length === 8) return `54911${digits}`;
+  return digits;
 }
 
 function parseAddressParts(raw: string) {
@@ -102,7 +116,11 @@ export function ModalCheckout({
   onConfirmOrder,
   orderConfirmed,
   onCloseConfirmed,
+  sucursalPhone,
+  companyPhone,
 }: ModalCheckoutProps) {
+  const whatsappTargetPhone =
+    normalizeWhatsAppPhone(sucursalPhone || companyPhone) || "5491135627803";
   const formatMoney = (val: number) => "$" + val.toLocaleString("es-AR");
   const initializedForOpen = useRef(false);
   const checkoutClientId = useRef<string | null>(null);
@@ -627,7 +645,7 @@ export function ModalCheckout({
           <div className="space-y-2 pt-2">
             {orderConfirmed && (
               <a
-                href={buildWhatsAppLink(orderConfirmed)}
+                href={buildWhatsAppLink(orderConfirmed, whatsappTargetPhone)}
                 target="_blank"
                 rel="noreferrer"
                 className="flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 text-xs font-extrabold text-white shadow-lg shadow-blue-600/20 transition-all hover:bg-blue-700"
