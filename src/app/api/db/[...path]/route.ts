@@ -1,17 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
+import { isDatabaseConfigured, queryDb } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
 const BACKEND_URL = process.env.BACKEND_URL || "https://cobrofacil.157.151.3.66.sslip.io";
 
-function getDb() {
+function isDbReady(): boolean {
   try {
-    const mod = require("@/lib/db");
-    if (mod && typeof mod.isDatabaseConfigured === "function" && mod.isDatabaseConfigured()) {
-      return mod;
-    }
-  } catch {}
-  return null;
+    return isDatabaseConfigured();
+  } catch {
+    return false;
+  }
 }
 
 function rejectLegacyOrders() {
@@ -19,12 +18,11 @@ function rejectLegacyOrders() {
 }
 
 async function handleGetClient(clientId: string) {
-  const db = getDb();
-  if (!db) return null;
+  if (!isDbReady()) return null;
 
   try {
     // 1. Buscar en public.clientes
-    const clientRows = await db.queryDb(
+    const clientRows = await queryDb(
       `SELECT id, nombre, telefono, direccion, email, uuid
        FROM public.clientes
        WHERE uuid = $1 OR id::text = $1 OR email = $1 OR LOWER(nombre) = LOWER($1)
@@ -45,7 +43,7 @@ async function handleGetClient(clientId: string) {
 
     // 2. Si no tiene fila en clientes, buscar en public.usuarios (admin/operador/cliente)
     const cleanUser = clientId.replace(/^cli-|-01$|^user-/gi, "");
-    const userRows = await db.queryDb(
+    const userRows = await queryDb(
       `SELECT u.id, u.username, u.nombre, u.role, u.empresa_id, u.sucursal_id,
               s.nombre as sucursal_nombre, s.direccion as sucursal_direccion,
               s.telefono as sucursal_telefono, s.whatsapp as sucursal_whatsapp
@@ -66,7 +64,7 @@ async function handleGetClient(clientId: string) {
 
       // Crear o sincronizar fila en clientes para persistencia
       try {
-        await db.queryDb(
+        await queryDb(
           `INSERT INTO public.clientes (empresa_id, sucursal_id, nombre, telefono, direccion, email, uuid)
            VALUES ($1, $2, $3, $4, $5, $6, $7)
            ON CONFLICT DO NOTHING`,
@@ -86,7 +84,7 @@ async function handleGetClient(clientId: string) {
     }
 
     // 3. Buscar en local_users
-    const localUserRows = await db.queryDb(
+    const localUserRows = await queryDb(
       `SELECT id, email, display_name, role, empresa_id, sucursal_id
        FROM public.local_users
        WHERE id = $1 OR email = $1 OR LOWER(email) = LOWER($2)
@@ -102,7 +100,7 @@ async function handleGetClient(clientId: string) {
       const email = lu.email;
 
       try {
-        await db.queryDb(
+        await queryDb(
           `INSERT INTO public.clientes (empresa_id, sucursal_id, nombre, telefono, direccion, email, uuid)
            VALUES ($1, $2, $3, $4, $5, $6, $7)
            ON CONFLICT DO NOTHING`,
@@ -129,8 +127,7 @@ async function handleGetClient(clientId: string) {
 }
 
 async function handlePatchClient(clientId: string, bodyText: string) {
-  const db = getDb();
-  if (!db) return null;
+  if (!isDbReady()) return null;
 
   try {
     let body: any = {};
@@ -138,7 +135,7 @@ async function handlePatchClient(clientId: string, bodyText: string) {
     const { displayName, phone, address } = body;
 
     if (displayName || phone || address) {
-      const updated = await db.queryDb(
+      const updated = await queryDb(
         `UPDATE public.clientes
          SET nombre = COALESCE($1, nombre),
              telefono = COALESCE($2, telefono),
@@ -175,15 +172,15 @@ export async function GET(
 
   if (path[0] === "orders") return rejectLegacyOrders();
 
-  if (path[0] === "clients" && path[1]) {
-    const client = await handleGetClient(path[1]);
-    if (client) {
-      return NextResponse.json(client);
-    }
-    const db = getDb();
-    if (db) {
+  if (path[0] === "clients") {
+    if (path[1]) {
+      const client = await handleGetClient(path[1]);
+      if (client) {
+        return NextResponse.json(client);
+      }
       return NextResponse.json({ error: "Cliente no encontrado" }, { status: 404 });
     }
+    return NextResponse.json([]);
   }
 
   const search = request.nextUrl.search;
@@ -222,8 +219,7 @@ export async function POST(
   if (path[0] === "orders") return rejectLegacyOrders();
 
   if (path[0] === "clients") {
-    const db = getDb();
-    if (db) {
+    if (isDbReady()) {
       try {
         const bodyText = await request.text();
         let body: any = {};
@@ -234,7 +230,7 @@ export async function POST(
         const address = body.address || body.deliveryAddress || "";
         const email = body.email || "";
 
-        await db.queryDb(
+        await queryDb(
           `INSERT INTO public.clientes (empresa_id, sucursal_id, nombre, telefono, direccion, email, uuid)
            VALUES ($1, $2, $3, $4, $5, $6, $7)
            ON CONFLICT DO NOTHING`,
@@ -246,6 +242,7 @@ export async function POST(
         console.warn("[DB Proxy] Error creando cliente en PostgreSQL:", err);
       }
     }
+    return NextResponse.json({ error: "No se pudo crear cliente" }, { status: 400 });
   }
 
   const url = `${BACKEND_URL}/api/db/${pathStr}`;
@@ -285,6 +282,9 @@ export async function PATCH(
     const patched = await handlePatchClient(path[1], bodyText);
     if (patched) {
       return NextResponse.json(patched);
+    }
+    if (isDbReady()) {
+      return NextResponse.json({ error: "Cliente no encontrado" }, { status: 404 });
     }
     return forwardMutation(request, path.join("/"), "PATCH", bodyText);
   }

@@ -187,7 +187,10 @@ test("el servidor rechaza importes, stock o comercios manipulados", async () => 
 });
 
 test("el acceso alternativo antiguo a pedidos queda bloqueado", async () => {
-  const legacy = load("src/app/api/db/[...path]/route.ts", { "next/server": next });
+  const legacy = load("src/app/api/db/[...path]/route.ts", {
+    "next/server": next,
+    "@/lib/db": { isDatabaseConfigured: () => false, queryDb: async () => [] },
+  });
   for (const method of ["GET", "POST", "PATCH", "DELETE"]) {
     const result = await legacy[method](request(), { params: Promise.resolve({ path: ["orders", "order-1"] }) });
     assert.equal(result.status, 410);
@@ -327,7 +330,10 @@ test("lecturas y separación del repartidor en PostgreSQL aislado", {
 
 test("el proxy reenvía cambios de perfil con la sesión y no inventa éxitos", async () => {
   const requests = [];
-  const proxy = load("src/app/api/db/[...path]/route.ts", { "next/server": next }, {
+  const proxy = load("src/app/api/db/[...path]/route.ts", {
+    "next/server": next,
+    "@/lib/db": { isDatabaseConfigured: () => false, queryDb: async () => [] },
+  }, {
     fetch: async (url, options) => {
       requests.push({ url, options });
       if (url.endsWith("/offline")) throw new Error("offline");
