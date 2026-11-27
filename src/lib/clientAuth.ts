@@ -1,7 +1,8 @@
 "use client";
 
 export function authHeaders(role: "Client" | "Driver"): Record<string, string> {
-  const key = role === "Driver" ? "repartofacil_driver_token" : "repartofacil_client_token";
-  const token = localStorage.getItem(key);
+  const token = role === "Driver"
+    ? (localStorage.getItem("rf_driver_token") || localStorage.getItem("repartofacil_driver_token") || localStorage.getItem("repartofacil_token"))
+    : (localStorage.getItem("rf_customer_token") || localStorage.getItem("repartofacil_client_token") || localStorage.getItem("repartofacil_token"));
   return token ? { Authorization: `Bearer ${token}` } : {};
 }

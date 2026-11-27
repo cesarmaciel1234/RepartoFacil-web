@@ -23,7 +23,7 @@ export function usePedidosCliente({
   orderConfirmed,
 }: UsePedidosClienteParams) {
   const [clientOrdersList, setClientOrdersList] = useState<any[]>([]);
-  const [ordersCached, setOrdersCached] = useState(true);
+  const [ordersCached, setOrdersCached] = useState(false);
   const [ordersSavedAt, setOrdersSavedAt] = useState<string | null>(null);
 
   useEffect(() => {
@@ -67,9 +67,10 @@ export function usePedidosCliente({
       if (clientId !== activeClientId) {
         activeClientId = clientId;
         const cache = readClientOrdersCache(clientId);
-        publishOrders(mergeOrders(cache?.orders || []));
+        const merged = mergeOrders(cache?.orders || []);
+        publishOrders(merged);
         setOrdersSavedAt(cache?.savedAt || null);
-        setOrdersCached(true);
+        setOrdersCached(Boolean(cache?.savedAt && merged.length > 0));
       }
 
       if (loading) {
@@ -80,7 +81,11 @@ export function usePedidosCliente({
       try {
         const url = `/api/orders?cliente_id=${encodeURIComponent(clientId)}`;
         const headers = authHeaders("Client");
-        if (!headers.Authorization) return;
+        if (!headers.Authorization) {
+          // Si no hay sesión autenticada de cliente, reflejar solo estado local sin alarma de caché offline
+          setOrdersCached(false);
+          return;
+        }
         const response = await fetch(url, { cache: "no-store", signal: controller.signal, headers });
         if (!response.ok) throw new Error(`El servidor respondió ${response.status}`);
         const data: unknown = await response.json();
@@ -102,8 +107,11 @@ export function usePedidosCliente({
       } catch (error) {
         if (!cancelled && getOrCreateActiveClientIdentity().clientId === clientId) {
           console.warn("No se pudo actualizar el historial de pedidos:", error);
-          setClientOrdersList((current) => mergeOrders(filterClientOrders(current, clientId)));
-          setOrdersCached(true);
+          const currentMerged = mergeOrders(filterClientOrders(localOrders, clientId));
+          setClientOrdersList(currentMerged);
+          const cache = readClientOrdersCache(clientId);
+          const hasSaved = Boolean(cache?.savedAt && (currentMerged.length > 0 || (cache?.orders && cache.orders.length > 0)));
+          setOrdersCached(hasSaved);
         }
       } finally {
         loading = false;

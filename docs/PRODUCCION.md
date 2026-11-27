@@ -1,34 +1,29 @@
 # Operación y protección de producción
 
-Guía de referencia para cambiar, verificar y publicar Reparto Fácil sin
+Guía de referencia para cambiar, verificar y operar Reparto Fácil sin
 interrumpir los flujos existentes.
 
-## 1. Servicios y datos
+> **AVISO CRÍTICO DE INFRAESTRUCTURA (MIGRACIÓN A ORACLE CLOUD):**  
+> **Ya no se utiliza Render en producción.** Todo el stack de producción se encuentra
+> desplegado y funcionando de manera 100% unificada en el VPS Always Free de Oracle Cloud
+> (`vps-repartofacil`, IP `157.151.3.66`, Región `sa-vinhedo-1`). Render y NeonDB quedan
+> exclusivamente como entorno congelado de pruebas.
 
-| Servicio | Función | Conexión relevante |
-| --- | --- | --- |
-| Render `repartofacil` | Aplicación Next.js y API propia de pedidos/chat | `DATABASE_URL` para `/api/orders`, `/api/chat` y custodio; `BACKEND_URL` para proxies a `cobrofacil` |
-| Render `cobrofacil` | Backend y ERP unificado (Flask/Python) | Maneja autenticación, TPV, sincronización y base multi-tenant en PostgreSQL |
-| Cobro Fácil CRM | Operación comercial y recepción de pedidos | Puede compartir la misma base PostgreSQL que la tienda |
+## 1. Servicios y datos en Producción (Oracle Cloud Always Free)
 
-Hay más de un manifiesto de Render (`render.yaml` y `backend/render.yaml`).
-Antes de editar o volver a aplicar un Blueprint, verificar qué manifiesto está
-asociado a cada servicio existente; no crear servicios duplicados ni renombrar
-los servicios como parte de un cambio de tienda.
+| Servicio / Componente | Runtime / Proceso | Puerto / Proxy | Función y Conexión |
+| --- | --- | --- | --- |
+| **Reparto Fácil Web** | Next.js 15 (Node 20 en PM2) | `127.0.0.1:3000` → `https://repartofacil.157.151.3.66.sslip.io` | E-commerce, marketplace multitienda y PWA móvil de repartidor. Conecta a PostgreSQL local vía `DATABASE_URL` y a Cobro Fácil vía `BACKEND_URL`. |
+| **Cobro Fácil Cloud** | Python 3.12 / Waitress en PM2 | `127.0.0.1:5005` → `https://cobrofacil.157.151.3.66.sslip.io` | ERP unificado, autenticación JWT, TPV y backend central. Comparte la misma base PostgreSQL en el esquema `public`. |
+| **Caddy Web Server** | Caddy v2 (Systemd) | `80` (HTTP) / `443` (HTTPS) | Reverse proxy con TLS/HTTPS automático (Let's Encrypt / ZeroSSL) y endpoint `/status`. |
+| **PostgreSQL 16 Local** | PostgreSQL 16 (Systemd) | `127.0.0.1:5432` / DB `crm_libro_local` | Persistencia central compartida. Backups automáticos diarios comprimidos vía Cron a las 03:00 UTC en `/home/ubuntu/backups/`. |
 
-### PostgreSQL compartido
+### PostgreSQL compartido local en el VPS
 
-- La base puede ser una sola; las variables de entorno pertenecen a cada servicio.
-- El servicio Next.js `repartofacil` necesita recibir `DATABASE_URL` para que
-  `/api/orders` funcione.
-- `sync: false` en `render.yaml` solo declara una variable administrada fuera del
-  repositorio; no garantiza que el servicio ya tenga el valor configurado.
-- Configurar la conexión existente en Render o mediante un Environment Group
-  compartido. No crear otra base para resolver un error de configuración.
-- No guardar credenciales en el código, documentación, logs, comandos versionados
-  ni variables `NEXT_PUBLIC_*`.
-- `src/lib/db.ts` debe seguir obteniendo la conexión desde el entorno. No añadir
-  URLs de respaldo con credenciales dentro del código.
+- La base de datos es única y local en el servidor (`127.0.0.1:5432/crm_libro_local`), eliminando latencias de red y bloqueos por suspensiones de cuota externa.
+- `src/lib/db.ts` obtiene la conexión desde la variable de entorno local `DATABASE_URL` (`postgresql://crm_libro_local_user:...@127.0.0.1:5432/crm_libro_local`).
+- No guardar credenciales en el repositorio, documentación ni variables `NEXT_PUBLIC_*`.
+- Backups diarios automatizados en `/home/ubuntu/backup_db.sh` con retención de 14 días.
 
 ## 2. Contrato de creación de pedidos
 
@@ -306,8 +301,8 @@ No considerar producción lista solo porque abre la página principal. Verificar
 en este orden:
 
 1. `npm run build` finaliza correctamente.
-2. `https://repartofacil.onrender.com/api/version` muestra la versión/release
-   esperada para el despliegue.
+2. `https://repartofacil.157.151.3.66.sslip.io/api/version` (o `http://157.151.3.66/status`) muestra la versión/release
+   esperada para el despliegue (`200 OK`).
 3. `GET /api/orders` con un token válido responde HTTP 200 con JSON y sin token
    responde HTTP 401. Un HTTP 500 o el error de `DATABASE_URL` bloquea la
    publicación funcional.
@@ -362,9 +357,7 @@ vaciar carritos preexistentes ni alterar datos del CRM durante una prueba.
   servicios antes de cambiar código o esquema.
 - Si la home funciona y la API falla, es una falla parcial: no publicar como
   tienda operativa.
-- Si el despliegue causa una regresión, usar el rollback del servicio de Render
-  a la última versión conocida como funcional. No revertir ni modificar la base
-  como primera medida.
+- Si el despliegue causa una regresión, hacer rollback del commit vía Git en el directorio del VPS (`/home/ubuntu/apps/repartofacil`) y reiniciar el servicio con `pm2 restart repartofacil`. No revertir ni modificar la base de datos como primera medida.
 - Registrar en el PR o commit qué flujo se verificó, versión desplegada y
   resultado de `/api/orders`; nunca incluir el valor de las variables.
 

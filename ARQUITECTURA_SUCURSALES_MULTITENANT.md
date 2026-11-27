@@ -1,9 +1,10 @@
 # 🏛️ ARQUITECTURA PIRAMIDAL UNIFICADA: MULTI-TENANT, MULTI-SUCURSAL Y OMNICANALIDAD
 
-> **ESTRUCTURA DE PRODUCCIÓN VIGENTE (2 WEBS + 1 BACKEND + 1 BASE EN `public`):**
-> - 🌐 **Reparto Fácil (E-Commerce / Delivery / Retiro):** `https://repartofacil.onrender.com/` (Repo: `RepartoFacil-web`)
-> - 🏢 **Cobro Fácil (ERP / TPV en la nube & Backend Único):** `https://cobrofacil.onrender.com/` (Repo: `crm-frigorifico`)
-> - 🗄️ **Base de Datos Unificada:** PostgreSQL `crm_libro_local` en Render (**100% en esquema `public`**).
+> **ESTRUCTURA DE PRODUCCIÓN VIGENTE (ORACLE CLOUD ALWAYS FREE - NO SE USA MÁS RENDER):**
+> - 🌐 **Reparto Fácil (E-Commerce / Delivery / Retiro):** `https://repartofacil.157.151.3.66.sslip.io/` (Repo: `RepartoFacil-web`, Next.js 15 en PM2)
+> - 🏢 **Cobro Fácil (ERP / TPV en la nube & Backend Único):** `https://cobrofacil.157.151.3.66.sslip.io/` (Repo: `crm-frigorifico`, Flask en PM2)
+> - 🗄️ **Base de Datos Unificada:** PostgreSQL 16 `crm_libro_local` en VPS Oracle Cloud (**100% en esquema `public`**, con backups diarios automáticos por Cron).
+> - ❌ **Render y NeonDB deprecados:** La producción ya **NO corre en Render ni NeonDB**. Todo se ejecuta en el VPS Always Free de Oracle Cloud (IP `157.151.3.66`) con Caddy reverse proxy y HTTPS automático.
 > - ❌ **Backend legado eliminado:** `repartofacil-backend` (FastAPI) ha sido deprecado y eliminado de Render y del código. Todas las rutas `/api/auth/*`, `/api/db/*`, `/api/cobrofacil/*` son atendidas por `cobrofacil`.
 
 ---

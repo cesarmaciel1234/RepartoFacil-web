@@ -21,6 +21,7 @@ import {
   ArrowLeft,
   ExternalLink,
   ChevronRight,
+  WifiOff,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { formatSavedTime } from "../catalogo/AvisoCatalogo";
@@ -231,10 +232,11 @@ export function CentroPedidosClienteSheet({
               : "min-h-0 flex-1 space-y-4 overflow-y-auto bg-slate-50/70 p-4 sm:p-5"
           }
         >
-          {ordersCached && !isChatOpen && (
-            <p role="status" className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-950">
-              Mostramos pedidos guardados; sus estados pueden haber cambiado ({formatSavedTime(ordersSavedAt)}).
-            </p>
+          {ordersCached && ordersSavedAt && orders.length > 0 && !isChatOpen && (
+            <div role="status" className="flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-950">
+              <WifiOff className="h-4 w-4 shrink-0 text-amber-700" />
+              <span>Modo sin conexión: mostrando pedidos guardados ({formatSavedTime(ordersSavedAt)}). Los estados se actualizarán al reconectar.</span>
+            </div>
           )}
           {isChatOpen && selectedOrder && (
             <OrderChatSheet

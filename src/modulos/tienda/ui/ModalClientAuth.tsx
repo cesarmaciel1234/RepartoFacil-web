@@ -78,7 +78,12 @@ export function ModalClientAuth({
 
       const userAccountId = user.userId || user.uid || generateUniqueEntityId("usr_cli");
       const clientProfileId = user.id || generateUniqueEntityId("cli");
-      const registered = await readRegisteredCustomer(clientProfileId, `Bearer ${token}`);
+      let registered: { displayName?: string; phone?: string; address?: string } | null = null;
+      try {
+        registered = await readRegisteredCustomer(clientProfileId, `Bearer ${token}`);
+      } catch (profileErr: any) {
+        console.warn("[ModalClientAuth] Fallback: no se pudieron cargar datos remotos de contacto para", clientProfileId, profileErr?.message || profileErr);
+      }
       const registeredName = typeof registered?.displayName === "string" ? registered.displayName.trim() : "";
       const authName = typeof user.displayName === "string" ? user.displayName.trim() : "";
       const customerName = authName && !["cliente", "cliente frecuente"].includes(authName.toLocaleLowerCase("es-AR"))

@@ -3,8 +3,8 @@ import { queryDb, isDatabaseConfigured } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
-// Por defecto apunta a la instancia de producción en Render
-const BACKEND_URL = process.env.BACKEND_URL || "https://cobrofacil.onrender.com";
+// Por defecto apunta a Cobro Fácil en Oracle Cloud Always Free
+const BACKEND_URL = process.env.BACKEND_URL || "https://cobrofacil.157.151.3.66.sslip.io";
 
 export async function GET() {
   const result: Record<string, any> = {

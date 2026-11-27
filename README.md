@@ -20,12 +20,15 @@ misma base de datos PostgreSQL.
 - `src/firebase/`, `src/lib/` y `src/components/`: integraciones e infraestructura
   compartida.
 - Backend unificado: Las peticiones proxy de autenticación, catálogo y sincronización
-  apuntan directamente a `Cobro Fácil` (`https://cobrofacil.onrender.com`).
+  apuntan directamente a `Cobro Fácil` en Oracle Cloud Always Free (`https://cobrofacil.157.151.3.66.sslip.io`).
 
-La tienda y Cobro Fácil son servicios web separados aunque usen la misma base.
-Cada servicio debe recibir su propia variable `DATABASE_URL` en Render. El
+La tienda y Cobro Fácil son servicios web separados que comparten la misma base PostgreSQL en el VPS de Oracle Cloud.
+Cada servicio gestiona su propia variable `DATABASE_URL` local en el servidor (`postgresql://crm_libro_local_user:...@127.0.0.1:5432/crm_libro_local`). El
 valor es secreto: no se incluye en el repositorio ni se expone con prefijo
 `NEXT_PUBLIC_`.
+
+> **AVISO DE INFRAESTRUCTURA (ORACLE CLOUD ALWAYS FREE):**
+> Ya **no se utiliza Render en producción**. Todo el entorno productivo (Reparto Fácil Next.js, Cobro Fácil Flask, PostgreSQL 16 y Caddy con HTTPS) se encuentra desplegado y administrado de forma unificada en el VPS Always Free de Oracle Cloud (IP `157.151.3.66`). Render y NeonDB quedan congelados únicamente como entorno de pruebas pasivo.
 
 ## Flujos que deben preservarse
 

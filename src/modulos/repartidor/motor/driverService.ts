@@ -2,8 +2,13 @@ import { DriverOrder, DriverProfile } from "./tipos";
 
 export const DRIVER_USER_KEY = "repartofacil_driver_user";
 export const DRIVER_TOKEN_KEY = "repartofacil_driver_token";
+export const RF_DRIVER_SESSION_KEY = "rf_driver_session";
+export const RF_DRIVER_TOKEN_KEY = "rf_driver_token";
+
 export const CLIENT_USER_KEY = "repartofacil_client_user";
 export const CLIENT_TOKEN_KEY = "repartofacil_client_token";
+export const RF_CUSTOMER_SESSION_KEY = "rf_customer_session";
+export const RF_CUSTOMER_TOKEN_KEY = "rf_customer_token";
 export const ORDERS_STORAGE_KEY = "rf_orders_history";
 
 export const DEFAULT_AVAILABLE_ORDERS: DriverOrder[] = [
@@ -117,10 +122,45 @@ export function generateUniqueEntityId(prefix: "usr_cli" | "usr_rep" | "cli" | "
   return `${prefix}_${rand}${time}`;
 }
 
+export function isJwtTokenExpired(token: string): boolean {
+  try {
+    const parts = token.split(".");
+    if (parts.length === 3) {
+      const base64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+      const json = decodeURIComponent(
+        atob(base64)
+          .split("")
+          .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+          .join("")
+      );
+      const payload = JSON.parse(json);
+      if (typeof payload.exp === "number" && payload.exp * 1000 < Date.now()) {
+        return true;
+      }
+    }
+    return false;
+  } catch {
+    return false;
+  }
+}
+
 export function loadDriverProfile(): DriverProfile | null {
   if (typeof window === "undefined") return null;
   try {
-    const raw = localStorage.getItem(DRIVER_USER_KEY) || localStorage.getItem("repartofacil_user");
+    const token =
+      localStorage.getItem(RF_DRIVER_TOKEN_KEY) ||
+      localStorage.getItem(DRIVER_TOKEN_KEY) ||
+      localStorage.getItem("repartofacil_token");
+    if (!token) return null;
+    if (isJwtTokenExpired(token)) {
+      clearDriverProfile();
+      return null;
+    }
+
+    const raw =
+      localStorage.getItem(RF_DRIVER_SESSION_KEY) ||
+      localStorage.getItem(DRIVER_USER_KEY) ||
+      localStorage.getItem("repartofacil_user");
     if (!raw) return null;
     const parsed = JSON.parse(raw);
     if (parsed.role && parsed.role.toLowerCase() !== "driver") {
@@ -181,7 +221,10 @@ function normalizeProfileValue(value: string): string {
 export function loadClientProfile(): ClientProfile | null {
   if (typeof window === "undefined") return null;
   try {
-    const raw = localStorage.getItem(CLIENT_USER_KEY) || localStorage.getItem("repartofacil_user");
+    const raw =
+      localStorage.getItem(RF_CUSTOMER_SESSION_KEY) ||
+      localStorage.getItem(CLIENT_USER_KEY) ||
+      localStorage.getItem("repartofacil_user");
     if (!raw) return null;
     const parsed = JSON.parse(raw);
     if (parsed.role && parsed.role.toLowerCase() !== "client") {
@@ -256,10 +299,33 @@ export function getOrCreateActiveClientIdentity(): { clientId: string; userId: s
 export function saveDriverProfile(profile: DriverProfile, token?: string) {
   if (typeof window === "undefined") return;
   try {
-    localStorage.setItem(DRIVER_USER_KEY, JSON.stringify(profile));
-    if (token) localStorage.setItem(DRIVER_TOKEN_KEY, token);
-    window.dispatchEvent(new Event("repartofacil-auth"));
-    window.dispatchEvent(new Event("repartofacil-driver-auth"));
+    const serialized = JSON.stringify(profile);
+    localStorage.setItem(RF_DRIVER_SESSION_KEY, serialized);
+    localStorage.setItem(DRIVER_USER_KEY, serialized);
+    if (token) {
+      localStorage.setItem(RF_DRIVER_TOKEN_KEY, token);
+      localStorage.setItem(DRIVER_TOKEN_KEY, token);
+    }
+
+    // Limpiar órdenes y viajes locales que no correspondan a este repartidor
+    try {
+      const rawOrders = localStorage.getItem(ORDERS_STORAGE_KEY);
+      if (rawOrders) {
+        const parsedOrders = JSON.parse(rawOrders);
+        if (Array.isArray(parsedOrders)) {
+          const onlyMine = parsedOrders.filter(
+            (o) => o && (o.driverId === profile.id || o.repartidorId === profile.id)
+          );
+          localStorage.setItem(ORDERS_STORAGE_KEY, JSON.stringify(onlyMine));
+        }
+      }
+    } catch {}
+
+    if (typeof window !== "undefined" && typeof window.dispatchEvent === "function" && typeof Event !== "undefined") {
+      window.dispatchEvent(new Event("repartofacil-auth"));
+      window.dispatchEvent(new Event("repartofacil-driver-auth"));
+      window.dispatchEvent(new Event("rf-orders-updated"));
+    }
   } catch (e) {
     console.warn("Error guardando perfil repartidor:", e);
   }
@@ -268,6 +334,8 @@ export function saveDriverProfile(profile: DriverProfile, token?: string) {
 export function clearDriverProfile() {
   if (typeof window === "undefined") return;
   try {
+    localStorage.removeItem(RF_DRIVER_SESSION_KEY);
+    localStorage.removeItem(RF_DRIVER_TOKEN_KEY);
     localStorage.removeItem(DRIVER_USER_KEY);
     localStorage.removeItem(DRIVER_TOKEN_KEY);
     const legacy = localStorage.getItem("repartofacil_user");
@@ -275,16 +343,38 @@ export function clearDriverProfile() {
       localStorage.removeItem("repartofacil_user");
       localStorage.removeItem("repartofacil_token");
     }
-    window.dispatchEvent(new Event("repartofacil-auth"));
-    window.dispatchEvent(new Event("repartofacil-driver-auth"));
+    // Limpiar historial de viajes, billetera, vehículo, ruta y estado activo del repartidor
+    localStorage.removeItem(ORDERS_STORAGE_KEY);
+    localStorage.removeItem("rf_driver_wallet");
+    localStorage.removeItem("rf_driver_vehicle");
+    localStorage.removeItem("rf_driver_route");
+    localStorage.removeItem("rf_driver_active_route");
+    localStorage.removeItem("rf_driver_status");
+    for (let i = localStorage.length - 1; i >= 0; i--) {
+      const k = localStorage.key(i);
+      if (k && (k.startsWith("repartofacil_driver_action_") || k.startsWith("rf_driver_") || k.startsWith("repartofacil_driver_"))) {
+        localStorage.removeItem(k);
+      }
+    }
+    if (typeof window !== "undefined" && typeof window.dispatchEvent === "function" && typeof Event !== "undefined") {
+      window.dispatchEvent(new Event("repartofacil-auth"));
+      window.dispatchEvent(new Event("repartofacil-driver-auth"));
+      window.dispatchEvent(new Event("rf-orders-updated"));
+      window.dispatchEvent(new Event("rf-wallet-updated"));
+    }
   } catch {}
 }
 
 export function saveClientProfile(profile: ClientProfile, token?: string) {
   if (typeof window === "undefined") return;
   try {
-    localStorage.setItem(CLIENT_USER_KEY, JSON.stringify(profile));
-    if (token) localStorage.setItem(CLIENT_TOKEN_KEY, token);
+    const serialized = JSON.stringify(profile);
+    localStorage.setItem(RF_CUSTOMER_SESSION_KEY, serialized);
+    localStorage.setItem(CLIENT_USER_KEY, serialized);
+    if (token) {
+      localStorage.setItem(RF_CUSTOMER_TOKEN_KEY, token);
+      localStorage.setItem(CLIENT_TOKEN_KEY, token);
+    }
     // Sincronizar identidad activa y limpiar pedidos locales de otros compradores
     localStorage.setItem(
       "repartofacil_guest_identity",
@@ -312,6 +402,8 @@ export function saveClientProfile(profile: ClientProfile, token?: string) {
 export function clearClientProfile() {
   if (typeof window === "undefined") return;
   try {
+    localStorage.removeItem(RF_CUSTOMER_SESSION_KEY);
+    localStorage.removeItem(RF_CUSTOMER_TOKEN_KEY);
     localStorage.removeItem(CLIENT_USER_KEY);
     localStorage.removeItem(CLIENT_TOKEN_KEY);
     localStorage.removeItem("repartofacil_guest_identity");
@@ -321,8 +413,10 @@ export function clearClientProfile() {
       localStorage.removeItem("repartofacil_user");
       localStorage.removeItem("repartofacil_token");
     }
-    window.dispatchEvent(new Event("repartofacil-auth"));
-    window.dispatchEvent(new Event("repartofacil-client-auth"));
-    window.dispatchEvent(new Event("rf-orders-updated"));
+    if (typeof window !== "undefined" && typeof window.dispatchEvent === "function" && typeof Event !== "undefined") {
+      window.dispatchEvent(new Event("repartofacil-auth"));
+      window.dispatchEvent(new Event("repartofacil-client-auth"));
+      window.dispatchEvent(new Event("rf-orders-updated"));
+    }
   } catch {}
 }

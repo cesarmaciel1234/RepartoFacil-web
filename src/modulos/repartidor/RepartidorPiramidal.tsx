@@ -57,20 +57,35 @@ export function RepartidorPiramidal({ onSwitchToStore }: RepartidorPiramidalProp
   const startY = useRef(0);
   const didDrag = useRef(false);
 
-  // Cargar perfil del conductor (para entrar como repartidor se requiere estar logueado)
+  // Cargar perfil del conductor
   useEffect(() => {
     const p = loadDriverProfile();
     setDriverProfile(p);
     if (!p) {
-      setShowLoginModal(true);
+      // Regla: si no hay sesión activa o está vencida, volver a tienda sin abrir modal automáticamente
+      onSwitchToStore();
+      return;
     }
 
     const handleAuthChange = () => {
-      setDriverProfile(loadDriverProfile());
+      const updated = loadDriverProfile();
+      setDriverProfile(updated);
+      if (!updated) {
+        onSwitchToStore();
+      }
+    };
+    const handleOpenLogin = () => {
+      setShowLoginModal(true);
     };
     window.addEventListener("repartofacil-auth", handleAuthChange);
-    return () => window.removeEventListener("repartofacil-auth", handleAuthChange);
-  }, []);
+    window.addEventListener("repartofacil-driver-auth", handleAuthChange);
+    window.addEventListener("repartofacil-open-driver-login", handleOpenLogin);
+    return () => {
+      window.removeEventListener("repartofacil-auth", handleAuthChange);
+      window.removeEventListener("repartofacil-driver-auth", handleAuthChange);
+      window.removeEventListener("repartofacil-open-driver-login", handleOpenLogin);
+    };
+  }, [onSwitchToStore]);
 
   // Motores de la pirámide
   const { coords, heading } = useDriverGps(driverProfile?.id);

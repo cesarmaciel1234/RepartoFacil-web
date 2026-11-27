@@ -19,7 +19,7 @@ export async function authenticateOrderUser(
     return { response: NextResponse.json({ error: "Iniciá sesión para continuar." }, { status: 401 }) };
   }
 
-  const backend = process.env.BACKEND_URL || "https://cobrofacil.onrender.com";
+  const backend = process.env.BACKEND_URL || "https://cobrofacil.157.151.3.66.sslip.io";
   const deadline = Date.now() + 60_000;
   try {
     let response: Response | null = null;

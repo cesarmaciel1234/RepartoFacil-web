@@ -3,7 +3,7 @@ import { Pool } from "pg";
 let pool: Pool | null = null;
 
 const DEFAULT_POSTGRES_URL =
-  "postgresql://crm_libro_local_user:9WwQafiM47vLUUezeXbRGvd1xUk8GRrA@dpg-dbti1sjm8hqs73b0adc0-a.oregon-postgres.render.com/crm_libro_local";
+  "postgresql://crm_libro_local_user:local_secure_pass_2026@127.0.0.1:5432/crm_libro_local";
 
 /**
  * Valida de forma estricta si una cadena de conexión corresponde a PostgreSQL.

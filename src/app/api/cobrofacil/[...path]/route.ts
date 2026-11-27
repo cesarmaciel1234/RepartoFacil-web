@@ -19,7 +19,7 @@ export async function OPTIONS() {
   return new NextResponse(null, { status: 204, headers: CORS_HEADERS });
 }
 
-const BACKEND_URL = process.env.BACKEND_URL || "https://cobrofacil.onrender.com";
+const BACKEND_URL = process.env.BACKEND_URL || "https://cobrofacil.157.151.3.66.sslip.io";
 const PRODUCT_IMAGE_BY_NAME = productImageManifest as Record<string, string>;
 
 type PosBaseRow = {
@@ -387,7 +387,7 @@ export async function GET(
 }
 
   // 2. Empresas reales directamente desde crm-libro-local (PostgreSQL)
-  if (pathStr === "companies") {
+  if (pathStr === "companies" || pathStr === "tiendas") {
     if (isDatabaseConfigured()) {
       try {
         const dbEmpresas = await queryDb(
@@ -436,9 +436,9 @@ export async function GET(
         for (const s of rows || []) {
           const eid = Number(s.empresa_id);
           const isTestSuc = /prueba|test/i.test(String(s.nombre || "")) || /prueba|test/i.test(String(s.codigo || ""));
-          // Ocultar sucursales de prueba o que no tengan productos en pos_base
+          // Ocultar sucursales de prueba o que no tengan productos en pos_base (excepto empresa principal)
           if (isTestSuc) continue;
-          if (sucursalesConProductos.size > 0 && !sucursalesConProductos.has(Number(s.id))) {
+          if (eid > 1 && sucursalesConProductos.size > 0 && !sucursalesConProductos.has(Number(s.id))) {
             continue;
           }
 
@@ -490,11 +490,13 @@ export async function GET(
             return false;
           }
 
-          // Para empresas secundarias (eid > 1): ocultar si no tienen catálogo publicado ni sucursales con productos
+          // Para empresas secundarias (eid > 1): ocultar si no tienen catálogo publicado, sucursales ni perfil público
           if (eid > 1) {
             const sucs = sucursalesPorEmpresa[eid] || [];
             const hasCatalog = esquemasConPosBase.has(eid);
-            if (sucs.length === 0 && !hasCatalog) {
+            const pubProf = row.public_profile && typeof row.public_profile === "object" ? row.public_profile : null;
+            const hasProfile = pubProf && Boolean(pubProf.nombre || pubProf.direccion);
+            if (sucs.length === 0 && !hasCatalog && !hasProfile) {
               return false; // Empresa vacía / sin catálogo publicado -> ocultar de la portada
             }
           }
@@ -557,7 +559,7 @@ export async function GET(
             phone: String(Object.keys(profile).length ? profile.whatsapp || "" : pick(details, ["telefono", "celular", "whatsapp", "phone"]) || ""),
             description: String(profile.descripcion || ""),
             openingHours: String(profile.horario || ""),
-            cobroFacilApiEndpoint: "https://cobrofacil.onrender.com",
+            cobroFacilApiEndpoint: process.env.NEXT_PUBLIC_COBRO_FACIL_URL || "https://cobrofacil.157.151.3.66.sslip.io",
             isOpen:
               isOpenValue === undefined
                 ? true
@@ -596,19 +598,25 @@ export async function GET(
           // Negocio Único (1 sucursal o Casa Central): Sin división
           const sucUnica = sucs[0];
           const companyId = sucUnica ? `${baseId}-suc-${sucUnica.id}` : baseId;
-          const companyName = sucUnica && !baseCompany.name.includes(sucUnica.nombre)
-            ? `${baseCompany.name} · ${sucUnica.nombre}`
+          const companyName = sucUnica
+            ? (sucUnica.nombre.toLowerCase().startsWith(baseCompany.name.toLowerCase())
+                ? sucUnica.nombre
+                : (baseCompany.name.toLowerCase().startsWith(sucUnica.nombre.toLowerCase())
+                    ? sucUnica.nombre
+                    : `${baseCompany.name} · ${sucUnica.nombre}`))
             : baseCompany.name;
           return [{
             ...baseCompany,
             id: companyId,
             name: companyName,
             category: sucUnica?.rubro || baseCompany.category,
-            address: sucUnica?.direccion || "Doctor Aráoz Alfaro 1964, Monterrey, Presidente Derqui",
+            address: sucUnica?.direccion || baseCompany.address || "alfaro 1964",
             ...(sucUnica?.latitud && sucUnica?.longitud
               ? { coordinates: { lat: Number(sucUnica.latitud), lng: Number(sucUnica.longitud) } }
-              : { coordinates: { lat: -34.4865222, lng: -58.8335788 } }),
-            phone: sucUnica?.whatsapp || sucUnica?.telefono || baseCompany.phone || "1135627803",
+              : baseCompany.coordinates
+                ? { coordinates: baseCompany.coordinates }
+                : { coordinates: { lat: -34.4865222, lng: -58.8335788 } }),
+            phone: sucUnica?.whatsapp || sucUnica?.telefono || baseCompany.phone || "+5491135627803",
             openingHours: sucUnica?.horario || baseCompany.openingHours || "Lunes a sábado 9 a 21hs",
             deliveryFee: sucUnica?.costo_envio != null ? Number(sucUnica.costo_envio) : baseCompany.deliveryFee,
             freeDeliveryThreshold: sucUnica?.monto_minimo_envio_gratis != null ? Number(sucUnica.monto_minimo_envio_gratis) : baseCompany.freeDeliveryThreshold,
@@ -627,6 +635,7 @@ export async function GET(
         success: true,
         source: "crm-libro-local (PostgreSQL Render)",
         empresas: companyList,
+        tiendas: companyList,
       }, { headers: CORS_HEADERS });
     } catch (dbErr: any) {
       console.warn("[CobroFacil DB Companies Fallback]:", dbErr.message);
@@ -634,6 +643,7 @@ export async function GET(
         success: true,
         source: "fallback-embedded",
         empresas: FALLBACK_COMPANIES,
+        tiendas: FALLBACK_COMPANIES,
       }, { headers: CORS_HEADERS });
     }
   }
@@ -680,12 +690,13 @@ export async function GET(
       );
     }
 
-    if (pathStr === "companies") {
+    if (pathStr === "companies" || pathStr === "tiendas") {
       return NextResponse.json(
         {
           success: true,
           source: "fallback-embedded",
           empresas: FALLBACK_COMPANIES,
+          tiendas: FALLBACK_COMPANIES,
         },
         { headers: CORS_HEADERS }
       );

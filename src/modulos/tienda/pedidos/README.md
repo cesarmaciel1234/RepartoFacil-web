@@ -12,6 +12,9 @@ Este dominio sincroniza los pedidos del comprador y los mensajes no leídos.
   no se puede actualizar.
 - `cachePedidosCliente.ts`: conserva la última respuesta válida por identificador
   de comprador para consultarla sin conexión.
+- Estados de caché y vacío: si no hay pedidos guardados o la lista está vacía,
+  no se muestra el aviso de copia guardada ni recuadros amarillos residuales,
+  presentando directamente el estado vacío limpio de la tienda.
 - `../pantallas/HistorialPedidosTienda.tsx`: pedidos activos e historial.
 - `../ui/CentroPedidosClienteSheet.tsx`: detalle de pedidos activos.
 - `../ui/MensajesClienteSheet.tsx`: conversaciones por pedido, con paginación.

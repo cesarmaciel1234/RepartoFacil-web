@@ -18,7 +18,7 @@ export async function OPTIONS() {
   return new NextResponse(null, { status: 204, headers: CORS_HEADERS });
 }
 
-const BACKEND_URL = process.env.BACKEND_URL || "https://cobrofacil.onrender.com";
+const BACKEND_URL = process.env.BACKEND_URL || "https://cobrofacil.157.151.3.66.sslip.io";
 const PRODUCT_IMAGE_BY_NAME = productImageManifest as Record<string, string>;
 
 type PosBaseRow = {

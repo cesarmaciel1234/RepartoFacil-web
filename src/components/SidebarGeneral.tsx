@@ -100,6 +100,8 @@ export function SidebarGeneral({
   const userName =
     isDriverMode && activeDriverProfile
       ? activeDriverProfile.firstName
+      : isDriverMode
+      ? "Repartidor (Sin sesión)"
       : clientProfile
       ? clientProfile.displayName
       : "Cliente Reparto Fácil";
@@ -112,7 +114,9 @@ export function SidebarGeneral({
       ? "En reparto"
       : activeDriverProfile?.availabilityStatus === "Offline"
       ? "Desconectado"
-      : "Estado sin configurar";
+      : activeDriverProfile
+      ? "Estado sin configurar"
+      : "Sin autenticar";
   const driverVehicleLabel =
     activeDriverProfile?.vehicleType === "Motorcycle"
       ? "Motocicleta"
@@ -239,6 +243,20 @@ export function SidebarGeneral({
                       Iniciar Sesión
                     </button>
                   )}
+
+                  {/* Botón Iniciar Sesión Repartidor si está en modo repartidor y no está logueado */}
+                  {currentMode === "driver" && !activeDriverProfile && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onOpenChange(false);
+                        window.dispatchEvent(new CustomEvent("repartofacil-open-driver-login"));
+                      }}
+                      className="text-[10px] font-bold text-yellow-800 hover:text-yellow-900 underline underline-offset-2"
+                    >
+                      Iniciar Sesión
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
@@ -346,7 +364,7 @@ export function SidebarGeneral({
 
                   {/* Cobro Fácil QR / TPV */}
                   <a
-                    href="https://cobrofacil.onrender.com"
+                    href="https://cobrofacil.157.151.3.66.sslip.io"
                     target="_blank"
                     rel="noreferrer"
                     className="flex flex-col items-center justify-center p-2.5 rounded-2xl bg-white border border-slate-200 hover:border-yellow-400 hover:bg-yellow-50 transition-all text-center group"
@@ -393,7 +411,7 @@ export function SidebarGeneral({
 
                 {/* Enlace Directo a Cobro Fácil Cloud */}
                 <a
-                  href="https://cobrofacil.onrender.com"
+                  href="https://cobrofacil.157.151.3.66.sslip.io"
                   target="_blank"
                   rel="noreferrer"
                   className="p-3 rounded-2xl bg-white border border-slate-200 flex items-center justify-between text-left hover:border-yellow-400 hover:bg-yellow-50 transition-all block"
@@ -545,7 +563,7 @@ export function SidebarGeneral({
 
                 {/* Cobro Fácil Cloud */}
                 <a
-                  href="https://cobrofacil.onrender.com"
+                  href="https://cobrofacil.157.151.3.66.sslip.io"
                   target="_blank"
                   rel="noreferrer"
                   className="p-3 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-between text-left hover:border-blue-500/40 transition-all block"

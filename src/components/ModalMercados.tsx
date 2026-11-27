@@ -262,7 +262,7 @@ export function ModalMercados({
               </span>
             </div>
             <a
-              href="https://cobrofacil.onrender.com"
+              href="https://cobrofacil.157.151.3.66.sslip.io"
               target="_blank"
               rel="noreferrer"
               className="p-1.5 rounded-xl bg-blue-500/20 text-blue-400 hover:bg-blue-500/30"

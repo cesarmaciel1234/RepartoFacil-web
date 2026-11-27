@@ -25,6 +25,7 @@ function setup() {
     catalog: load("src/modulos/tienda/catalogo/cacheCatalogo.ts"),
     orders: load("src/modulos/tienda/pedidos/cachePedidosCliente.ts"),
     availability: load("src/modulos/tienda/motor/productoDisponibilidad.ts"),
+    motorFiltroCatalogo: load("src/modulos/tienda/catalogo/motorFiltroCatalogo.ts"),
   };
 }
 
@@ -71,7 +72,7 @@ test("el historial guardado queda separado por comprador y rechaza pedidos ajeno
 });
 
 test("el catálogo restaura datos sin conexión y los actualiza al reconectar", async () => {
-  const { catalog } = setup();
+  const { catalog, motorFiltroCatalogo } = setup();
   const state = [];
   const effects = [];
   const listeners = {};
@@ -123,6 +124,7 @@ test("el catálogo restaura datos sin conexión y los actualiza al reconectar", 
     require: (name) => {
       if (name === "react") return react;
       if (name === "../cacheCatalogo") return catalog;
+      if (name === "../motorFiltroCatalogo") return motorFiltroCatalogo;
       if (name === "@/data/fallbackCatalog") return {
         FALLBACK_COMPANIES: [company],
         FALLBACK_PRODUCTS: [],

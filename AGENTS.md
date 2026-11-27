@@ -42,9 +42,10 @@
 ## ⚖️ LEYES SAGRADAS DE DOMINIO E INTEGRACIÓN
 
 ### 1. Relación con Cobro Fácil y Backend Centralizado
-- `Reparto Fácil Web` se integra con el backend unificado de `Cobro Fácil` (`https://cobrofacil.onrender.com`).
-- Ambas aplicaciones comparten la misma base de datos PostgreSQL en el esquema `public`.
-- El secreto de conexión `DATABASE_URL` reside en Render y no debe exponerse nunca con prefijo `NEXT_PUBLIC_` ni en repositorios.
+- `Reparto Fácil Web` se integra con el backend unificado de `Cobro Fácil` en Oracle Cloud Always Free (`https://cobrofacil.157.151.3.66.sslip.io`).
+- **Render y NeonDB quedan deprecados / discontinuados para producción:** Toda la operación activa se ejecuta en el VPS de Oracle Cloud Always Free (IP `157.151.3.66`), manteniendo Render y NeonDB solo como entorno pasivo de pruebas.
+- Ambas aplicaciones comparten la misma base de datos PostgreSQL 16 en el esquema `public` alojada en el VPS (`crm_libro_local`).
+- El secreto de conexión `DATABASE_URL` reside en las variables de entorno locales del VPS (`.env` / `.env.local`) y no debe exponerse nunca con prefijo `NEXT_PUBLIC_` ni en repositorios.
 
 ### 2. Flujo de Compra e Invariantes del Carrito
 - **Exploración sin bloqueo:** Se puede explorar el catálogo y armar el carrito sin iniciar sesión previa; el acceso/registro se solicita exclusivamente al momento de abonar en el checkout.

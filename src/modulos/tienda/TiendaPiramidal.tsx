@@ -18,6 +18,7 @@ import { DrawerCarrito, type CompanyCartSummary } from "./ui/DrawerCarrito";
 import { ModalCheckout } from "./ui/ModalCheckout";
 import { ModalCambiarDireccion } from "./ui/ModalCambiarDireccion";
 import { ModalClientAuth } from "./ui/ModalClientAuth";
+import { ModalDriverAuth } from "../repartidor/ui/ModalDriverAuth";
 import { CentroPedidosClienteSheet } from "./ui/CentroPedidosClienteSheet";
 import { MensajesClienteSheet } from "./ui/MensajesClienteSheet";
 import { useMensajesNoLeidos } from "./pedidos/hooks/useMensajesNoLeidos";
@@ -31,9 +32,10 @@ import { NavegacionTienda, type SeccionTienda } from "./ui/NavegacionTienda";
 import {
   clearClientProfile,
   loadClientProfile,
+  loadDriverProfile,
   type ClientProfile,
 } from "../repartidor/motor/driverService";
-import { ShoppingBag, ArrowRight, MapPin } from "lucide-react";
+import { ShoppingBag, ArrowRight, MapPin, WifiOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { authHeaders } from "@/lib/clientAuth";
@@ -110,6 +112,7 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
   const [checkoutCompanyId, setCheckoutCompanyId] = useState<string | null>(null);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [isClientAuthOpen, setIsClientAuthOpen] = useState(false);
+  const [isDriverAuthOpen, setIsDriverAuthOpen] = useState(false);
   const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
   const [isOrdersHubOpen, setIsOrdersHubOpen] = useState(false);
   const [isMessagesOpen, setIsMessagesOpen] = useState(false);
@@ -520,6 +523,15 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
     deliveryCoordinates,
   };
 
+  const handleConnectAsDriver = () => {
+    const activeDriver = loadDriverProfile();
+    if (activeDriver) {
+      onSwitchToDriver();
+    } else {
+      setIsDriverAuthOpen(true);
+    }
+  };
+
   return (
     <div className="min-h-screen w-full bg-white text-slate-900 flex flex-col font-sans pb-32">
       {/* ─── Encabezado Superior (Blanco y Azul con el camioncito y el carrito arriba) ─── */}
@@ -554,10 +566,11 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
           cacheError={cacheError}
           onRetry={reloadCatalog}
         />
-        {activeBottomTab === "orders" && ordersCached && (
-          <p role="status" className="rounded-2xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-950">
-            Mostramos los pedidos guardados; sus estados pueden haber cambiado ({formatSavedTime(ordersSavedAt)}).
-          </p>
+        {activeBottomTab === "orders" && ordersCached && ordersSavedAt && clientOrdersList.length > 0 && (
+          <div role="status" className="flex items-center gap-2 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-950">
+            <WifiOff className="h-4 w-4 shrink-0 text-amber-700" />
+            <span>Modo sin conexión: mostrando copia guardada de tus pedidos ({formatSavedTime(ordersSavedAt)}). Los estados se actualizarán al reconectar.</span>
+          </div>
         )}
         {activeBottomTab === "profile" ? (
           <PerfilCliente
@@ -570,7 +583,7 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
               setClientProfile(null);
             }}
             onEditAddress={() => setIsAddressModalOpen(true)}
-            onSwitchToDriver={onSwitchToDriver}
+            onSwitchToDriver={handleConnectAsDriver}
           />
         ) : activeBottomTab === "orders" ? (
           <HistorialPedidosTienda
@@ -769,6 +782,17 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
           if (checkoutCompanyId && checkoutCart.length > 0) {
             setIsCheckoutOpen(true);
           }
+        }}
+      />
+
+      {/* ─── Modal de Autenticación de Repartidor sobre Mi Perfil (Sin cambiar de pantalla hasta estar autenticado) ─── */}
+      <ModalDriverAuth
+        isOpen={isDriverAuthOpen}
+        onOpenChange={setIsDriverAuthOpen}
+        pendingOrder={null}
+        onSuccess={() => {
+          setIsDriverAuthOpen(false);
+          onSwitchToDriver();
         }}
       />
 

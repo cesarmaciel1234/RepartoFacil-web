@@ -74,7 +74,7 @@ function nodes(tree) {
 const uiComponents = new Proxy({}, { get: (_, name) => name });
 const icons = new Proxy({}, { get: (_, name) => name });
 
-test("el acceso de repartidor solo aparece sin sesión activa de comprador", () => {
+test("el acceso de repartidor permanece disponible con sesión activa de comprador", () => {
   const harness = componentHarness("src/modulos/tienda/pantallas/PerfilCliente.tsx", {
     "lucide-react": icons,
     "@/components/AppVersion": { AppVersion: "AppVersion" },
@@ -93,10 +93,10 @@ test("el acceso de repartidor solo aparece sin sesión activa de comprador", () 
   props.clientProfile = { id: "cliente-1", displayName: "Ana" };
   assert.ok(driverButton(), "un perfil guardado sin sesión no impide elegir repartidor");
   props.isClientAuthenticated = true;
-  assert.equal(driverButton(), undefined);
+  assert.ok(driverButton(), "el comprador autenticado puede conectarse como repartidor sin cerrar sesión");
   props.clientProfile = null;
   props.isClientAuthenticated = false;
-  assert.ok(driverButton(), "la opción vuelve a aparecer al cerrar sesión");
+  assert.ok(driverButton(), "la opción continúa disponible tras cerrar sesión");
 });
 
 test("checkout oculta datos registrados, pide solo lo que falta y conserva la dirección editable", async () => {
@@ -335,4 +335,45 @@ test("ModalCheckout pasa el teléfono de la sucursal normalizado al link de What
   assert.ok(waLink, "Debe renderizar link de WhatsApp");
   assert.equal(linkGeneratedWith.phone, "5491135627803");
   assert.equal(waLink.props.href, "https://wa.me/5491135627803");
+});
+
+test("el login de maciel completa con fallback seguro de contacto si la consulta remota falla", async () => {
+  let savedProfile = null;
+  let successCalled = false;
+  const harness = componentHarness("src/modulos/tienda/ui/ModalClientAuth.tsx", {
+    "@/components/ui/dialog": uiComponents, "@/components/ui/button": uiComponents,
+    "@/components/ui/input": uiComponents, "lucide-react": icons,
+    "@/hooks/use-toast": { useToast: () => ({ toast() {} }) },
+    "@/firebase": { useFirestore: () => ({}) },
+    "@/firebase/local-firestore": { doc() {}, setDoc() {} },
+    "@/modulos/repartidor/motor/driverService": {
+      saveClientProfile: (profile) => { savedProfile = profile; },
+      generateUniqueEntityId: () => "generado",
+    },
+    "../motor/pedidoService": {
+      readRegisteredCustomer: async () => {
+        throw new Error("No se pudieron cargar tus datos de contacto. Intentá nuevamente.");
+      },
+    },
+  }, {
+    fetch: async () => ({
+      ok: true,
+      json: async () => ({
+        access_token: "token-maciel",
+        user: { id: "user-1", uid: "user-1", role: "Client", isAnonymous: false, displayName: "maciel", email: "maciel@cobrofacil.local" },
+      }),
+    }),
+  });
+  const props = { isOpen: true, onOpenChange() {}, onSuccess: () => { successCalled = true; } };
+  let tree = harness.render("ModalClientAuth", props);
+  nodes(tree).find((node) => node.props?.placeholder === "cliente o tu email").props.onChange({ target: { value: "maciel" } });
+  nodes(tree).find((node) => node.props?.placeholder === "••••••••").props.onChange({ target: { value: "12345678" } });
+  tree = harness.render("ModalClientAuth", props);
+  await nodes(tree).find((node) => node.type === "form").props.onSubmit({ preventDefault() {} });
+
+  assert.ok(successCalled, "El login debió completar exitosamente invocando onSuccess");
+  assert.ok(savedProfile, "El perfil del cliente debió guardarse con los datos de cuenta");
+  assert.equal(savedProfile.id, "user-1");
+  assert.equal(savedProfile.displayName, "maciel");
+  assert.equal(savedProfile.email, "maciel@cobrofacil.local");
 });

@@ -30,7 +30,10 @@
   3. Bucle de animación en segundo plano (`requestAnimationFrame`) que suaviza el ángulo a 60fps.
   4. Sincronización continua de ubicación y rumbo en Firestore (`driverProfiles`).
 - `driverService.ts`:
-  - `loadLocalOrders()` / `saveLocalOrders()`: Persistencia en `localStorage`.
+  - `loadLocalOrders()` / `saveLocalOrders()`: Persistencia en `localStorage` aislada por repartidor activo.
+  - `loadDriverProfile()`: Valida vigencia de token JWT y sesión de repartidor (`rf_driver_session`, `rf_driver_token`); si expiró, purga automáticamente la sesión.
+  - `clearDriverProfile()`: Limpieza exclusiva de la sesión de repartidor (`rf_driver_session`, `rf_driver_token`, `rf_orders_history`, `rf_driver_wallet`, acciones pendientes y telemetría), dejando 100% intacta la sesión del comprador (`rf_customer_session`, `rf_customer_token`).
+  - `loadClientProfile()` / `saveClientProfile()` / `clearClientProfile()`: Manejo independiente de la sesión de comprador.
 - `driverPendingActions.ts`: Encola y sincroniza acciones pendientes para el repartidor activo; los rechazos del servidor se muestran y no se acreditan.
 - `walletService.ts`:
   - `loadDriverWallet()` / `saveDriverWallet()`: Persistencia reactiva de la cartera (`rf_driver_wallet`).

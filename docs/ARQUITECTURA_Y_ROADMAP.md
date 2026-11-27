@@ -4,15 +4,18 @@
 
 ---
 
-## 🏗️ 1. Arquitectura del Sistema (2 Webs + 1 Backend + 1 DB en `public`)
+## 🏗️ 1. Arquitectura del Sistema (Oracle Cloud Always Free)
 
-La plataforma opera con un frontend PWA Next.js (`repartofacil`), un backend centralizado
-en Python/Flask (`cobrofacil`), y una base de datos PostgreSQL unificada (`crm_libro_local` en Render)
+> **ESTADO DE INFRAESTRUCTURA:**
+> Se ha discontinuado el uso de Render en producción. Todo el sistema está desplegado en un VPS Ubuntu 24.04 de Oracle Cloud Always Free (IP `157.151.3.66`), con Caddy como reverse proxy (HTTPS automático), PM2 para orquestar los procesos y PostgreSQL 16 local con backups automáticos diarios.
+
+La plataforma opera con un frontend PWA Next.js (`repartofacil.157.151.3.66.sslip.io`), un backend centralizado
+en Python/Flask (`cobrofacil.157.151.3.66.sslip.io`), y una base de datos PostgreSQL 16 unificada (`crm_libro_local` en el VPS)
 donde el 100% de las tablas residen en el esquema `public`.
 
 El antiguo servicio `repartofacil-backend` (FastAPI) ha sido eliminado; todas las rutas
 proxy de autenticación (`/api/auth/*`), base/inventario (`/api/db/*`) y catálogo (`/api/cobrofacil/*`)
-son resueltas directamente por `cobrofacil.onrender.com`.
+son resueltas directamente por `cobrofacil.157.151.3.66.sslip.io`.
 
 ```mermaid
 flowchart TD
@@ -31,13 +34,13 @@ flowchart TD
         ProxyDB["/api/db/*\nProxy a Cobro Fácil"]
     end
 
-    subgraph BackendAPI["Backend Unificado: Cobro Fácil (Flask en Render)"]
+    subgraph BackendAPI["Backend Unificado: Cobro Fácil (Flask en Oracle Cloud)"]
         AuthEngine["Motor Auth & Roles (JWT)\n/api/auth/*"]
         PosEngine["Motor TPV & Sync\n/api/pos/*"]
         CatalogEngine["Motor Catálogo & Stock\n/api/cobrofacil/*"]
     end
 
-    subgraph BaseDeDatos["PostgreSQL Render (crm_libro_local - Esquema public)"]
+    subgraph BaseDeDatos["PostgreSQL 16 Oracle Cloud (crm_libro_local - Esquema public)"]
         Col_Orders[("public.repartofacil_pedidos")]
         Col_Chat[("public.repartofacil_chat_mensajes")]
         Col_Companies[("public.empresas & public.sucursales")]

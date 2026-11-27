@@ -597,7 +597,7 @@ export function VistaMercadosEmpresas({
           </span>
         </div>
         <a
-          href="https://cobrofacil.onrender.com"
+          href="https://cobrofacil.157.151.3.66.sslip.io"
           target="_blank"
           rel="noreferrer"
           className="p-2 rounded-xl bg-blue-600 text-white hover:bg-blue-700 transition-colors shadow-xs"

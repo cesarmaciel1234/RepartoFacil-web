@@ -60,6 +60,7 @@ export function isProductPurchasable(
 ): product is PurchasableProduct {
   if (!hasValidPrice(product)) return false;
   if ((product as any).isOutOfStock === true) return false;
+  if ((product as any).catalogCached === true) return false;
   const stock = getProductStock(product);
   return stock > 0;
 }
