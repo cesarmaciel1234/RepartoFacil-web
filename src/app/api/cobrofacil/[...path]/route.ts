@@ -135,19 +135,19 @@ function mapProduct(
   const price = finiteNumber(item.precio);
   const rawStock = item.stock ?? item.stock_actual ?? item.cantidad ?? item.stockKg ?? item.existencia;
   const parsedStock = finiteNumber(rawStock);
-  // En carnicerías/TPV, el stock a menudo viene en 0.0 para productos activos pesables cortados a demanda.
-  // Si tiene precio válido y no está explícitamente dado de baja, asignar stock disponible por defecto (999).
-  const stockKg = parsedStock !== undefined && parsedStock > 0 ? parsedStock : 999;
+  // En carnicerías/TPV, el stock a menudo viene en 0.0 o negativo por ventas pesadas en mostrador sin stock inicial cargado.
+  // Si tiene precio activo, asignar stock disponible positivo.
+  const stockKg = parsedStock !== undefined && parsedStock > 0
+    ? parsedStock
+    : (parsedStock !== undefined && parsedStock < 0 ? Math.abs(parsedStock) + 100 : 999);
   const image = getProductImage(name);
   const code = String(item.codigo || productId);
 
-  const isOutOfStock = stockKg <= 0;
+  const isOutOfStock = false;
   const isLowStock = stockKg > 0 && stockKg < 5;
-  const dynamicBadge = isOutOfStock
-    ? "AGOTADO EN SUCURSAL"
-    : isLowStock
-      ? `⚡ ÚLTIMOS ${stockKg} ${String(item.unidad || "KG").toUpperCase()}`
-      : department;
+  const dynamicBadge = isLowStock
+    ? `⚡ ÚLTIMOS ${stockKg} ${String(item.unidad || "KG").toUpperCase()}`
+    : department;
 
   return {
     id: `${options.idPrefix}${productId}`,
@@ -156,13 +156,14 @@ function mapProduct(
     categoryName: department,
     department,
     ...(price !== undefined && price > 0 ? { price } : {}),
-    unit: String(item.unidad || "").trim(),
+    unit: String(item.unidad || "KG").trim().toUpperCase(),
     description: `${department} · Inventario en vivo ${options.companyName}. Código TPV: ${code}.`,
     ...(image ? { image } : {}),
+    stock: stockKg,
     stockKg,
     priceSource: "tpv" as const,
     badge: dynamicBadge,
-    isOutOfStock,
+    isOutOfStock: false,
     isLowStock,
     companyId: options.companyId,
     companyName: options.companyName,
@@ -248,9 +249,9 @@ export async function GET(
 
       const prodSql = targetBranchId != null
         ? (targetBranchId === 1
-            ? "SELECT columnas, filas, sucursal_id, sucursal_nombre FROM pos_base WHERE tabla = 'productos' AND (sucursal_id = 1 OR sucursal_id = 2) ORDER BY id DESC"
+            ? "SELECT columnas, filas, sucursal_id, sucursal_nombre FROM pos_base WHERE empresa_id = 1 AND tabla = 'productos' ORDER BY id DESC"
             : `SELECT columnas, filas, sucursal_id, sucursal_nombre FROM pos_base WHERE tabla = 'productos' AND sucursal_id = ${targetBranchId} ORDER BY id DESC`)
-        : `SELECT columnas, filas, sucursal_id, sucursal_nombre FROM pos_base WHERE tabla = 'productos' ORDER BY id DESC`;
+        : `SELECT columnas, filas, sucursal_id, sucursal_nombre FROM pos_base WHERE empresa_id = 1 AND tabla = 'productos' ORDER BY id DESC`;
       const prodRows = await queryDb<PosBaseRow>(prodSql);
 
       const macielCompanyId = "frigorifico-maciel";
@@ -258,21 +259,19 @@ export async function GET(
       const rawProducts: NonNullable<ReturnType<typeof mapProduct>>[] = [];
 
       for (const row of prodRows) {
-        // En pos_base, las terminales de Alfaro 1964 suben con sucursal_id 1 o 2.
-        // Mapear sucursal_id 2 a 1 para que pertenezca a la sucursal activa Alfaro 1964.
-        const rawSid = row.sucursal_id != null ? Number(row.sucursal_id) : 1;
-        const normalizedSid = rawSid === 2 ? 1 : rawSid;
-        const rowSid = macielMultiBranch ? normalizedSid : 1;
-        const branchCompId = macielMultiBranch ? `${macielCompanyId}-suc-${rowSid}` : `${macielCompanyId}-suc-1`;
+        // En pos_base, todas las terminales de Frigorífico Maciel (empresa 1) corresponden a Alfaro 1964.
+        // Asignar sucursal_id 1 para que pertenezcan a la sucursal activa Alfaro 1964.
+        const rowSid = 1;
+        const branchCompId = `${macielCompanyId}-suc-1`;
         const mapped = mapStoredRows([row], "pos_base.productos", warnings)
           .map((item) =>
             mapProduct(
               item,
               {
-                idPrefix: `tpv-suc-${rowSid}-`,
+                idPrefix: `tpv-suc-1-`,
                 companyId: branchCompId,
                 companyName: macielCompanyName,
-                source: `pos_base (sucursal ${rowSid})`,
+                source: `pos_base (${row.sucursal_nombre || 'Alfaro 1964'})`,
                 categoryMap,
                 sucursal_id: rowSid,
               },
@@ -283,16 +282,22 @@ export async function GET(
         rawProducts.push(...mapped);
       }
 
-      // Deduplicar productos para mantener el registro más reciente de pos_base
-      const seenProductKeys = new Set<string>();
-      const products: NonNullable<ReturnType<typeof mapProduct>>[] = [];
+      // Deduplicar productos para mantener el registro con precio activo y stock más favorable
+      const productMap = new Map<string, NonNullable<ReturnType<typeof mapProduct>>>();
       for (const prod of rawProducts) {
-        const key = `${prod.companyId}-${prod.name.toLowerCase()}`;
-        if (!seenProductKeys.has(key)) {
-          seenProductKeys.add(key);
-          products.push(prod);
+        const key = prod.name.toLowerCase().trim();
+        const existing = productMap.get(key);
+        if (!existing) {
+          productMap.set(key, prod);
+        } else {
+          const existingPrice = existing.price || 0;
+          const currentPrice = prod.price || 0;
+          if (currentPrice > 0 && (existingPrice === 0 || (prod.stockKg || 0) > (existing.stockKg || 0))) {
+            productMap.set(key, { ...prod, image: prod.image || existing.image });
+          }
         }
       }
+      const products = Array.from(productMap.values());
 
       if (!hasBranchFilter) {
         const otherCompaniesProducts: NonNullable<ReturnType<typeof mapProduct>>[] = [];

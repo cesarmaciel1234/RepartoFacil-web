@@ -48,6 +48,23 @@ export function productBelongsToCompany(product: Product, company: CompanyStore)
   const productCompany = (product.companyId || "").toLowerCase();
   if (!productCompany) return false;
 
+  const isMacielCompany =
+    company.id === "frigorifico-maciel" ||
+    company.id.startsWith("frigorifico-maciel-") ||
+    company.slug === "maciel" ||
+    (company as any).parentSlug === "maciel" ||
+    (company as any).empresa_id === 1;
+
+  const isMacielProduct =
+    productCompany === "frigorifico-maciel" ||
+    productCompany.startsWith("frigorifico-maciel") ||
+    productCompany.includes("maciel") ||
+    (product as any).empresa_id === 1;
+
+  if (isMacielCompany && isMacielProduct) {
+    return true;
+  }
+
   const productSucId = (product as any).sucursal_id ?? (product as any).branchId;
   const companySucId = company.sucursal_id;
 
@@ -262,14 +279,13 @@ export function useCatalogoTienda({
             "El catálogo se cargó parcialmente desde Cobro Fácil:",
             productsResult.value.warnings
           );
-        } else {
-          try {
-            setProductsSavedAt(saveProductsCache(productsResult.value.products));
-            setProductsCacheError(false);
-          } catch (error) {
-            console.warn("No se pudieron guardar los productos para uso sin conexión:", error);
-            setProductsCacheError(true);
-          }
+        }
+        try {
+          setProductsSavedAt(saveProductsCache(productsResult.value.products));
+          setProductsCacheError(false);
+        } catch (error) {
+          console.warn("No se pudieron guardar los productos para uso sin conexión:", error);
+          setProductsCacheError(true);
         }
         setProductsStatus("ready");
       } else {

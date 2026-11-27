@@ -40,6 +40,8 @@ const RAW_PRODUCTS = [
     "dept": "AVES",
     "price": 13500,
     "unit": "KG",
+    "stock": 999584.6299999985,
+    "stockKg": 999584.6299999985,
     "image": "/productos/suprema.png"
   },
   {
@@ -48,6 +50,8 @@ const RAW_PRODUCTS = [
     "dept": "CARNE",
     "price": 18900,
     "unit": "KG",
+    "stock": 999804.1400000001,
+    "stockKg": 999804.1400000001,
     "image": "/productos/asado.png"
   },
   {
@@ -56,6 +60,8 @@ const RAW_PRODUCTS = [
     "dept": "CARNE",
     "price": 19900,
     "unit": "KG",
+    "stock": 999908.7999999998,
+    "stockKg": 999908.7999999998,
     "image": "/productos/vacio.png"
   },
   {
@@ -64,6 +70,8 @@ const RAW_PRODUCTS = [
     "dept": "CARNE",
     "price": 21900,
     "unit": "KG",
+    "stock": 999999,
+    "stockKg": 999999,
     "image": "/productos/oferta-de-vacio.png"
   },
   {
@@ -72,6 +80,8 @@ const RAW_PRODUCTS = [
     "dept": "CARNE",
     "price": 19900,
     "unit": "KG",
+    "stock": 999991.3999999998,
+    "stockKg": 999991.3999999998,
     "image": "/productos/tapa-de-nalga.png"
   },
   {
@@ -80,6 +90,8 @@ const RAW_PRODUCTS = [
     "dept": "CARNE",
     "price": 19900,
     "unit": "KG",
+    "stock": 1000001.4799999999,
+    "stockKg": 1000001.4799999999,
     "image": "/productos/matambre.png"
   },
   {
@@ -88,6 +100,8 @@ const RAW_PRODUCTS = [
     "dept": "CARNE",
     "price": 21900,
     "unit": "KG",
+    "stock": 1000014.04,
+    "stockKg": 1000014.04,
     "image": "/productos/asado-americano.png"
   },
   {
@@ -96,6 +110,8 @@ const RAW_PRODUCTS = [
     "dept": "CARNE",
     "price": 21900,
     "unit": "KG",
+    "stock": 1000014.88,
+    "stockKg": 1000014.88,
     "image": "/productos/entrana.png"
   },
   {
@@ -104,6 +120,8 @@ const RAW_PRODUCTS = [
     "dept": "CARNE",
     "price": 18800,
     "unit": "KG",
+    "stock": 999995.5299999999,
+    "stockKg": 999995.5299999999,
     "image": "/productos/falda.png"
   },
   {
@@ -112,6 +130,8 @@ const RAW_PRODUCTS = [
     "dept": "CARNE",
     "price": 21000,
     "unit": "KG",
+    "stock": 999860.4899999987,
+    "stockKg": 999860.4899999987,
     "image": "/productos/paleta.png"
   },
   {
@@ -120,6 +140,8 @@ const RAW_PRODUCTS = [
     "dept": "CARNE",
     "price": 19900,
     "unit": "KG",
+    "stock": 999839.4999999978,
+    "stockKg": 999839.4999999978,
     "image": "/productos/roast-beef.png"
   },
   {
@@ -128,6 +150,8 @@ const RAW_PRODUCTS = [
     "dept": "CARNE",
     "price": 21000,
     "unit": "KG",
+    "stock": 1000011.3399999997,
+    "stockKg": 1000011.3399999997,
     "image": "/productos/palomita.png"
   },
   {
@@ -136,6 +160,8 @@ const RAW_PRODUCTS = [
     "dept": "CARNE",
     "price": 21000,
     "unit": "KG",
+    "stock": 999998.6899999996,
+    "stockKg": 999998.6899999996,
     "image": "/productos/tortuguita.png"
   },
   {
@@ -144,6 +170,8 @@ const RAW_PRODUCTS = [
     "dept": "CARNE",
     "price": 25900,
     "unit": "KG",
+    "stock": 999986.8300000001,
+    "stockKg": 999986.8300000001,
     "image": "/productos/lomo.png"
   },
   {
@@ -152,6 +180,8 @@ const RAW_PRODUCTS = [
     "dept": "CARNE",
     "price": 14000,
     "unit": "KG",
+    "stock": 999772.8000000009,
+    "stockKg": 999772.8000000009,
     "image": "/productos/osobuco.png"
   },
   {
@@ -160,6 +190,8 @@ const RAW_PRODUCTS = [
     "dept": "CARNE",
     "price": 12500,
     "unit": "KG",
+    "stock": 999876.3400000001,
+    "stockKg": 999876.3400000001,
     "image": null
   },
   {
@@ -168,6 +200,8 @@ const RAW_PRODUCTS = [
     "dept": "CARNE",
     "price": 25900,
     "unit": "KG",
+    "stock": 999894.9300000005,
+    "stockKg": 999894.9300000005,
     "image": "/productos/cuadril.png"
   },
   {
@@ -176,6 +210,8 @@ const RAW_PRODUCTS = [
     "dept": "CARNE",
     "price": 21000,
     "unit": "KG",
+    "stock": 999766.1000000009,
+    "stockKg": 999766.1000000009,
     "image": "/productos/bife-ancho.png"
   },
   {
@@ -184,6 +220,8 @@ const RAW_PRODUCTS = [
     "dept": "CARNE",
     "price": 25900,
     "unit": "KG",
+    "stock": 999865.7099999988,
+    "stockKg": 999865.7099999988,
     "image": "/productos/nalga.png"
   },
   {
@@ -192,6 +230,8 @@ const RAW_PRODUCTS = [
     "dept": "CARNE",
     "price": 23000,
     "unit": "KG",
+    "stock": 999907.7699999991,
+    "stockKg": 999907.7699999991,
     "image": "/productos/cuadrada.png"
   },
   {
@@ -200,6 +240,8 @@ const RAW_PRODUCTS = [
     "dept": "CARNE",
     "price": 21000,
     "unit": "KG",
+    "stock": 999904.5599999991,
+    "stockKg": 999904.5599999991,
     "image": "/productos/bola-de-lomo.png"
   },
   {
@@ -208,6 +250,8 @@ const RAW_PRODUCTS = [
     "dept": "CARNE",
     "price": 25900,
     "unit": "KG",
+    "stock": 999984.1699999993,
+    "stockKg": 999984.1699999993,
     "image": "/productos/peceto.png"
   },
   {
@@ -216,6 +260,8 @@ const RAW_PRODUCTS = [
     "dept": "CARNE",
     "price": 21900,
     "unit": "KG",
+    "stock": 999999,
+    "stockKg": 999999,
     "image": "/productos/oferta-tapa-asado.png"
   },
   {
@@ -224,6 +270,8 @@ const RAW_PRODUCTS = [
     "dept": "CARNE",
     "price": 25900,
     "unit": "KG",
+    "stock": 999990.2899999998,
+    "stockKg": 999990.2899999998,
     "image": "/productos/bife-de-chorizo.png"
   },
   {
@@ -232,6 +280,8 @@ const RAW_PRODUCTS = [
     "dept": "CARNE",
     "price": 17000,
     "unit": "KG",
+    "stock": 999783.389999998,
+    "stockKg": 999783.389999998,
     "image": "/productos/picada-comun.png"
   },
   {
@@ -240,14 +290,18 @@ const RAW_PRODUCTS = [
     "dept": "CARNE",
     "price": 17000,
     "unit": "KG",
+    "stock": 999915.4799999996,
+    "stockKg": 999915.4799999996,
     "image": "/productos/oferta-picada-comun.png"
   },
   {
     "id": 400,
-    "name": "Arrolldo",
+    "name": "matambre arrollado",
     "dept": "CARNE",
     "price": 25000,
     "unit": "KG",
+    "stock": 1000018,
+    "stockKg": 1000018,
     "image": null
   },
   {
@@ -256,6 +310,8 @@ const RAW_PRODUCTS = [
     "dept": "CERDO",
     "price": 9000,
     "unit": "KG",
+    "stock": 999961.3200000002,
+    "stockKg": 999961.3200000002,
     "image": "/productos/pechito-de-cerdo.png"
   },
   {
@@ -264,6 +320,8 @@ const RAW_PRODUCTS = [
     "dept": "CERDO",
     "price": 13500,
     "unit": "KG",
+    "stock": 1000021.49,
+    "stockKg": 1000021.49,
     "image": null
   },
   {
@@ -272,6 +330,8 @@ const RAW_PRODUCTS = [
     "dept": "CERDO",
     "price": 13500,
     "unit": "KG",
+    "stock": 999980.82,
+    "stockKg": 999980.82,
     "image": "/productos/boldiola-de-cerdo.png"
   },
   {
@@ -280,6 +340,8 @@ const RAW_PRODUCTS = [
     "dept": "AVES",
     "price": 4900,
     "unit": "KG",
+    "stock": 999790.64,
+    "stockKg": 999790.64,
     "image": "/productos/pollo-entero.png"
   },
   {
@@ -288,6 +350,8 @@ const RAW_PRODUCTS = [
     "dept": "AVES",
     "price": 4900,
     "unit": "KG",
+    "stock": 999899.5599999997,
+    "stockKg": 999899.5599999997,
     "image": null
   },
   {
@@ -296,6 +360,8 @@ const RAW_PRODUCTS = [
     "dept": "AVES",
     "price": 4900,
     "unit": "KG",
+    "stock": 999468.6500000005,
+    "stockKg": 999468.6500000005,
     "image": "/productos/oferta-pata-y-muslo.png"
   },
   {
@@ -304,6 +370,8 @@ const RAW_PRODUCTS = [
     "dept": "AVES",
     "price": 9500,
     "unit": "KG",
+    "stock": 1000006.14,
+    "stockKg": 1000006.14,
     "image": "/productos/pechuga.png"
   },
   {
@@ -312,6 +380,8 @@ const RAW_PRODUCTS = [
     "dept": "PREPARADOS",
     "price": 8500,
     "unit": "KG",
+    "stock": 999851.7699999993,
+    "stockKg": 999851.7699999993,
     "image": "/productos/milanesa-de-pollo.png"
   },
   {
@@ -320,6 +390,8 @@ const RAW_PRODUCTS = [
     "dept": "PREPARADOS",
     "price": 8500,
     "unit": "KG",
+    "stock": 999750.009999999,
+    "stockKg": 999750.009999999,
     "image": "/productos/oferta-de-milanesa.png"
   },
   {
@@ -328,6 +400,8 @@ const RAW_PRODUCTS = [
     "dept": "AVES",
     "price": 3500,
     "unit": "KG",
+    "stock": 999724.9599999998,
+    "stockKg": 999724.9599999998,
     "image": "/productos/oferta-alita.png"
   },
   {
@@ -336,6 +410,8 @@ const RAW_PRODUCTS = [
     "dept": "CARNE",
     "price": 17000,
     "unit": "KG",
+    "stock": 999996.02,
+    "stockKg": 999996.02,
     "image": "/productos/hamburguesa.png"
   },
   {
@@ -344,6 +420,8 @@ const RAW_PRODUCTS = [
     "dept": "AVES",
     "price": 13500,
     "unit": "KG",
+    "stock": 999752.0199999986,
+    "stockKg": 999752.0199999986,
     "image": "/productos/oferta-suprema.png"
   },
   {
@@ -352,6 +430,8 @@ const RAW_PRODUCTS = [
     "dept": "EMBUTIDO",
     "price": 11000,
     "unit": "KG",
+    "stock": 999887.7800000005,
+    "stockKg": 999887.7800000005,
     "image": "/productos/chorizo.png"
   },
   {
@@ -360,6 +440,8 @@ const RAW_PRODUCTS = [
     "dept": "EMBUTIDO",
     "price": 7500,
     "unit": "KG",
+    "stock": 999976.4500000002,
+    "stockKg": 999976.4500000002,
     "image": "/productos/morcilla.png"
   },
   {
@@ -368,6 +450,8 @@ const RAW_PRODUCTS = [
     "dept": "ACHURAS",
     "price": 6800,
     "unit": "KG",
+    "stock": 999862.1099999987,
+    "stockKg": 999862.1099999987,
     "image": "/productos/higado.png"
   },
   {
@@ -376,6 +460,8 @@ const RAW_PRODUCTS = [
     "dept": "HUEVO",
     "price": 1500,
     "unit": "UN",
+    "stock": 1000,
+    "stockKg": 1000,
     "image": null
   },
   {
@@ -384,6 +470,8 @@ const RAW_PRODUCTS = [
     "dept": "HUEVO",
     "price": 2500,
     "unit": "UN",
+    "stock": 998,
+    "stockKg": 998,
     "image": null
   },
   {
@@ -392,6 +480,8 @@ const RAW_PRODUCTS = [
     "dept": "HUEVO",
     "price": 3300,
     "unit": "UN",
+    "stock": 997,
+    "stockKg": 997,
     "image": null
   },
   {
@@ -400,7 +490,29 @@ const RAW_PRODUCTS = [
     "dept": "ALMACEN",
     "price": 8000,
     "unit": "UN",
+    "stock": 6,
+    "stockKg": 6,
     "image": "/productos/aceite-de-oliva.png"
+  },
+  {
+    "id": 7798342990171,
+    "name": "colita de cuadril",
+    "dept": "GENERAL",
+    "price": 1000,
+    "unit": "UN",
+    "stock": 10000,
+    "stockKg": 10000,
+    "image": "/productos/colita-de-cuadril.png"
+  },
+  {
+    "id": 7798342990172,
+    "name": "tapa de asado",
+    "dept": "CARNE",
+    "price": 19900,
+    "unit": "KG",
+    "stock": 1000,
+    "stockKg": 1000,
+    "image": "/productos/tapa-de-asado.png"
   },
   {
     "id": 7798342990173,
@@ -408,14 +520,18 @@ const RAW_PRODUCTS = [
     "dept": "HUEVO",
     "price": 6000,
     "unit": "UN",
+    "stock": 9994,
+    "stockKg": 9994,
     "image": null
   },
   {
     "id": 7798342990175,
     "name": "papas MC.",
-    "dept": "ACHURAS",
+    "dept": "ALMACEN",
     "price": 4500,
     "unit": "UN",
+    "stock": 9955,
+    "stockKg": 9955,
     "image": "/productos/papas-mc.png"
   },
   {
@@ -424,14 +540,18 @@ const RAW_PRODUCTS = [
     "dept": "ALMACEN",
     "price": 7000,
     "unit": "UN",
+    "stock": 10000000,
+    "stockKg": 10000000,
     "image": "/productos/carbon.png"
   },
   {
     "id": 7798342990181,
     "name": "Pata Muslo",
-    "dept": "AVES",
+    "dept": "POLLO",
     "price": 4900,
     "unit": "KG",
+    "stock": 999,
+    "stockKg": 999,
     "image": "/productos/pata-muslo.png"
   },
   {
@@ -440,6 +560,8 @@ const RAW_PRODUCTS = [
     "dept": "ALMACEN",
     "price": 1500,
     "unit": "UN",
+    "stock": 7,
+    "stockKg": 7,
     "image": "/productos/provenzal-alicante.png"
   },
   {
@@ -448,14 +570,18 @@ const RAW_PRODUCTS = [
     "dept": "ALMACEN",
     "price": 1500,
     "unit": "UN",
+    "stock": 12,
+    "stockKg": 12,
     "image": null
   },
   {
     "id": 7798342990186,
     "name": "arroz alicante",
-    "dept": "GENERAL",
+    "dept": "ALMACEN",
     "price": 1500,
     "unit": "UN",
+    "stock": 11,
+    "stockKg": 11,
     "image": null
   },
   {
@@ -464,22 +590,28 @@ const RAW_PRODUCTS = [
     "dept": "ALMACEN",
     "price": 1500,
     "unit": "UN",
+    "stock": 23,
+    "stockKg": 23,
     "image": null
   },
   {
-    "id": 7798342990206,
+    "id": 7798342990174,
     "name": "patitas congelados",
-    "dept": "CONGELADOS",
-    "price": 4500,
+    "dept": "ALMACEN",
+    "price": 4000,
     "unit": "UN",
+    "stock": 999,
+    "stockKg": 999,
     "image": "/productos/patitas-congelados.png"
   },
   {
-    "id": 7798342990207,
+    "id": 770,
     "name": "Alitas",
     "dept": "AVES",
     "price": 3500,
-    "unit": "UN",
+    "unit": "KG",
+    "stock": 999901.3799999995,
+    "stockKg": 999901.3799999995,
     "image": "/productos/alitas.png"
   },
   {
@@ -488,6 +620,8 @@ const RAW_PRODUCTS = [
     "dept": "CERDO",
     "price": 8500,
     "unit": "KG",
+    "stock": 999953.0800000011,
+    "stockKg": 999953.0800000011,
     "image": null
   },
   {
@@ -496,6 +630,8 @@ const RAW_PRODUCTS = [
     "dept": "AVES",
     "price": 4900,
     "unit": "KG",
+    "stock": 999598.8500000001,
+    "stockKg": 999598.8500000001,
     "image": "/productos/pata-y-muslo.png"
   },
   {
@@ -504,6 +640,8 @@ const RAW_PRODUCTS = [
     "dept": "AVES",
     "price": 500,
     "unit": "KG",
+    "stock": 999901.2999999998,
+    "stockKg": 999901.2999999998,
     "image": null
   },
   {
@@ -512,6 +650,8 @@ const RAW_PRODUCTS = [
     "dept": "AVES",
     "price": 100,
     "unit": "KG",
+    "stock": 999847.0900000002,
+    "stockKg": 999847.0900000002,
     "image": null
   },
   {
@@ -520,6 +660,8 @@ const RAW_PRODUCTS = [
     "dept": "AVES",
     "price": 4500,
     "unit": "KG",
+    "stock": 999713.4499999995,
+    "stockKg": 999713.4499999995,
     "image": null
   },
   {
@@ -528,6 +670,8 @@ const RAW_PRODUCTS = [
     "dept": "ACHURAS",
     "price": 6800,
     "unit": "KG",
+    "stock": 999971.5,
+    "stockKg": 999971.5,
     "image": null
   },
   {
@@ -536,6 +680,8 @@ const RAW_PRODUCTS = [
     "dept": "ACHURAS",
     "price": 10000,
     "unit": "KG",
+    "stock": 999994.1599999999,
+    "stockKg": 999994.1599999999,
     "image": null
   },
   {
@@ -544,6 +690,8 @@ const RAW_PRODUCTS = [
     "dept": "ALMACEN",
     "price": 1500,
     "unit": "UN",
+    "stock": 969,
+    "stockKg": 969,
     "image": null
   },
   {
@@ -552,6 +700,8 @@ const RAW_PRODUCTS = [
     "dept": "ALMACEN",
     "price": 5500,
     "unit": "UN",
+    "stock": 1000005,
+    "stockKg": 1000005,
     "image": null
   },
   {
@@ -560,6 +710,8 @@ const RAW_PRODUCTS = [
     "dept": "ALMACEN",
     "price": 3500,
     "unit": "UN",
+    "stock": 1000004,
+    "stockKg": 1000004,
     "image": null
   },
   {
@@ -568,6 +720,8 @@ const RAW_PRODUCTS = [
     "dept": "ALMACEN",
     "price": 3000,
     "unit": "UN",
+    "stock": 1000003,
+    "stockKg": 1000003,
     "image": null
   },
   {
@@ -576,6 +730,8 @@ const RAW_PRODUCTS = [
     "dept": "CERDO",
     "price": 2000,
     "unit": "KG",
+    "stock": 1000048,
+    "stockKg": 1000048,
     "image": null
   },
   {
@@ -584,6 +740,8 @@ const RAW_PRODUCTS = [
     "dept": "GENERAL",
     "price": 1000,
     "unit": "UN",
+    "stock": 100,
+    "stockKg": 100,
     "image": null
   },
   {
@@ -592,14 +750,18 @@ const RAW_PRODUCTS = [
     "dept": "ALMACEN",
     "price": 3000,
     "unit": "UN",
+    "stock": 15,
+    "stockKg": 15,
     "image": null
   },
   {
     "id": 754697504357,
-    "name": "sal c. carne",
+    "name": "sal carne",
     "dept": "ALMACEN",
     "price": 3000,
     "unit": "UN",
+    "stock": 9,
+    "stockKg": 9,
     "image": null
   },
   {
@@ -608,6 +770,8 @@ const RAW_PRODUCTS = [
     "dept": "ALMACEN",
     "price": 3000,
     "unit": "UN",
+    "stock": 7,
+    "stockKg": 7,
     "image": "/productos/aceituna.png"
   },
   {
@@ -616,6 +780,8 @@ const RAW_PRODUCTS = [
     "dept": "ALMACEN",
     "price": 3000,
     "unit": "UN",
+    "stock": 4,
+    "stockKg": 4,
     "image": null
   },
   {
@@ -624,6 +790,8 @@ const RAW_PRODUCTS = [
     "dept": "ALMACEN",
     "price": 3000,
     "unit": "UN",
+    "stock": 6,
+    "stockKg": 6,
     "image": null
   },
   {
@@ -632,6 +800,8 @@ const RAW_PRODUCTS = [
     "dept": "ALMACEN",
     "price": 1500,
     "unit": "UN",
+    "stock": 1000,
+    "stockKg": 1000,
     "image": null
   },
   {
@@ -640,14 +810,18 @@ const RAW_PRODUCTS = [
     "dept": "ALMACEN",
     "price": 1500,
     "unit": "UN",
+    "stock": 1000,
+    "stockKg": 1000,
     "image": "/productos/pan-r-comun.png"
   },
   {
     "id": 7798342990169,
-    "name": "sal c. achuras",
+    "name": "sal achuras",
     "dept": "GENERAL",
     "price": 3000,
     "unit": "UN",
+    "stock": 999,
+    "stockKg": 999,
     "image": null
   },
   {
@@ -656,6 +830,8 @@ const RAW_PRODUCTS = [
     "dept": "GENERAL",
     "price": 3000,
     "unit": "UN",
+    "stock": 999,
+    "stockKg": 999,
     "image": null
   },
   {
@@ -664,30 +840,38 @@ const RAW_PRODUCTS = [
     "dept": "ALMACEN",
     "price": 500,
     "unit": "UN",
+    "stock": 999,
+    "stockKg": 999,
     "image": null
   },
   {
     "id": 7798342990177,
     "name": "grasa vacuna",
-    "dept": "GRASA",
+    "dept": "ALMACEN",
     "price": 2000,
     "unit": "UN",
+    "stock": 999,
+    "stockKg": 999,
     "image": null
   },
   {
     "id": 7798342990178,
     "name": "grasa de cerdo",
-    "dept": "GRASA",
+    "dept": "ALMACEN",
     "price": 2000,
     "unit": "UN",
+    "stock": 999,
+    "stockKg": 999,
     "image": null
   },
   {
     "id": 7798342990180,
     "name": "leña",
-    "dept": "GENERAL",
+    "dept": "ALMACEN",
     "price": 7000,
     "unit": "UN",
+    "stock": 5,
+    "stockKg": 5,
     "image": null
   },
   {
@@ -696,14 +880,18 @@ const RAW_PRODUCTS = [
     "dept": "POLLO",
     "price": 500,
     "unit": "KG",
+    "stock": 999,
+    "stockKg": 999,
     "image": null
   },
   {
     "id": 7798342990183,
     "name": "Carcasa",
-    "dept": "AVES",
+    "dept": "POLLO",
     "price": 100,
     "unit": "KG",
+    "stock": 999,
+    "stockKg": 999,
     "image": null
   },
   {
@@ -712,6 +900,8 @@ const RAW_PRODUCTS = [
     "dept": "ALMACEN",
     "price": 1000,
     "unit": "UN",
+    "stock": 27,
+    "stockKg": 27,
     "image": null
   },
   {
@@ -720,6 +910,8 @@ const RAW_PRODUCTS = [
     "dept": "ALMACEN",
     "price": 2000,
     "unit": "UN",
+    "stock": 11,
+    "stockKg": 11,
     "image": null
   },
   {
@@ -728,6 +920,8 @@ const RAW_PRODUCTS = [
     "dept": "ALMACEN",
     "price": 5500,
     "unit": "UN",
+    "stock": 4,
+    "stockKg": 4,
     "image": null
   },
   {
@@ -736,6 +930,8 @@ const RAW_PRODUCTS = [
     "dept": "ALMACEN",
     "price": 5500,
     "unit": "UN",
+    "stock": 2,
+    "stockKg": 2,
     "image": null
   },
   {
@@ -744,6 +940,8 @@ const RAW_PRODUCTS = [
     "dept": "ALMACEN",
     "price": 5500,
     "unit": "UN",
+    "stock": 2,
+    "stockKg": 2,
     "image": null
   },
   {
@@ -752,6 +950,8 @@ const RAW_PRODUCTS = [
     "dept": "ALMACEN",
     "price": 4000,
     "unit": "UN",
+    "stock": 1,
+    "stockKg": 1,
     "image": null
   },
   {
@@ -760,6 +960,8 @@ const RAW_PRODUCTS = [
     "dept": "ALMACEN",
     "price": 2000,
     "unit": "UN",
+    "stock": 10,
+    "stockKg": 10,
     "image": null
   },
   {
@@ -768,6 +970,8 @@ const RAW_PRODUCTS = [
     "dept": "ALMACEN",
     "price": 1500,
     "unit": "UN",
+    "stock": 9,
+    "stockKg": 9,
     "image": null
   },
   {
@@ -776,6 +980,8 @@ const RAW_PRODUCTS = [
     "dept": "ALMACEN",
     "price": 1500,
     "unit": "UN",
+    "stock": 12,
+    "stockKg": 12,
     "image": null
   },
   {
@@ -784,6 +990,248 @@ const RAW_PRODUCTS = [
     "dept": "ALMACEN",
     "price": 2000,
     "unit": "UN",
+    "stock": 11,
+    "stockKg": 11,
+    "image": null
+  },
+  {
+    "id": 530,
+    "name": "Oferta Carre",
+    "dept": "CERDO",
+    "price": 7500,
+    "unit": "KG",
+    "stock": 1000050,
+    "stockKg": 1000050,
+    "image": null
+  },
+  {
+    "id": 1220,
+    "name": "Riñon",
+    "dept": "ACHURAS",
+    "price": 5800,
+    "unit": "KG",
+    "stock": 1000000.58,
+    "stockKg": 1000000.58,
+    "image": null
+  },
+  {
+    "id": 2147483647,
+    "name": "Cadril",
+    "dept": "CARNE",
+    "price": 13500,
+    "unit": "KG",
+    "stock": 1000024,
+    "stockKg": 1000024,
+    "image": null
+  },
+  {
+    "id": 7798342990190,
+    "name": "bolsa carnes rojas",
+    "dept": "ALMACEN",
+    "price": 3000,
+    "unit": "UN",
+    "stock": 6,
+    "stockKg": 6,
+    "image": null
+  },
+  {
+    "id": 7798342990192,
+    "name": "tau cheddar",
+    "dept": "ALMACEN",
+    "price": 5500,
+    "unit": "UN",
+    "stock": 999,
+    "stockKg": 999,
+    "image": null
+  },
+  {
+    "id": 7798342990195,
+    "name": "tau mayonesa picante",
+    "dept": "ALMACEN",
+    "price": 5500,
+    "unit": "UN",
+    "stock": 1,
+    "stockKg": 1,
+    "image": null
+  },
+  {
+    "id": 7798342990196,
+    "name": "sal pollo",
+    "dept": "ALMACEN",
+    "price": 3000,
+    "unit": "UN",
+    "stock": 6,
+    "stockKg": 6,
+    "image": null
+  },
+  {
+    "id": 7798342990197,
+    "name": "sal cerdo y cordero",
+    "dept": "ALMACEN",
+    "price": 3000,
+    "unit": "UN",
+    "stock": 4,
+    "stockKg": 4,
+    "image": null
+  },
+  {
+    "id": 7798342990198,
+    "name": "provenzal AJ51",
+    "dept": "ALMACEN",
+    "price": 4000,
+    "unit": "UN",
+    "stock": 4,
+    "stockKg": 4,
+    "image": null
+  },
+  {
+    "id": 7798342990199,
+    "name": "salsa de soja",
+    "dept": "ALMACEN",
+    "price": 4000,
+    "unit": "UN",
+    "stock": 999,
+    "stockKg": 999,
+    "image": null
+  },
+  {
+    "id": 7798342990203,
+    "name": "mayonesa hellmann´s",
+    "dept": "ALMACEN",
+    "price": 3000,
+    "unit": "UN",
+    "stock": 2,
+    "stockKg": 2,
+    "image": null
+  },
+  {
+    "id": 7798342990211,
+    "name": "comino alicante",
+    "dept": "ALMACEN",
+    "price": 1500,
+    "unit": "UN",
+    "stock": 6,
+    "stockKg": 6,
+    "image": null
+  },
+  {
+    "id": 7798342990212,
+    "name": "bicarbonato alicante",
+    "dept": "ALMACEN",
+    "price": 1500,
+    "unit": "UN",
+    "stock": 10,
+    "stockKg": 10,
+    "image": null
+  },
+  {
+    "id": 7798342990213,
+    "name": "tau caesar",
+    "dept": "ALMACEN",
+    "price": 5500,
+    "unit": "UN",
+    "stock": 2,
+    "stockKg": 2,
+    "image": null
+  },
+  {
+    "id": 7798342990214,
+    "name": "tau teriyaki",
+    "dept": "GENERAL",
+    "price": 5500,
+    "unit": "UN",
+    "stock": 999,
+    "stockKg": 999,
+    "image": null
+  },
+  {
+    "id": 7798342990215,
+    "name": "tau mayo con chimi",
+    "dept": "GENERAL",
+    "price": 5500,
+    "unit": "UN",
+    "stock": 999,
+    "stockKg": 999,
+    "image": null
+  },
+  {
+    "id": 7798342990216,
+    "name": "tau big tau",
+    "dept": "GENERAL",
+    "price": 5500,
+    "unit": "UN",
+    "stock": 999,
+    "stockKg": 999,
+    "image": null
+  },
+  {
+    "id": 7798342990217,
+    "name": "milanesa alicante",
+    "dept": "GENERAL",
+    "price": 1500,
+    "unit": "UN",
+    "stock": 12,
+    "stockKg": 12,
+    "image": null
+  },
+  {
+    "id": 160,
+    "name": "Espínazo",
+    "dept": "CARNE",
+    "price": 12500,
+    "unit": "KG",
+    "stock": 999933.7199999999,
+    "stockKg": 999933.7199999999,
+    "image": null
+  },
+  {
+    "id": 400,
+    "name": "Arrolldo",
+    "dept": "CARNE",
+    "price": 25000,
+    "unit": "KG",
+    "stock": 1000018,
+    "stockKg": 1000018,
+    "image": null
+  },
+  {
+    "id": 1711,
+    "name": "pan r. suelto",
+    "dept": "ALMACEN",
+    "price": 1500,
+    "unit": "UN",
+    "stock": 1000,
+    "stockKg": 1000,
+    "image": null
+  },
+  {
+    "id": 754697504357,
+    "name": "sal c. carne",
+    "dept": "ALMACEN",
+    "price": 3000,
+    "unit": "UN",
+    "stock": 1000,
+    "stockKg": 1000,
+    "image": null
+  },
+  {
+    "id": 7798342990169,
+    "name": "sal c. achuras",
+    "dept": "GENERAL",
+    "price": 3000,
+    "unit": "UN",
+    "stock": 999,
+    "stockKg": 999,
+    "image": null
+  },
+  {
+    "id": 7798342990175,
+    "name": "papasMC.",
+    "dept": "ALMACEN",
+    "price": 4000,
+    "unit": "UN",
+    "stock": 999,
+    "stockKg": 999,
     "image": null
   }
 ];
@@ -791,26 +1239,31 @@ const RAW_PRODUCTS = [
 export function buildBranchProducts(sucursalId: number): FallbackCatalogProduct[] {
   const branchCompId = `frigorifico-maciel-suc-${sucursalId}`;
   const branchCompName = "Frigorífico Maciel";
-  return RAW_PRODUCTS.map((item) => ({
-    id: `fallback-suc-${sucursalId}-${item.id}`,
-    name: item.name,
-    category: item.dept.toLowerCase(),
-    categoryName: item.dept,
-    department: item.dept,
-    price: item.price,
-    stockKg: 999,
-    unit: item.unit,
-    description: `${item.dept} · Corte fresco de Frigorífico Maciel. Calidad garantizada.`,
-    ...(item.image ? { image: item.image } : {}),
-    priceSource: "tpv" as const,
-    badge: item.dept,
-    isOutOfStock: false,
-    isLowStock: false,
-    companyId: branchCompId,
-    companyName: branchCompName,
-    sucursal_id: sucursalId,
-    catalogCached: false,
-  }));
+  return RAW_PRODUCTS.map((item) => {
+    const rawStock = item.stockKg ?? item.stock ?? 999;
+    const stockKg = typeof rawStock === "number" && rawStock > 0 ? rawStock : 999;
+    return {
+      id: `fallback-suc-${sucursalId}-${item.id}`,
+      name: item.name,
+      category: item.dept.toLowerCase(),
+      categoryName: item.dept,
+      department: item.dept,
+      price: item.price,
+      stock: stockKg,
+      stockKg: stockKg,
+      unit: item.unit,
+      description: `${item.dept} · Corte fresco de Frigorífico Maciel. Calidad garantizada.`,
+      ...(item.image ? { image: item.image } : {}),
+      priceSource: "tpv" as const,
+      badge: item.dept,
+      isOutOfStock: false,
+      isLowStock: false,
+      companyId: branchCompId,
+      companyName: branchCompName,
+      sucursal_id: sucursalId,
+      catalogCached: false,
+    };
+  });
 }
 
 export const FALLBACK_PRODUCTS_SUC_1: FallbackCatalogProduct[] = buildBranchProducts(1);

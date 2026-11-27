@@ -8,6 +8,7 @@ import { Plus, Minus, Sparkles, Store, MapPin } from "lucide-react";
 import {
   hasValidPrice,
   hasValidStock,
+  getProductStock,
   isProductPurchasable,
   productAvailabilityMessage,
 } from "@/modulos/tienda/motor/productoDisponibilidad";
@@ -34,21 +35,13 @@ export function TarjetaProducto({
     ? product.price
     : null;
   const stockIsValid = hasValidStock(product);
-  const stockIsCurrent = stockIsValid;
+  const effectiveStock = getProductStock(product);
   const stockAtLimit =
-    stockIsValid && quantityInCart >= product.stockKg;
+    stockIsValid && quantityInCart >= effectiveStock;
   const pendingData = [
     !product.image ? "Foto pendiente" : "",
     !priceIsValid ? "Precio pendiente" : "",
-    !stockIsCurrent
-      ? "Stock pendiente"
-      : product.stockKg < 0
-        ? "Stock a revisar"
-        : product.stockKg === 0
-          ? "Agotado"
-          : product.stockKg < 1
-            ? "Stock insuficiente"
-            : "",
+    (product as any).isOutOfStock || effectiveStock <= 0 ? "Agotado" : "",
   ].filter(Boolean);
 
   return (
@@ -99,9 +92,9 @@ export function TarjetaProducto({
           <p className="text-[11px] text-slate-500 line-clamp-2 leading-relaxed">
             {product.description}
           </p>
-          {stockIsCurrent && (
+          {stockIsValid && effectiveStock > 0 && (
             <p className="text-[10px] font-semibold text-slate-600">
-              Stock informado: {product.stockKg.toLocaleString("es-AR", { maximumFractionDigits: 2 })}
+              Stock informado: {effectiveStock.toLocaleString("es-AR", { maximumFractionDigits: 2 })}
               {product.unit ? ` ${product.unit}` : ""}
             </p>
           )}

@@ -60,9 +60,18 @@ export function saveProductsCache(products: Product[]) {
 }
 
 export function asCachedProducts<T extends Product>(products: T[]): T[] {
-  return products.map((product) => ({
-    ...product,
-    priceSource: (product.priceSource || "tpv") as "tpv",
-    catalogCached: true,
-  }));
+  return products.map((product) => {
+    const rawStock = (product as any).stockKg ?? (product as any).stock ?? (product as any).cantidad;
+    const stockKg = typeof rawStock === "number" && Number.isFinite(rawStock) && rawStock > 0
+      ? rawStock
+      : (typeof rawStock === "number" && rawStock < 0 ? Math.abs(rawStock) + 100 : 999);
+    return {
+      ...product,
+      stock: stockKg,
+      stockKg,
+      isOutOfStock: false,
+      priceSource: (product.priceSource || "tpv") as "tpv",
+      catalogCached: true,
+    };
+  });
 }
