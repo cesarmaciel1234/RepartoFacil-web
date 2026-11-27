@@ -5,6 +5,8 @@ import {
   loadClientProfile,
   saveClientProfile,
   getOrCreateActiveClientIdentity,
+  generateUniqueEntityId,
+  type ClientProfile,
   ORDERS_STORAGE_KEY,
 } from "@/modulos/repartidor/motor/driverService";
 import {
@@ -187,6 +189,84 @@ export async function saveMissingCustomerProfile(form: CheckoutFormData, expecte
     throw new Error("La sesión cambió. Cerrá el formulario y volvé a abrirlo.");
   }
   saveClientProfile({ ...profile, ...updates });
+}
+
+export async function autoRegisterGuestCustomer(params: {
+  name: string;
+  phone: string;
+  address: string;
+}): Promise<ClientProfile> {
+  const cleanName = params.name.trim() || "Cliente Reparto Fácil";
+  const cleanPhone = params.phone.trim();
+  const cleanAddress = params.address.trim();
+  const phoneDigits = cleanPhone.replace(/\D/g, "");
+  const uniqueId = `${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
+  const email = `cliente_${phoneDigits || uniqueId}@repartofacil.com`;
+  const password = `rf_${uniqueId}!`;
+
+  let response: Response;
+  try {
+    response = await fetch("/api/auth/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email,
+        password,
+        display_name: cleanName,
+        role: "Client",
+        phone: cleanPhone,
+        address: cleanAddress,
+      }),
+    });
+  } catch (error) {
+    console.error("Error al registrar invitado en /api/auth/register:", error);
+    throw new Error("No se pudo conectar con el servicio de compras. Revisá tu conexión e intentá nuevamente.");
+  }
+
+  // Si por alguna razón el email ya existe en la base, reintentar con sufijo único garantizado
+  if (!response.ok) {
+    const fallbackEmail = `invitado_${uniqueId}@repartofacil.com`;
+    try {
+      response = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: fallbackEmail,
+          password,
+          display_name: cleanName,
+          role: "Client",
+          phone: cleanPhone,
+          address: cleanAddress,
+        }),
+      });
+    } catch {
+      /* se procesa el error en el chequeo siguiente */
+    }
+  }
+
+  const data = await response.json();
+  if (!response.ok || !data.user || !data.access_token) {
+    throw new Error(data.detail || "No se pudo registrar la cuenta para confirmar el pedido.");
+  }
+
+  const user = data.user;
+  const token = data.access_token;
+  const userAccountId = user.userId || user.uid || generateUniqueEntityId("usr_cli");
+  const clientProfileId = user.id || generateUniqueEntityId("cli");
+
+  const clientProfile: ClientProfile = {
+    id: clientProfileId,
+    uid: userAccountId,
+    userId: userAccountId,
+    displayName: user.displayName || cleanName,
+    email: user.email || email,
+    role: "Client" as const,
+    phone: user.phone || cleanPhone,
+    address: user.address || cleanAddress,
+  };
+
+  saveClientProfile(clientProfile, token);
+  return clientProfile;
 }
 
 export async function createOrder(

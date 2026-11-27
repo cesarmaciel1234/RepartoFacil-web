@@ -149,7 +149,7 @@ export function DrawerCarrito({
     if (!deliveryCoordinates) return "Elegí tu ubicación";
     const distance = companyDistances[companyId];
     if (distance !== null && distance !== undefined) return `~${distance.toFixed(1)} km`;
-    return "Distancia no disponible";
+    return "A calcular";
   };
 
   return (

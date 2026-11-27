@@ -7,7 +7,7 @@ import {
   isProductPurchasable,
   productAvailabilityMessage,
 } from "./motor/productoDisponibilidad";
-import { createOrder, refreshMissingCustomerProfile, saveMissingCustomerProfile } from "./motor/pedidoService";
+import { autoRegisterGuestCustomer, createOrder, refreshMissingCustomerProfile, saveMissingCustomerProfile } from "./motor/pedidoService";
 import type { CheckoutFormData, DeliveryCoordinates, OrderData } from "./motor/tipos";
 import { useCatalogoTienda } from "./catalogo/hooks/useCatalogoTienda";
 import { usePedidosCliente } from "./pedidos/hooks/usePedidosCliente";
@@ -321,7 +321,7 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
     removeFromCart(productId, companyId);
   };
 
-  // Manejo de checkout: libre navegación en tienda, solo se pide login al pagar (y luego no vuelve a pedir)
+  // Manejo de checkout: libre navegación en tienda, checkout rápido como invitado o con cuenta
   const handleProceedToPayment = async (companyId: string) => {
     if (catalogProductsStatus !== "ready") {
       toast({
@@ -334,25 +334,17 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
     setCheckoutCompanyId(companyId);
     setIsCartOpen(false);
     const client = loadClientProfile();
-    if (!client || !authHeaders("Client").Authorization) {
-      setIsClientAuthOpen(true);
-      return;
+    if (client && authHeaders("Client").Authorization) {
+      try {
+        await refreshMissingCustomerProfile();
+      } catch (error) {
+        console.warn("No se pudo refrescar perfil del comprador:", error);
+      }
     }
-    try {
-      await refreshMissingCustomerProfile();
-      setIsCheckoutOpen(true);
-    } catch (error) {
-      console.error("No se pudo cargar el perfil del comprador:", error);
-      setIsCartOpen(true);
-      toast({
-        title: "No se pudieron cargar tus datos",
-        description: error instanceof Error ? error.message : "Intentá nuevamente.",
-        variant: "destructive",
-      });
-    }
+    setIsCheckoutOpen(true);
   };
 
-  const handleConfirmOrder = async (formData: CheckoutFormData, expectedClientId: string) => {
+  const handleConfirmOrder = async (formData: CheckoutFormData, expectedClientId: string | null) => {
     setIsSubmittingOrder(true);
     try {
       if (!checkoutCompanyId || checkoutCart.length === 0) {
@@ -400,10 +392,25 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
         deliveryFeeOverride: orderCompany?.deliveryFee,
         freeDeliveryThreshold: orderCompany?.freeDeliveryThreshold,
       };
-      await saveMissingCustomerProfile(orderForm, expectedClientId);
-      if (loadClientProfile()?.id !== expectedClientId) {
-        throw new Error("La sesión cambió. Cerrá el formulario y volvé a abrirlo.");
+
+      // Si el usuario no tiene sesión activa, registrarlo automáticamente como invitado
+      let activeClient = loadClientProfile();
+      let authHeader = authHeaders("Client").Authorization;
+
+      if (!activeClient || !authHeader) {
+        activeClient = await autoRegisterGuestCustomer({
+          name: orderForm.customerName,
+          phone: orderForm.customerPhone,
+          address: orderForm.deliveryAddress,
+        });
+        setClientProfile(activeClient);
+      } else if (expectedClientId) {
+        await saveMissingCustomerProfile(orderForm, expectedClientId);
+        if (loadClientProfile()?.id !== expectedClientId) {
+          throw new Error("La sesión cambió. Cerrá el formulario y volvé a abrirlo.");
+        }
       }
+
       const newOrder = await createOrder(checkoutCart, orderForm);
       setIsCheckoutOpen(false);
       setOrderConfirmed(newOrder);
@@ -732,6 +739,7 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
         }}
         isSubmitting={isSubmittingOrder}
         onConfirmOrder={handleConfirmOrder}
+        onOpenLogin={() => setIsClientAuthOpen(true)}
         orderConfirmed={orderConfirmed}
         onCloseConfirmed={() => {
           setOrderConfirmed(null);

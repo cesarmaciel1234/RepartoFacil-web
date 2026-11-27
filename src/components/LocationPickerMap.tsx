@@ -160,11 +160,27 @@ export default function LocationPickerMap({
     setIsSearching(true);
     setLocationError(null);
     try {
-      const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}&limit=1&addressdetails=1`);
+      let query = searchQuery.trim();
+      const needsContext =
+        !query.toLowerCase().includes("derqui") &&
+        !query.toLowerCase().includes("pilar") &&
+        !query.toLowerCase().includes("argentina");
+      const contextualQuery = needsContext
+        ? `${query}, Presidente Derqui, Buenos Aires, Argentina`
+        : query;
+
+      let response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(contextualQuery)}&limit=1&addressdetails=1`);
       if (!response.ok) {
         throw new Error(`El servicio respondió ${response.status}`);
       }
-      const data = await response.json();
+      let data = await response.json();
+      if ((!data || data.length === 0) && needsContext) {
+        // Reintentar con la búsqueda original si con Derqui no devolvió resultados
+        response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1&addressdetails=1`);
+        if (response.ok) {
+          data = await response.json();
+        }
+      }
       if (data && data.length > 0) {
         const lat = parseFloat(data[0].lat);
         const lon = parseFloat(data[0].lon);
@@ -249,7 +265,14 @@ export default function LocationPickerMap({
         setGpsPosition(position);
         setMarkerPosition(null);
         setLocationDetails(null);
-        setMapCenter(position);
+        const centerPos: [number, number] = initialCenter || [-34.486522, -58.833579];
+        // Si la geolocalización por IP del navegador está a más de 30 km (ej. Parque Avellaneda / CABA en vez de Derqui), no desviar el centro del mapa
+        const distFromCenter = distanceMeters(position, centerPos);
+        if (distFromCenter <= 30000) {
+          setMapCenter(position);
+        } else {
+          setMapCenter(centerPos);
+        }
         setIsLocating(false);
       },
       (error) => {

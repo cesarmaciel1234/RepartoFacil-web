@@ -47,7 +47,10 @@ export function ModalCambiarDireccion({
     const match = first.match(/^(.*?)(?:\s+(\d+[\w-]*))?$/);
     const street = match?.[1]?.trim() || first;
     const num = match?.[2]?.trim() || "";
-    const unit = parts.length > 2 ? parts[1] : "";
+    let unit = "";
+    if (parts.length > 2 && /^(piso|depto|dto|departamento|timbre|lote|mza|casa)\b/i.test(parts[1])) {
+      unit = parts[1];
+    }
     return { street, num, unit };
   };
 
@@ -69,12 +72,37 @@ export function ModalCambiarDireccion({
     const street = streetInput.trim() || selectedLocation.road || "Calle";
     const num = numberInput.trim() || selectedLocation.houseNumber || "";
     const unit = unitInput.trim();
-    const city = selectedLocation.city || "";
-    const neighborhood = selectedLocation.neighborhood || "";
+
+    // Validar barrio y ciudad para evitar mezclas con ubicaciones erróneas de IP (ej. Parque Avellaneda)
+    let neighborhood = selectedLocation.neighborhood || "";
+    let city = selectedLocation.city || "";
+
+    const isAnomalousCaba =
+      /parque avellaneda|avellaneda|caba|balvanera|palermo|recoleta/i.test(neighborhood) ||
+      /ciudad autónoma de buenos aires/i.test(city);
+
+    // Si la tienda o la dirección del usuario es en Presidente Derqui / Pilar, descartar barrios de CABA
+    if (isAnomalousCaba) {
+      neighborhood = "Monterrey";
+      city = "Presidente Derqui";
+    }
 
     const streetAndNum = num ? `${street} ${num}` : street;
-    const combinedParts = [streetAndNum, unit, neighborhood, city].filter(Boolean);
-    const finalAddress = combinedParts.join(", ");
+    
+    // Evitar duplicar partes ya incluidas en streetAndNum o entre sí
+    const partsToAdd: string[] = [];
+    if (streetAndNum) partsToAdd.push(streetAndNum);
+    if (unit && !streetAndNum.toLowerCase().includes(unit.toLowerCase())) {
+      partsToAdd.push(unit);
+    }
+    if (neighborhood && !partsToAdd.some((p) => p.toLowerCase().includes(neighborhood.toLowerCase()))) {
+      partsToAdd.push(neighborhood);
+    }
+    if (city && !partsToAdd.some((p) => p.toLowerCase().includes(city.toLowerCase()))) {
+      partsToAdd.push(city);
+    }
+
+    const finalAddress = partsToAdd.join(", ");
 
     onSelectAddress(
       finalAddress,
@@ -147,6 +175,7 @@ export function ModalCambiarDireccion({
           <div className="relative min-h-0 flex-1">
             <LocationPickerMap
               className="absolute inset-0"
+              initialCenter={[-34.486522, -58.833579]}
               onSelectionChange={handleLocationChange}
             />
 

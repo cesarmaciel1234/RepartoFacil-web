@@ -532,7 +532,7 @@ export function RepartidorPiramidal({ onSwitchToStore }: RepartidorPiramidalProp
                 <ShieldAlert className="w-10 h-10 text-yellow-600 mx-auto" />
                 <h4 className="text-sm font-bold text-slate-900">Sin incidencias en la zona</h4>
                 <p className="text-xs text-slate-500 max-w-[240px] mx-auto">
-                  Tránsito fluido en el corredor central de Rosario (Tucumán y San Lorenzo).
+                  Sin incidencias reportadas en tu zona de reparto.
                 </p>
               </div>
             )}

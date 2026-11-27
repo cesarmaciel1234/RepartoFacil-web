@@ -23,6 +23,7 @@
   - `calcularTarifaEnvio()`: Tarifa base ($1.200) + distancia ($450/km) * multiplicador (1.35x pico o 1.0x normal). Retorna flete y ganancia garantizada del repartidor ($1.600+).
 - `pedidoService.ts`:
   - `createOrder()`: Genera pedido `#RF-XXXX` con métricas Uber (`driverEarnings`, distancias, coordenadas), requiere guardarlo en `/api/orders` antes de persistirlo en `rf_orders_history` y emitir `rf-orders-updated`.
+  - `autoRegisterGuestCustomer()`: Registro automático e instantáneo de comprador invitado con Nombre, WhatsApp y Dirección para checkout sin bloqueo de contraseña.
   - `buildWhatsAppLink()`: Arma mensaje formateado para enviar a la central de carnicería.
 - `useCart.ts`: Hook reactivo para agregar, remover y modificar cantidades con persistencia en `rf_cart`.
 - `tipos.ts`: Tipos de pedido, carrito, checkout y ubicación compartidos por los dominios.

@@ -10,7 +10,7 @@ export const DEFAULT_AVAILABLE_ORDERS: DriverOrder[] = [
   {
     id: "RF-7420",
     clientName: "Familia Gómez",
-    deliveryAddress: "San Lorenzo 2040, Rosario",
+    deliveryAddress: "San Lorenzo 2040, Presidente Derqui",
     customerPhone: "+54 9 11 4589-2310",
     items: [
       { name: "Asado Especial Novillito", quantity: 2, unit: "kg", price: 9800 },

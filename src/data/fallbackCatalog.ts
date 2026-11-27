@@ -23,6 +23,7 @@ export const FALLBACK_COMPANIES: CompanyStore[] = [
     deliveryFee: 1500,
     badges: ["Carnes de Primera"],
     address: "Doctor Aráoz Alfaro 1964, Monterrey, Presidente Derqui",
+    coordinates: { lat: -34.486522, lng: -58.833579 },
     phone: "1135627803",
     isOpen: true,
     sucursal_id: 1,

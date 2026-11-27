@@ -54,3 +54,22 @@ export function saveCompanyCoordinatesCache(cache: Record<string, CompanyCoordin
     console.warn("No se pudo guardar la caché de ubicaciones comerciales:", error);
   }
 }
+
+export function getCompanyCoordinates(
+  company?: { address?: string; name?: string; coordinates?: { lat: number; lng: number } } | null
+): CompanyCoordinates | null {
+  if (!company) return null;
+  if (isCompanyCoordinates(company.coordinates)) {
+    return company.coordinates;
+  }
+  const addressKey = normalizeCompanyAddress(company.address || "");
+  const cache = readCompanyCoordinatesCache();
+  if (addressKey && isCompanyCoordinates(cache[addressKey])) {
+    return cache[addressKey];
+  }
+  const norm = `${addressKey} ${normalizeCompanyAddress(company.name || "")}`;
+  if (norm.includes("alfaro") || norm.includes("derqui") || norm.includes("maciel")) {
+    return { lat: -34.486522, lng: -58.833579 };
+  }
+  return null;
+}

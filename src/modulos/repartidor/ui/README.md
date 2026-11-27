@@ -20,7 +20,7 @@
 - `OrderChatSheet.tsx`: Chat del pedido. El repartidor consulta los mensajes en línea sin leer ni guardar la caché compartida antigua; el comprador conserva su copia local por cuenta y pedido.
 - `DriverCopilotSheet.tsx`: Conversación de prueba de Copo integrada en la bandeja; no analiza rutas ni tráfico real.
 - `TabPedidosDisponibles.tsx`: Listado de pedidos listos con ganancia estimada para el bolsillo (`+$X.XXX`), badge de tarifa dinámica pico (`⚡ 1.35x`), trayecto al market y trayecto al cliente.
-- `TabMiRuta.tsx`: Tarjetas de pedidos en curso con simulación GPS en marcha, velocímetro, barra de proximidad y botón bloqueado con candado hasta estar a menos de 100 metros del domicilio.
+- `TabMiRuta.tsx`: Tarjeta única por tramo activo (Tramo 1: retiro en tienda con GPS, llamada y confirmación; Tramo 2: entrega al cliente con cobro en efectivo, GPS y entrega final).
 - `ModalCarteraRepartidor.tsx`: Diálogo con el desglose de ganancias del repartidor, efectivo cobrado en mano, liquidación neta a rendir a la central y movimientos recientes.
 - `ModalDriverAuth.tsx`: Diálogo para que el repartidor ingrese su nombre y elija vehículo (Moto, Bici, Auto) únicamente al tomar un pedido.
 - `DriverCopilotSheet.tsx`: Panel lateral con sugerencias de ruta y asistencia de despacho.

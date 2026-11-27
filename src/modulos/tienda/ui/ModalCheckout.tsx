@@ -55,11 +55,12 @@ interface ModalCheckoutProps {
   deliveryCoordinates?: { lat: number; lng: number } | null;
   onOpenAddressPicker?: () => void;
   isSubmitting: boolean;
-  onConfirmOrder: (formData: CheckoutFormData, clientId: string) => Promise<void>;
+  onConfirmOrder: (formData: CheckoutFormData, clientId: string | null) => Promise<void>;
   orderConfirmed: OrderData | null;
   onCloseConfirmed: () => void;
   sucursalPhone?: string;
   companyPhone?: string;
+  onOpenLogin?: () => void;
 }
 
 export function normalizeWhatsAppPhone(rawPhone?: string): string {
@@ -118,6 +119,7 @@ export function ModalCheckout({
   onCloseConfirmed,
   sucursalPhone,
   companyPhone,
+  onOpenLogin,
 }: ModalCheckoutProps) {
   const whatsappTargetPhone =
     normalizeWhatsAppPhone(sucursalPhone || companyPhone) || "5491135627803";
@@ -227,7 +229,7 @@ export function ModalCheckout({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!checkoutClientId.current || loadClientProfile()?.id !== checkoutClientId.current) {
+    if (checkoutClientId.current && loadClientProfile()?.id !== checkoutClientId.current) {
       setFormError("La sesión cambió. Cerrá el formulario y volvé a abrirlo.");
       return;
     }
@@ -297,6 +299,27 @@ export function ModalCheckout({
               Revisá el método de pago y los datos de entrega de tu pedido.
             </DialogDescription>
           </DialogHeader>
+
+          {!checkoutClientId.current && (
+            <div className="mt-2.5 flex items-center justify-between rounded-2xl bg-blue-50/80 border border-blue-200/80 px-3.5 py-2 text-xs text-blue-900 shadow-xs">
+              <span className="font-semibold flex items-center gap-1.5">
+                <Zap className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                <span>Pedido rápido sin contraseña</span>
+              </span>
+              {onOpenLogin && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onOpenChange(false);
+                    onOpenLogin();
+                  }}
+                  className="font-black text-blue-700 hover:text-blue-900 underline cursor-pointer text-[11px]"
+                >
+                  Iniciar sesión
+                </button>
+              )}
+            </div>
+          )}
 
           <form onSubmit={handleSubmit} className="space-y-3.5 pt-2">
             {/* Tipo de Entrega */}

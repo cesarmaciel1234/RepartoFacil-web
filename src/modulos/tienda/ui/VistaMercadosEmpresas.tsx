@@ -376,7 +376,7 @@ export function VistaMercadosEmpresas({
                   >
                     <MapPin className="h-3 w-3 text-blue-600" />
                     {distanceKm === null
-                      ? "Distancia no disponible"
+                      ? "Envío disponible"
                       : `~${distanceKm.toFixed(1)} km`}
                   </div>
                 </div>
@@ -448,7 +448,7 @@ export function VistaMercadosEmpresas({
                       companyDistances[comp.id] === undefined
                         ? isResolvingCompanyLocations
                           ? "Calculando distancia..."
-                          : "Distancia no disponible"
+                          : "Envío disponible"
                         : `~${companyDistances[comp.id]?.toFixed(1)} km`}
                     </span>
                   </div>

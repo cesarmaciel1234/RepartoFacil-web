@@ -5,8 +5,8 @@ import type { CompanyStore } from "@/data/mockCompanies";
 import type { Product } from "@/data/mockProducts";
 import type { CatalogStatus } from "../hooks/useCatalogoTienda";
 import type { CartItem } from "../../motor/tipos";
-import { isCompanyCoordinates } from "../../motor/ubicacionComercio";
-import { haversineKm } from "../../motor/tarifaUberService";
+import { getCompanyCoordinates, isCompanyCoordinates } from "../../motor/ubicacionComercio";
+import { estimateAddressCoords, haversineKm } from "../../motor/tarifaUberService";
 import { FiltroCategorias } from "../../ui/FiltroCategorias";
 import { TarjetaProducto } from "../../ui/TarjetaProducto";
 import { ResenasComercio } from "./ResenasComercio";
@@ -74,13 +74,21 @@ export function CatalogoEmpresaTienda({
   const companyMapUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapQuery)}`;
   const isClosed = company.isOpen === false;
 
+  const companyCoords = getCompanyCoordinates(company);
+  const effectiveDeliveryCoords =
+    deliveryCoordinates?.lat && deliveryCoordinates?.lng
+      ? deliveryCoordinates
+      : deliveryAddress
+      ? estimateAddressCoords(deliveryAddress).coords
+      : null;
+
   const distanceKm =
-    deliveryCoordinates && isCompanyCoordinates(company.coordinates)
+    effectiveDeliveryCoords && companyCoords
       ? haversineKm(
-          deliveryCoordinates.lat,
-          deliveryCoordinates.lng,
-          company.coordinates.lat,
-          company.coordinates.lng
+          effectiveDeliveryCoords.lat,
+          effectiveDeliveryCoords.lng,
+          companyCoords.lat,
+          companyCoords.lng
         )
       : null;
 
@@ -158,10 +166,6 @@ export function CatalogoEmpresaTienda({
             {distanceKm !== null ? (
               <div className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 font-black shadow-xs animate-pulse">
                 <span>🎯 A {distanceKm < 1 ? `${Math.round(distanceKm * 1000)} m` : `${distanceKm.toFixed(1)} km`} de tu ubicación</span>
-              </div>
-            ) : deliveryAddress ? (
-              <div className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-slate-100 text-slate-600 text-[11px] font-semibold">
-                <span>📍 Calculando distancia...</span>
               </div>
             ) : onOpenChangeAddress ? (
               <button
@@ -318,7 +322,7 @@ export function CatalogoEmpresaTienda({
                 <TarjetaProducto
                   key={product.id}
                   product={
-                    distanceKm !== null && product.distanceKm === undefined
+                    distanceKm !== null && (product.distanceKm === undefined || product.distanceKm === null)
                       ? { ...product, distanceKm, companyName: company.name }
                       : product
                   }

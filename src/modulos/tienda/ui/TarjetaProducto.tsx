@@ -81,7 +81,7 @@ export function TarjetaProducto({
                 {typeof product.distanceKm === "number" &&
                 Number.isFinite(product.distanceKm)
                   ? `~${product.distanceKm < 1 ? Math.round(product.distanceKm * 1000) + ' m' : product.distanceKm.toFixed(1) + ' km'}`
-                  : "Distancia no disponible"}
+                  : "Envío disponible"}
               </span>
             </span>
           </div>
