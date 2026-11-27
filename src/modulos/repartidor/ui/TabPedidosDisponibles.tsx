@@ -133,7 +133,7 @@ export function TabPedidosDisponibles({
                   1. Retiro en Market
                 </span>
                 <div className="font-bold text-slate-900 truncate">
-                  {order.branch || "Tucumán 2130"}
+                  {order.branch || "Alfaro 1964"}
                 </div>
                 <div className="text-slate-500 text-[10px]">{distStore} km a retirar</div>
               </div>

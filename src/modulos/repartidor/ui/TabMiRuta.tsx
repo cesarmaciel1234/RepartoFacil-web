@@ -157,19 +157,19 @@ export function TabMiRuta({
           rawBranch.toLowerCase().includes("derqui");
         
         // Dirección física real de la sucursal de Cobro Fácil en Presidente Derqui
-        const storeAddressClean = isAlfaroBranch
+        const storeAddressClean = order.storeAddress || (isAlfaroBranch
           ? STORE_DEFAULT_DERQUI.address
           : rawBranch.length > 5
           ? rawBranch
-          : STORE_DEFAULT_DERQUI.address;
+          : STORE_DEFAULT_DERQUI.address);
 
         const storeTarget = order.storeCoords?.lat && order.storeCoords?.lng
           ? `${order.storeCoords.lat},${order.storeCoords.lng}`
           : `${STORE_DEFAULT_DERQUI.coords.lat},${STORE_DEFAULT_DERQUI.coords.lng}`;
 
-        const branchDisplay = isAlfaroBranch
+        const branchDisplay = order.branch || (isAlfaroBranch
           ? STORE_DEFAULT_DERQUI.name + " · Pte. Derqui"
-          : rawBranch;
+          : rawBranch);
 
         // ─── 2. Destino del Domicilio del Comprador (Parada 2) ───
         const hasExactCoords = Boolean(order.destinationCoords?.lat && order.destinationCoords?.lng);
@@ -285,12 +285,12 @@ export function TabMiRuta({
                   </a>
 
                   <a
-                    href={`tel:${phone}`}
+                    href={`tel:${order.storePhone || phone || "1135627803"}`}
                     className="h-11 rounded-xl bg-white hover:bg-yellow-50 text-slate-800 font-bold text-xs flex items-center justify-center gap-1.5 border border-slate-200 shadow-sm active:scale-95 transition-all px-1"
-                    title="Llamar al comercio o cliente"
+                    title="Llamar a la sucursal del comercio"
                   >
                     <Phone className="w-4 h-4 text-yellow-700" />
-                    <span>Llamar</span>
+                    <span>Llamar Local</span>
                   </a>
 
                   <button

@@ -428,7 +428,7 @@ export async function GET(
       const sucursalesPorEmpresa: Record<number, any[]> = {};
       try {
         const rows = await queryDb(
-          `SELECT id, empresa_id, nombre, codigo, direccion, latitud, longitud, telefono, whatsapp, horario, es_centro_distribucion
+          `SELECT id, empresa_id, nombre, codigo, direccion, latitud, longitud, telefono, whatsapp, horario, es_centro_distribucion, rubro, costo_envio, monto_minimo_envio_gratis
            FROM public.sucursales
            WHERE activo = 1
            ORDER BY id ASC`
@@ -447,12 +447,15 @@ export async function GET(
             id: Number(s.id),
             nombre: String(s.nombre || `Sucursal ${s.id}`),
             codigo: s.codigo || "",
+            rubro: s.rubro || "",
             direccion: s.direccion || "",
             latitud: s.latitud ? Number(s.latitud) : null,
             longitud: s.longitud ? Number(s.longitud) : null,
             telefono: s.telefono || "",
             whatsapp: s.whatsapp || "",
             horario: s.horario || "",
+            costo_envio: s.costo_envio != null ? Number(s.costo_envio) : null,
+            monto_minimo_envio_gratis: s.monto_minimo_envio_gratis != null ? Number(s.monto_minimo_envio_gratis) : null,
             esCentroDistribucion: Boolean(s.es_centro_distribucion),
           });
         }
@@ -570,14 +573,17 @@ export async function GET(
               ...baseCompany,
               id: `${baseId}-suc-${suc.id}`,
               name: `${baseCompany.name} · ${suc.nombre}`,
+              category: suc.rubro || baseCompany.category,
               address: suc.direccion || baseCompany.address,
               ...(suc.latitud && suc.longitud
                 ? { coordinates: { lat: Number(suc.latitud), lng: Number(suc.longitud) } }
                 : baseCompany.coordinates
                   ? { coordinates: baseCompany.coordinates }
                   : {}),
-              phone: suc.whatsapp || suc.telefono || baseCompany.phone,
+              phone: suc.whatsapp || suc.telefono || baseCompany.phone || "1135627803",
               openingHours: suc.horario || baseCompany.openingHours,
+              deliveryFee: suc.costo_envio != null ? Number(suc.costo_envio) : baseCompany.deliveryFee,
+              freeDeliveryThreshold: suc.monto_minimo_envio_gratis != null ? Number(suc.monto_minimo_envio_gratis) : baseCompany.freeDeliveryThreshold,
               sucursal_id: suc.id,
               parentCompanyId: baseId,
               parentSlug: slug,
@@ -597,12 +603,15 @@ export async function GET(
             ...baseCompany,
             id: companyId,
             name: companyName,
-            address: sucUnica?.direccion || baseCompany.address,
+            category: sucUnica?.rubro || baseCompany.category,
+            address: sucUnica?.direccion || "Doctor Aráoz Alfaro 1964, Monterrey, Presidente Derqui",
             ...(sucUnica?.latitud && sucUnica?.longitud
               ? { coordinates: { lat: Number(sucUnica.latitud), lng: Number(sucUnica.longitud) } }
-              : baseCompany.coordinates
-                ? { coordinates: baseCompany.coordinates }
-                : {}),
+              : { coordinates: { lat: -34.4865222, lng: -58.8335788 } }),
+            phone: sucUnica?.whatsapp || sucUnica?.telefono || baseCompany.phone || "1135627803",
+            openingHours: sucUnica?.horario || baseCompany.openingHours || "Lunes a sábado 9 a 21hs",
+            deliveryFee: sucUnica?.costo_envio != null ? Number(sucUnica.costo_envio) : baseCompany.deliveryFee,
+            freeDeliveryThreshold: sucUnica?.monto_minimo_envio_gratis != null ? Number(sucUnica.monto_minimo_envio_gratis) : baseCompany.freeDeliveryThreshold,
             sucursal_id: sucUnica?.id || 1,
             parentCompanyId: baseId,
             parentSlug: slug,

@@ -40,8 +40,8 @@ function mapDbRowToOrder(row: any) {
     empresaSlug: row.empresa_slug || "maciel",
     clientName: row.cliente_nombre || "Cliente",
     customerName: row.cliente_nombre || "Cliente",
-    customerPhone: row.cliente_telefono || "+54 9 341 555-1234",
-    deliveryAddress: row.direccion_entrega || "Tucumán 2130, Rosario",
+    customerPhone: row.cliente_telefono || "+54 9 11 3562-7803",
+    deliveryAddress: row.direccion_entrega || "Doctor Aráoz Alfaro 1964, Monterrey, Presidente Derqui",
     deliveryType: row.tipo_entrega || "delivery",
     paymentMethod: normalizePaymentMethod(row.metodo_pago),
     status: row.estado || "Pending",
@@ -57,8 +57,13 @@ function mapDbRowToOrder(row: any) {
     distanceToStoreKm: 0.8,
     distanceToDeliveryKm: Number(row.distancia_km) || 1.8,
     estimatedMinutes: Number(row.minutos_estimados) || 20,
-    branch: row.sucursal_origen || "Frigorífico Maciel (Alfaro 1964) · Pte. Derqui",
-    storeCoords: { lat: -34.486479, lng: -58.833601 },
+    branch: row.sucursal_nombre || row.sucursal_origen || "Alfaro 1964",
+    storeAddress: row.sucursal_direccion || "Doctor Aráoz Alfaro 1964, Monterrey, Presidente Derqui",
+    storePhone: row.sucursal_whatsapp || "1135627803",
+    storeCoords: (row.sucursal_latitud != null && row.sucursal_longitud != null)
+      ? { lat: Number(row.sucursal_latitud), lng: Number(row.sucursal_longitud) }
+      : { lat: -34.4865222, lng: -58.8335788 },
+    sucursal_id: row.sucursal_id != null ? Number(row.sucursal_id) : 1,
     destinationCoords: (row.delivery_lat != null && row.delivery_lng != null)
       ? { lat: Number(row.delivery_lat), lng: Number(row.delivery_lng) }
       : { lat: -34.4895, lng: -58.8315 },
@@ -107,7 +112,16 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Paginación no válida." }, { status: 400 });
     }
 
-    let query = "SELECT * FROM repartofacil_pedidos WHERE ";
+    let query = `
+      SELECT repartofacil_pedidos.*,
+             s.nombre AS sucursal_nombre,
+             s.direccion AS sucursal_direccion,
+             s.whatsapp AS sucursal_whatsapp,
+             s.latitud AS sucursal_latitud,
+             s.longitud AS sucursal_longitud
+      FROM repartofacil_pedidos
+      LEFT JOIN public.sucursales s ON repartofacil_pedidos.sucursal_id = s.id
+      WHERE `;
     const values: any[] = [auth.user.id];
     let idx = 2;
     if (auth.user.role === "Client") {
@@ -170,8 +184,8 @@ export async function GET(request: NextRequest) {
       values.push(before);
     }
     query += conversationView
-      ? ` ORDER BY ${activity("repartofacil_pedidos")} DESC, id DESC LIMIT 50`
-      : " ORDER BY created_at DESC, id DESC LIMIT 50";
+      ? ` ORDER BY ${activity("repartofacil_pedidos")} DESC, repartofacil_pedidos.id DESC LIMIT 50`
+      : " ORDER BY repartofacil_pedidos.created_at DESC, repartofacil_pedidos.id DESC LIMIT 50";
 
     const rows = await queryDb(query, values);
     const orders = rows.map(mapDbRowToOrder);
@@ -241,8 +255,8 @@ export async function POST(request: NextRequest) {
       clienteId,
       clienteUsuarioId,
       data.customerName || data.clientName || "Cliente Web",
-      data.customerPhone || "+54 9 341 555-1234",
-      data.deliveryAddress || "Tucumán 2130, Rosario",
+      data.customerPhone || "+54 9 11 3562-7803",
+      data.deliveryAddress || "Doctor Aráoz Alfaro 1964, Monterrey, Presidente Derqui",
       data.deliveryType,
       normalizePaymentMethod(data.paymentMethod || data.metodo_pago),
       "pending_store",

@@ -271,7 +271,7 @@ export function CentroPedidosClienteSheet({
                       </span>
                       {selectedOrderIsPickup
                         ? (selectedOrder.branch || selectedOrder.sucursal_origen || "Local del comercio")
-                        : (selectedOrder.deliveryAddress || "Tucumán 2130, Rosario")}
+                        : (selectedOrder.deliveryAddress || "Doctor Aráoz Alfaro 1964, Monterrey, Presidente Derqui")}
                     </p>
                   </div>
 
@@ -469,7 +469,7 @@ export function CentroPedidosClienteSheet({
                           <div className="flex items-center justify-between gap-2 text-[11px] text-slate-500">
                             <span className="flex items-center gap-1 truncate">
                               <Store className="h-3 w-3 shrink-0 text-slate-400" />
-                              {order.deliveryAddress || "Tucumán 2130, Rosario"}
+                              {order.deliveryAddress || "Doctor Aráoz Alfaro 1964, Monterrey, Presidente Derqui"}
                             </span>
                             <span className="shrink-0 font-mono font-bold text-emerald-600">
                               {formatMoney(order.total)}

@@ -46,6 +46,9 @@ export interface DriverOrder {
   // Coordenadas para geocerca y mapa
   destinationCoords?: GPSCoords;
   storeCoords?: GPSCoords;
+  storeAddress?: string;
+  storePhone?: string;
+  sucursal_id?: number;
   
   branch?: string;
   ticketId?: string;

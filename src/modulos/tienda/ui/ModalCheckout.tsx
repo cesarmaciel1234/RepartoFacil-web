@@ -121,6 +121,7 @@ export function ModalCheckout({
   companyPhone,
   onOpenLogin,
 }: ModalCheckoutProps) {
+  const defaultBranchName = companyName || "Frigorífico Maciel · Alfaro 1964";
   const whatsappTargetPhone =
     normalizeWhatsAppPhone(sucursalPhone || companyPhone) || "5491135627803";
   const formatMoney = (val: number) => "$" + val.toLocaleString("es-AR");
@@ -139,7 +140,7 @@ export function ModalCheckout({
     customerPhone: "",
     deliveryType: "delivery",
     deliveryAddress: "",
-    selectedBranch: "Sucursal Central - Tucumán 2130",
+    selectedBranch: defaultBranchName,
     paymentMethod: "efectivo",
     orderNotes: "",
   });
@@ -196,9 +197,9 @@ export function ModalCheckout({
       customerPhone,
       deliveryAddress: initialAddr,
       deliveryType: saved.deliveryType || "delivery",
-      selectedBranch: saved.selectedBranch || "Sucursal Central - Tucumán 2130",
+      selectedBranch: defaultBranchName,
     }));
-  }, [isOpen, profileAddress, selectedDeliveryAddress]);
+  }, [isOpen, profileAddress, selectedDeliveryAddress, defaultBranchName]);
 
   // Si cambia la dirección seleccionada desde el mapa mientras el checkout está abierto
   useEffect(() => {
@@ -529,16 +530,14 @@ export function ModalCheckout({
               ) : (
                 <div>
                   <label className="mb-1 block text-xs font-bold text-slate-700">
-                    Seleccioná Sucursal de Retiro
+                    Sucursal de Retiro
                   </label>
                   <select
                     value={form.selectedBranch}
                     onChange={(e) => setForm((p) => ({ ...p, selectedBranch: e.target.value }))}
-                    className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs text-slate-900 focus:border-blue-500 focus:outline-none"
+                    className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold text-slate-900 focus:border-blue-500 focus:outline-none"
                   >
-                    <option value="Sucursal Central - Tucumán 2130">Sucursal Central - Tucumán 2130</option>
-                    <option value="Sucursal Frigorífico Norte">Sucursal Frigorífico Norte</option>
-                    <option value="Sucursal Express Centro">Sucursal Express Centro</option>
+                    <option value={defaultBranchName}>{defaultBranchName}</option>
                   </select>
                 </div>
               )}

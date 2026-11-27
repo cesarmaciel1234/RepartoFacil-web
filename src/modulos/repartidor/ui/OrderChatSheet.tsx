@@ -350,7 +350,7 @@ export function OrderChatSheet({
   };
 
   const isClientViewer = effectiveRole === "client";
-  const displayDestAddress = deliveryAddress || activeOrder?.deliveryAddress || "Tucumán 2130, Rosario";
+  const displayDestAddress = deliveryAddress || activeOrder?.deliveryAddress || "Doctor Aráoz Alfaro 1964, Monterrey, Presidente Derqui";
   const interlocutorName = isDriverViewer
     ? (clientName || activeOrder?.clientName || (activeOrder as any)?.customerName || "Cliente")
     : (driverName || (activeOrder as any)?.driverName || "Repartidor");
