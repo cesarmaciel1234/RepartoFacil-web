@@ -57,4 +57,6 @@ sesión de comprador activa; la tienda sigue disponible para navegar sin sesión
 - **Checkout:** Usa el nombre y teléfono registrados sin mostrarlos; pide solo los
   que faltan y los guarda en el perfil antes de confirmar. La dirección de envío
   sigue editable para cada pedido. Al iniciar sesión se recupera el perfil privado
-  sin reemplazar sus datos de contacto por valores vacíos.
+  sin reemplazar sus datos de contacto por valores vacíos. `ModalCheckout` contiene
+  filas internas y modales acotados (`max-w-full overflow-x-hidden min-w-0 flex-wrap`)
+  y oculta coordenadas numéricas mostrando confirmación limpia de ubicación.
