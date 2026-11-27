@@ -22,6 +22,10 @@ El hook recibe comercio, categoría, texto de búsqueda y coordenadas de entrega
 Retorna comercios/productos y resultados derivados. La pantalla no decide cómo
 se sincroniza el catálogo; la ventana de reseñas consulta su propia lista.
 
+### Reglas de Búsqueda y Deduplicación
+1. **Deduplicación:** El catálogo activo se deduplica por ID y código TPV único para evitar colisiones de keys en React ante múltiples terminales sincronizadas.
+2. **Filtrado Estricto:** Al buscar texto en la tienda, el filtrado evalúa estrictamente `nombre`, `departamento` y `código` (normalizando acentos, caracteres invisibles y mayúsculas). No inyecta sugeridos ni busca en la descripción para evitar falsos positivos con textos genéricos del TPV.
+
 Al agregar una capacidad de catálogo, mantener su obtención/transformación en el
 hook y su presentación en la pantalla; la selección de navegación permanece en
 `TiendaPiramidal.tsx`.

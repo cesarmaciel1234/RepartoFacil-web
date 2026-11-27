@@ -1174,66 +1174,6 @@ const RAW_PRODUCTS = [
     "stock": 12,
     "stockKg": 12,
     "image": null
-  },
-  {
-    "id": 160,
-    "name": "Espínazo",
-    "dept": "CARNE",
-    "price": 12500,
-    "unit": "KG",
-    "stock": 999933.7199999999,
-    "stockKg": 999933.7199999999,
-    "image": null
-  },
-  {
-    "id": 400,
-    "name": "Arrolldo",
-    "dept": "CARNE",
-    "price": 25000,
-    "unit": "KG",
-    "stock": 1000018,
-    "stockKg": 1000018,
-    "image": null
-  },
-  {
-    "id": 1711,
-    "name": "pan r. suelto",
-    "dept": "ALMACEN",
-    "price": 1500,
-    "unit": "UN",
-    "stock": 1000,
-    "stockKg": 1000,
-    "image": null
-  },
-  {
-    "id": 754697504357,
-    "name": "sal c. carne",
-    "dept": "ALMACEN",
-    "price": 3000,
-    "unit": "UN",
-    "stock": 1000,
-    "stockKg": 1000,
-    "image": null
-  },
-  {
-    "id": 7798342990169,
-    "name": "sal c. achuras",
-    "dept": "GENERAL",
-    "price": 3000,
-    "unit": "UN",
-    "stock": 999,
-    "stockKg": 999,
-    "image": null
-  },
-  {
-    "id": 7798342990175,
-    "name": "papasMC.",
-    "dept": "ALMACEN",
-    "price": 4000,
-    "unit": "UN",
-    "stock": 999,
-    "stockKg": 999,
-    "image": null
   }
 ];
 

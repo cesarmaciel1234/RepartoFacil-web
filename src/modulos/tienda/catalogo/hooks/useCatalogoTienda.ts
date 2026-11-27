@@ -14,10 +14,18 @@ import {
   saveProductsCache,
 } from "../cacheCatalogo";
 
-export type CatalogProduct = Product & {
-  department?: string;
-  categoryName?: string;
-};
+import {
+  type CatalogProduct,
+  cleanSearchText,
+  departmentOf,
+  getDepartmentIcon,
+  productBelongsToCompany,
+  deduplicateCatalogProducts,
+  filterCatalogProducts,
+} from "../motorFiltroCatalogo";
+
+export type { CatalogProduct };
+export { cleanSearchText, departmentOf, getDepartmentIcon, productBelongsToCompany };
 
 export type CatalogStatus = "loading" | "ready" | "error";
 
@@ -25,109 +33,6 @@ interface UseCatalogoTiendaParams {
   selectedCompany: CompanyStore | null;
   selectedCategory: string;
   searchQuery: string;
-}
-
-function getDepartmentIcon(department: string) {
-  if (department.includes("CARNE") || department.includes("VACUN")) return "🥩";
-  if (department.includes("AVE") || department.includes("POLLO")) return "🍗";
-  if (department.includes("CERDO")) return "🥓";
-  if (department.includes("ACHURA")) return "🔥";
-  if (department.includes("EMBUTID") || department.includes("FIAMBR")) return "🌭";
-  if (department.includes("PREPARAD") || department.includes("MILANES")) return "🍲";
-  if (department.includes("HUEVO")) return "🥚";
-  if (department.includes("ALMACEN") || department.includes("CONDIMENT")) return "🛒";
-  if (department.includes("VERDU")) return "🥬";
-  if (department.includes("CONGELAD")) return "❄️";
-  if (department.includes("GRASA")) return "🧈";
-  if (department.includes("BEBIDA") || department.includes("KIOSCO")) return "🥤";
-  return "📦";
-}
-
-/** Un producto pertenece a un comercio si su companyId coincide con el id o el slug. */
-export function productBelongsToCompany(product: Product, company: CompanyStore) {
-  const productCompany = (product.companyId || "").toLowerCase();
-  if (!productCompany) return false;
-
-  const isMacielCompany =
-    company.id === "frigorifico-maciel" ||
-    company.id.startsWith("frigorifico-maciel-") ||
-    company.slug === "maciel" ||
-    (company as any).parentSlug === "maciel" ||
-    (company as any).empresa_id === 1;
-
-  const isMacielProduct =
-    productCompany === "frigorifico-maciel" ||
-    productCompany.startsWith("frigorifico-maciel") ||
-    productCompany.includes("maciel") ||
-    (product as any).empresa_id === 1;
-
-  if (isMacielCompany && isMacielProduct) {
-    return true;
-  }
-
-  const productSucId = (product as any).sucursal_id ?? (product as any).branchId;
-  const companySucId = company.sucursal_id;
-
-  // Si el comercio es una sucursal específica: aislamiento estricto de inventario por local
-  if (companySucId != null) {
-    if (productSucId != null) {
-      return Number(productSucId) === Number(companySucId);
-    }
-    if (productCompany === company.id.toLowerCase()) {
-      return true;
-    }
-    if (productCompany.includes("-suc-")) {
-      return false;
-    }
-    // Si el producto no tiene sufijo -suc-, solo pertenece a la sucursal 1 si no es multirama
-    if (Number(companySucId) === 1 || !company.isMultiBranch) {
-      const candidates = [
-        company.id,
-        company.slug,
-        company.parentCompanyId,
-        company.parentSlug,
-      ]
-        .filter(Boolean)
-        .map((value) => String(value).toLowerCase());
-      if (
-        company.id === "frigorifico-maciel" ||
-        company.slug === "maciel" ||
-        company.parentCompanyId === "frigorifico-maciel" ||
-        company.parentSlug === "maciel"
-      ) {
-        candidates.push("maciel", "frigorifico-maciel");
-      }
-      return candidates.includes(productCompany);
-    }
-    return false;
-  }
-
-  // Comercio sin sucursales o vista consolidada
-  const candidates = [
-    company.id,
-    company.slug,
-    company.slug && `empresa-${company.slug}`,
-    (company as any).parentCompanyId,
-    (company as any).parentSlug,
-  ]
-    .filter(Boolean)
-    .map((value) => String(value).toLowerCase());
-  if (
-    company.id === "frigorifico-maciel" ||
-    company.slug === "maciel" ||
-    (company as any).parentCompanyId === "frigorifico-maciel" ||
-    (company as any).parentSlug === "maciel"
-  ) {
-    candidates.push("maciel", "frigorifico-maciel");
-  }
-  if (company.id === "empresa-prueba" || company.slug === "prueba") candidates.push("prueba");
-  return candidates.includes(productCompany);
-}
-
-export function departmentOf(product: CatalogProduct) {
-  return String(product.department || product.categoryName || product.category || "GENERAL")
-    .trim()
-    .toUpperCase();
 }
 
 export function useCatalogoTienda({
@@ -359,7 +264,8 @@ export function useCatalogoTienda({
 
   const activeCompanyCatalog = useMemo(() => {
     if (!selectedCompany) return [];
-    return products.filter((product) => productBelongsToCompany(product, selectedCompany));
+    const list = products.filter((product) => productBelongsToCompany(product, selectedCompany));
+    return deduplicateCatalogProducts(list);
   }, [products, selectedCompany]);
 
   const companyDepartments = useMemo(() => {
@@ -386,23 +292,7 @@ export function useCatalogoTienda({
 
   const filteredProducts = useMemo(() => {
     if (!selectedCompany) return [];
-    const query = searchQuery.toLowerCase().trim();
-    const category = selectedCategory.toLowerCase();
-
-    return activeCompanyCatalog.filter((product) => {
-      const department = departmentOf(product).toLowerCase();
-      const matchesSearch =
-        !query ||
-        product.name.toLowerCase().includes(query) ||
-        (product.description || "").toLowerCase().includes(query) ||
-        department.includes(query);
-      const matchesCategory =
-        category === "todos" ||
-        department === category ||
-        (product.category || "").toLowerCase() === category;
-
-      return matchesSearch && matchesCategory;
-    });
+    return filterCatalogProducts(activeCompanyCatalog, searchQuery, selectedCategory);
   }, [activeCompanyCatalog, selectedCategory, searchQuery, selectedCompany]);
 
   return {

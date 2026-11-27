@@ -320,7 +320,7 @@ export function CatalogoEmpresaTienda({
                 )?.quantity || 0;
               return (
                 <TarjetaProducto
-                  key={product.id}
+                  key={`${product.id}-${product.name}`}
                   product={
                     distanceKm !== null && (product.distanceKm === undefined || product.distanceKm === null)
                       ? { ...product, distanceKm, companyName: company.name }

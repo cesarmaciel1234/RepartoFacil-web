@@ -282,18 +282,25 @@ export async function GET(
         rawProducts.push(...mapped);
       }
 
-      // Deduplicar productos para mantener el registro con precio activo y stock más favorable
+      // Deduplicar productos por código/ID único para evitar artículos duplicados de distintas terminales
       const productMap = new Map<string, NonNullable<ReturnType<typeof mapProduct>>>();
       for (const prod of rawProducts) {
-        const key = prod.name.toLowerCase().trim();
+        const rawCode = String(prod.id || "").replace(/^tpv-suc-\d+-/, "").trim();
+        const normName = normalizeProductName(prod.name);
+        const key = rawCode || normName;
         const existing = productMap.get(key);
         if (!existing) {
           productMap.set(key, prod);
         } else {
           const existingPrice = existing.price || 0;
           const currentPrice = prod.price || 0;
-          if (currentPrice > 0 && (existingPrice === 0 || (prod.stockKg || 0) > (existing.stockKg || 0))) {
-            productMap.set(key, { ...prod, image: prod.image || existing.image });
+          const preferNewName = prod.name.trim().length > existing.name.trim().length;
+          if (currentPrice > 0 && (existingPrice === 0 || (prod.stockKg || 0) > (existing.stockKg || 0) || preferNewName)) {
+            productMap.set(key, {
+              ...prod,
+              name: preferNewName ? prod.name : existing.name,
+              image: prod.image || existing.image,
+            });
           }
         }
       }
