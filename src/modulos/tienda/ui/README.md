@@ -1,22 +1,18 @@
-# Interfaz de Tienda
-
-**Ubicación:** `src/modulos/tienda/ui/`  
-**Rol:** Componentes visuales compartidos para navegación, catálogo, carrito, checkout y seguimiento de pedidos.
-
----
+# Interfaz de Tienda (`src/modulos/tienda/ui/`)
 
 ## 1. Qué hace
-- Mantiene elementos reutilizables del catálogo y la navegación principal.
-- Presenta el carrito y los formularios transitorios de dirección, autenticación y checkout.
-- `VistaMercadosEmpresas.tsx` orquesta la exploración de locales con `EmpresaCard.tsx`, `MercadosCategoriasBar.tsx` y `MercadosProductosResults.tsx`.
-- Centro de pedidos, mensajes y seguimiento en tiempo real.
+Componentes visuales puros (Cara) para navegación, catálogo, carrito, checkout y modales de la tienda web.
 
-## 2. Componentes Principales
-- `HeaderTienda.tsx`, `NavegacionTienda.tsx`, `BotonCarritoFlotante.tsx`.
-- `VistaMercadosEmpresas.tsx`, `EmpresaCard.tsx`, `MercadosCategoriasBar.tsx`, `MercadosProductosResults.tsx`.
-- `DrawerCarrito.tsx`, `ModalCheckout.tsx`, `ModalCambiarDireccion.tsx`, `ModalClientAuth.tsx`.
-- `CentroPedidosClienteSheet.tsx`, `CentroPedidoDetalleView.tsx`, `CentroPedidoItemRow.tsx`, `MensajesClienteSheet.tsx`, `ResenaPedidoDialog.tsx`.
-- `TiendaModalesContainer.tsx`, `TiendaPwaLayout.tsx`.
+## 2. De dónde viene
+Montado por `TiendaPiramidal.tsx` y sub-pantallas del comprador.
 
-## 3. Hacia dónde sale
-Renderizado en el viewport del comprador a través de `TiendaPiramidal.tsx`.
+## 3. Componentes Principales
+- `TiendaActiveTabContent.tsx`: Sub-enrutador visual desacoplado para pestañas activas y vista de comercio.
+- `ModalCheckout.tsx`: Diálogo de checkout (< 300 líneas) que delega su estado a `useModalCheckoutState`.
+- `HeaderTienda.tsx`, `NavegacionTienda.tsx`, `BotonCarritoFlotante.tsx`: Barras de navegación superior, inferior y botón flotante.
+- `DrawerCarrito.tsx`: Carrito lateral deslizable por comercio.
+- `VistaMercadosEmpresas.tsx`, `EmpresaCard.tsx`: Explorador y tarjetas de comercios.
+- `TiendaModalesContainer.tsx`: Contenedor modular de modales, sheets y diálogos.
+
+## 4. Hacia dónde sale
+Renderizado en el DOM para la interacción visual del usuario final.

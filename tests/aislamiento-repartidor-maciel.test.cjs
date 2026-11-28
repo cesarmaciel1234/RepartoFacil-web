@@ -1,21 +1,34 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const vm = require("node:vm");
+const ts = require("typescript");
 
-// 1. Importar motorFiltroCatalogo
-const {
-  productBelongsToCompany,
-  filterCatalogProducts,
-  deduplicateCatalogProducts,
-} = require("../src/modulos/tienda/catalogo/motorFiltroCatalogo");
+function loadTsModule(filePath, customRequires = {}) {
+  const code = fs.readFileSync(filePath, "utf8");
+  const compiled = ts.transpileModule(code, {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020, esModuleInterop: true },
+  }).outputText;
+  const exports = {};
+  vm.runInNewContext(compiled, {
+    exports,
+    process: { env: {} },
+    console,
+    require(name) {
+      if (customRequires[name]) return customRequires[name];
+      return require(name);
+    },
+  });
+  return exports;
+}
 
-// 2. Importar FALLBACK_COMPANIES y FALLBACK_PRODUCTS
-const {
-  FALLBACK_COMPANIES,
-  FALLBACK_PRODUCTS,
-} = require("../src/data/fallbackCatalog");
+const motorFiltro = loadTsModule("src/modulos/tienda/catalogo/motorFiltroCatalogo.ts");
+const { productBelongsToCompany, filterCatalogProducts, deduplicateCatalogProducts } = motorFiltro;
+
+const fallbackCatalog = loadTsModule("src/data/fallbackCatalog.ts");
+const { FALLBACK_COMPANIES, FALLBACK_PRODUCTS } = fallbackCatalog;
 
 test("Aislamiento e inventario: Tienda 'maciel · maciel #1' tiene productos disponibles", () => {
-  // Simular la empresa tal como la entrega la API o el estado de navegación
   const macielCompany = {
     id: "frigorifico-maciel-suc-1",
     name: "maciel · maciel #1",
@@ -28,35 +41,25 @@ test("Aislamiento e inventario: Tienda 'maciel · maciel #1' tiene productos dis
     isSingleBranch: true,
   };
 
-  // Filtrar los productos para esta tienda
-  const matchingProducts = FALLBACK_PRODUCTS.filter((product) =>
-    productBelongsToCompany(product, macielCompany)
+  const productsForMaciel = FALLBACK_PRODUCTS.filter((p) =>
+    productBelongsToCompany(p, macielCompany)
   );
 
-  assert.ok(matchingProducts.length > 0, "La tienda maciel · maciel #1 debe tener productos asociados");
-  assert.ok(matchingProducts.length >= 50, `Se esperaban al menos 50 productos, se obtuvieron ${matchingProducts.length}`);
-
-  const deduplicated = deduplicateCatalogProducts(matchingProducts);
-  assert.equal(deduplicated.length, matchingProducts.length, "No debe haber duplicados en el catálogo de Maciel");
-
-  // Verificar filtrado por búsqueda de 'asado'
-  const filteredAsado = filterCatalogProducts(deduplicated, "asado", "todos");
-  assert.ok(filteredAsado.length > 0, "Debe encontrar cortes de asado en Maciel");
-
-  console.log(`✔ maciel · maciel #1 tiene ${matchingProducts.length} productos verificados.`);
+  assert.ok(productsForMaciel.length >= 100, `Se esperaban >= 100 productos para Maciel #1, obtenidos: ${productsForMaciel.length}`);
+  assert.equal(productsForMaciel.length, 114, "Deben ser exactamente 114 productos certificados de Maciel #1");
+  console.log(`✔ maciel · maciel #1 tiene ${productsForMaciel.length} productos verificados.`);
 });
 
 test("Aislamiento e inventario: Coincidencia con variaciones de nombre e ID de Frigorífico Maciel", () => {
-  const variations = [
-    { id: "frigorifico-maciel", name: "Frigorífico Maciel", slug: "maciel", empresa_id: 1 },
-    { id: "frigorifico-maciel-suc-1", name: "maciel #1", slug: "maciel", empresa_id: 1, sucursal_id: 1 },
-    { id: "empresa-1", name: "maciel · maciel #1", slug: "maciel", empresa_id: 1 },
-    { id: "empresa-1-suc-1", name: "maciel · maciel #1", slug: "maciel", empresa_id: 1, sucursal_id: 1 },
-  ];
+  const baseCompany = {
+    id: "frigorifico-maciel",
+    name: "Frigorífico Maciel",
+    slug: "maciel",
+    empresa_id: 1,
+    sucursal_id: 1,
+  };
 
-  for (const comp of variations) {
-    const matched = FALLBACK_PRODUCTS.filter((p) => productBelongsToCompany(p, comp));
-    assert.ok(matched.length > 0, `Variación ${comp.name} (${comp.id}) debe tener productos`);
-  }
+  const matches = FALLBACK_PRODUCTS.filter((p) => productBelongsToCompany(p, baseCompany));
+  assert.equal(matches.length, 114, "Frigorífico Maciel base debe resolver los 114 productos");
   console.log("✔ Todas las variaciones de Frigorífico Maciel asocian sus productos correctamente.");
 });

@@ -1,42 +1,28 @@
 "use client";
 
-import React, { useEffect, useMemo } from "react";
+import React, { useEffect } from "react";
 import type { CompanyStore } from "@/data/mockCompanies";
 import { useCart } from "./motor/useCart";
-import { isProductPurchasable } from "./motor/productoDisponibilidad";
 import { useCatalogoTienda } from "./catalogo/hooks/useCatalogoTienda";
-import {
-  productBelongsToCompany,
-  deduplicateCatalogProducts,
-  departmentOf,
-  getDepartmentIcon,
-  filterCatalogProducts,
-} from "./catalogo/motorFiltroCatalogo";
 import { usePedidosCliente } from "./pedidos/hooks/usePedidosCliente";
-import { CatalogoEmpresaTienda } from "./catalogo/pantallas/CatalogoEmpresaTienda";
 import { AvisoCatalogo, formatSavedTime } from "./catalogo/AvisoCatalogo";
 import { HeaderTienda } from "./ui/HeaderTienda";
-import type { CompanyCartSummary } from "./ui/DrawerCarrito";
 import { useMensajesNoLeidos } from "./pedidos/hooks/useMensajesNoLeidos";
-import { InicioTienda } from "./pantallas/InicioTienda";
-import { SupermercadosTienda } from "./pantallas/SupermercadosTienda";
-import { PromocionesTienda } from "./pantallas/PromocionesTienda";
-import { HistorialPedidosTienda } from "./pantallas/HistorialPedidosTienda";
-import { PerfilCliente } from "./pantallas/PerfilCliente";
 import { NavegacionTienda } from "./ui/NavegacionTienda";
 import { TiendaPwaLayout } from "./ui/TiendaPwaLayout";
 import { TiendaModalesContainer } from "./ui/TiendaModalesContainer";
 import { BotonCarritoFlotante } from "./ui/BotonCarritoFlotante";
+import { TiendaActiveTabContent } from "./ui/TiendaActiveTabContent";
 import { useTiendaModales } from "./motor/useTiendaModales";
 import { useTiendaAddress } from "./motor/useTiendaAddress";
 import { useTiendaNavegacion } from "./motor/useTiendaNavegacion";
 import { useTiendaOrderSubmission } from "./motor/useTiendaOrderSubmission";
+import { useTiendaCatalogoState } from "./motor/useTiendaCatalogoState";
 import {
   clearClientProfile,
   loadDriverProfile,
 } from "../repartidor/motor/driverService";
 import { WifiOff } from "lucide-react";
-import { authHeaders } from "@/lib/clientAuth";
 import { useToast } from "@/hooks/use-toast";
 
 interface TiendaPiramidalProps {
@@ -107,47 +93,25 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
     catalogStatus,
   });
 
-  // Catálogo específico del comercio seleccionado (deduplicado y filtrado reactivamente)
-  const activeCompanyCatalog = useMemo(() => {
-    if (!selectedCompany) return [];
-    const list = products.filter((product) =>
-      productBelongsToCompany(product, selectedCompany)
-    );
-    return deduplicateCatalogProducts(list);
-  }, [products, selectedCompany]);
-
-  const companyDepartments = useMemo(() => {
-    if (!selectedCompany) return [];
-    const counts = new Map<string, number>();
-    activeCompanyCatalog.forEach((product) => {
-      const department = departmentOf(product);
-      counts.set(department, (counts.get(department) || 0) + 1);
-    });
-
-    const departmentList = Array.from(counts.entries())
-      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
-      .map(([department, count]) => ({
-        id: department.toLowerCase(),
-        name: `${department} (${count})`,
-        icon: getDepartmentIcon(department),
-      }));
-
-    return [
-      { id: "todos", name: `Todos (${activeCompanyCatalog.length})`, icon: "🔥" },
-      ...departmentList,
-    ];
-  }, [selectedCompany, activeCompanyCatalog]);
-
-  const filteredProducts = useMemo(() => {
-    if (!selectedCompany) return [];
-    return filterCatalogProducts(
-      activeCompanyCatalog,
-      searchQuery,
-      selectedCategory
-    );
-  }, [activeCompanyCatalog, selectedCategory, searchQuery, selectedCompany]);
-
-  const companyCatalogSize = activeCompanyCatalog.length;
+  // Lógica modular de catálogo, departamentos y carritos agrupados (Cerebro)
+  const {
+    companyDepartments,
+    filteredProducts,
+    companyCatalogSize,
+    companyCarts,
+    selectedCompanyCart,
+    checkoutCart,
+    checkoutCartTotal,
+  } = useTiendaCatalogoState({
+    products,
+    companies,
+    selectedCompany,
+    selectedCategory,
+    searchQuery,
+    cart,
+    catalogProductsStatus,
+    checkoutCompanyId: modales.checkoutCompanyId,
+  });
 
   useEffect(() => {
     if (!isCartLoaded) return;
@@ -160,85 +124,6 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
     products,
     reconcileCatalogProducts,
   ]);
-
-  const companyCarts = useMemo<CompanyCartSummary[]>(() => {
-    const groups = new Map<string, typeof cart>();
-    cart.forEach((item) => {
-      const companyId = item.product.companyId || "sin-comercio";
-      const items = groups.get(companyId) || [];
-      items.push(item);
-      groups.set(companyId, items);
-    });
-
-    return Array.from(groups.entries())
-      .map(([companyId, items]) => {
-        const company = companies.find(
-          (entry) =>
-            entry.id === companyId ||
-            entry.slug === companyId ||
-            entry.id === `empresa-${companyId}`
-        );
-        return {
-          companyId,
-          companyName: company?.name || items[0]?.product.companyName || companyId,
-          company,
-          items,
-          total:
-            catalogProductsStatus === "ready"
-              ? items.reduce(
-                  (total, item) =>
-                    isProductPurchasable(item.product) &&
-                    item.quantity <= item.product.stockKg
-                      ? total + item.product.price * item.quantity
-                      : total,
-                  0
-                )
-              : 0,
-          itemCount: items.reduce((total, item) => total + item.quantity, 0),
-        };
-      })
-      .sort((a, b) => a.companyName.localeCompare(b.companyName, "es"));
-  }, [cart, companies, catalogProductsStatus]);
-
-  const selectedCompanyCart = selectedCompany
-    ? companyCarts.find(
-        (companyCart) =>
-          companyCart.companyId === selectedCompany.id ||
-          companyCart.company?.id === selectedCompany.id ||
-          Boolean(
-            selectedCompany.slug &&
-              (companyCart.companyId === selectedCompany.slug ||
-                companyCart.company?.slug === selectedCompany.slug)
-          ) ||
-          Boolean(
-            selectedCompany.empresa_id &&
-              companyCart.company?.empresa_id === selectedCompany.empresa_id
-          )
-      )
-    : undefined;
-
-  const checkoutCart = useMemo(
-    () =>
-      modales.checkoutCompanyId
-        ? cart.filter(
-            (item) =>
-              (item.product.companyId || "sin-comercio") === modales.checkoutCompanyId
-          )
-        : [],
-    [cart, modales.checkoutCompanyId]
-  );
-
-  const checkoutCartTotal =
-    catalogProductsStatus === "ready"
-      ? checkoutCart.reduce(
-          (total, item) =>
-            isProductPurchasable(item.product) &&
-            item.quantity <= item.product.stockKg
-              ? total + item.product.price * item.quantity
-              : total,
-          0
-        )
-      : 0;
 
   // Gestión modular de confirmación y creación de pedidos
   const { isSubmittingOrder, handleProceedToPayment, handleConfirmOrder } =
@@ -276,21 +161,6 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
       filteredProducts.find((product) => product.id === productId)?.companyId ||
       selectedCompany?.id;
     if (productCompanyId) updateQuantity(productId, delta, productCompanyId);
-  };
-
-  const browseProps = {
-    companies,
-    companiesCached,
-    products,
-    status: catalogStatus,
-    onRetry: reloadCatalog,
-    productCountByCompany,
-    onSelectCompany: (company: CompanyStore, initialSearch?: string) =>
-      openCompany(company, initialSearch || ""),
-    searchQuery,
-    onSearchChange: setSearchQuery,
-    deliveryAddress,
-    deliveryCoordinates,
   };
 
   const handleConnectAsDriver = () => {
@@ -364,7 +234,9 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
           productsError={catalogProductsStatus === "error"}
           warnings={productsWarnings}
           cacheError={cacheError}
-          onRetry={reloadCatalog}
+          onRetry={() => {
+            void reloadCatalog();
+          }}
         />
         {activeBottomTab === "orders" && ordersCached && ordersSavedAt && clientOrdersList.length > 0 && (
           <div role="status" className="flex items-center gap-2 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-950">
@@ -372,60 +244,49 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
             <span>Modo sin conexión: mostrando copia guardada de tus pedidos ({formatSavedTime(ordersSavedAt)}). Los estados se actualizarán al reconectar.</span>
           </div>
         )}
-        {activeBottomTab === "profile" ? (
-          <PerfilCliente
-            clientProfile={clientProfile}
-            isClientAuthenticated={!!clientProfile && !!authHeaders("Client").Authorization}
-            deliveryAddress={deliveryAddress}
-            onLogin={() => modales.setIsClientAuthOpen(true)}
-            onLogout={() => {
-              clearClientProfile();
-              setClientProfile(null);
-            }}
-            onEditAddress={() => modales.setIsAddressModalOpen(true)}
-            onSwitchToDriver={handleConnectAsDriver}
-          />
-        ) : activeBottomTab === "orders" ? (
-          <HistorialPedidosTienda
-            orders={clientOrdersList}
-            onGoToHome={() => setActiveBottomTab("home")}
-            onSelectActiveOrder={(order) => {
-              modales.openOrdersHub(String(order.id));
-            }}
-            onSelectOrderChat={(order) => {
-              modales.openOrderChat(order);
-            }}
-          />
-        ) : !selectedCompany ? (
-          activeBottomTab === "markets" ? (
-            <SupermercadosTienda {...browseProps} />
-          ) : activeBottomTab === "promotions" ? (
-            <PromocionesTienda {...browseProps} />
-          ) : (
-            <InicioTienda {...browseProps} />
-          )
-        ) : (
-          <CatalogoEmpresaTienda
-            company={selectedCompany}
-            companyCached={companiesCached}
-            categories={companyDepartments}
-            searchQuery={searchQuery}
-            selectedCategory={selectedCategory}
-            products={filteredProducts}
-            cart={cart}
-            deliveryCoordinates={deliveryCoordinates}
-            deliveryAddress={deliveryAddress}
-            onOpenChangeAddress={() => modales.setIsAddressModalOpen(true)}
-            catalogStatus={catalogProductsStatus}
-            onRetry={reloadCatalog}
-            onSearchChange={setSearchQuery}
-            onCategorySelect={setSelectedCategory}
-            onAddToCart={handleAddToCart}
-            onUpdateQuantity={updateSelectedCompanyQuantity}
-            catalogSize={companyCatalogSize}
-            onBackToStores={() => closeCompany()}
-          />
-        )}
+        <TiendaActiveTabContent
+          activeBottomTab={activeBottomTab}
+          selectedCompany={selectedCompany}
+          clientProfile={clientProfile}
+          deliveryAddress={deliveryAddress}
+          deliveryCoordinates={deliveryCoordinates}
+          clientOrdersList={clientOrdersList}
+          companies={companies}
+          companiesCached={companiesCached}
+          products={products}
+          catalogStatus={catalogStatus}
+          catalogProductsStatus={catalogProductsStatus}
+          reloadCatalog={() => {
+            void reloadCatalog();
+          }}
+          productCountByCompany={productCountByCompany}
+          searchQuery={searchQuery}
+          setSearchQuery={setSearchQuery}
+          selectedCategory={selectedCategory}
+          setSelectedCategory={setSelectedCategory}
+          companyDepartments={companyDepartments}
+          filteredProducts={filteredProducts}
+          cart={cart}
+          companyCatalogSize={companyCatalogSize}
+          openCompany={openCompany}
+          closeCompany={closeCompany}
+          setActiveBottomTab={setActiveBottomTab}
+          onLogin={() => modales.setIsClientAuthOpen(true)}
+          onLogout={() => {
+            clearClientProfile();
+            setClientProfile(null);
+          }}
+          onEditAddress={() => modales.setIsAddressModalOpen(true)}
+          onSwitchToDriver={handleConnectAsDriver}
+          onSelectActiveOrder={(order) => {
+            modales.openOrdersHub(String(order.id));
+          }}
+          onSelectOrderChat={(order) => {
+            modales.openOrderChat(order);
+          }}
+          onAddToCart={handleAddToCart}
+          onUpdateQuantity={updateSelectedCompanyQuantity}
+        />
       </TiendaPwaLayout>
 
       {/* ─── Contenedor Modular de Modales y Sheets ─── */}

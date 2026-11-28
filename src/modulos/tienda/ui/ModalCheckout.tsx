@@ -1,10 +1,7 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, useRef } from "react";
+import React from "react";
 import { CheckoutFormData, OrderData } from "../motor/tipos";
-import { loadSavedCustomer } from "../motor/pedidoService";
-import { loadClientProfile } from "@/modulos/repartidor/motor/driverService";
-import { calcularTarifaEnvio } from "../motor/tarifaUberService";
 import {
   Dialog,
   DialogContent,
@@ -26,10 +23,10 @@ import { ModalPedidoConfirmado } from "./checkout/ModalPedidoConfirmado";
 import { CheckoutDeliveryTypeSelector } from "./checkout/CheckoutDeliveryTypeSelector";
 import { CheckoutAddressSection } from "./checkout/CheckoutAddressSection";
 import { CheckoutPaymentSelector } from "./checkout/CheckoutPaymentSelector";
-import { normalizeWhatsAppPhone, parseAddressParts } from "../motor/checkoutUtils";
+import { normalizeWhatsAppPhone } from "../motor/checkoutUtils";
+import { useModalCheckoutState, REQUIRE_VERIFIED_GPS } from "../motor/useModalCheckoutState";
 
-export const REQUIRE_VERIFIED_GPS = false;
-export { normalizeWhatsAppPhone };
+export { REQUIRE_VERIFIED_GPS, normalizeWhatsAppPhone };
 
 interface ModalCheckoutProps {
   isOpen: boolean;
@@ -70,168 +67,42 @@ export function ModalCheckout({
   companyPhone,
   onOpenLogin,
 }: ModalCheckoutProps) {
-  const defaultBranchName = companyName || "Frigorífico Maciel · Alfaro 1964";
   const whatsappTargetPhone =
     normalizeWhatsAppPhone(sucursalPhone || companyPhone) || "5491135627803";
   const formatMoney = (val: number) => "$" + val.toLocaleString("es-AR");
-  const initializedForOpen = useRef(false);
-  const checkoutClientId = useRef<string | null>(null);
-  const [missingName, setMissingName] = useState(true);
-  const [missingPhone, setMissingPhone] = useState(true);
-  const [formError, setFormError] = useState("");
-  const [addressUnit, setAddressUnit] = useState("");
-  const [streetInput, setStreetInput] = useState("");
-  const [numberInput, setNumberInput] = useState("");
-  const [citySuffix, setCitySuffix] = useState("");
 
-  const [form, setForm] = useState<CheckoutFormData>({
-    customerName: "",
-    customerPhone: "",
-    deliveryType: "delivery",
-    deliveryAddress: "",
-    selectedBranch: defaultBranchName,
-    paymentMethod: "efectivo",
-    orderNotes: "",
+  const {
+    form,
+    setForm,
+    missingName,
+    missingPhone,
+    formError,
+    addressUnit,
+    setAddressUnit,
+    streetInput,
+    setStreetInput,
+    numberInput,
+    setNumberInput,
+    citySuffix,
+    updateCombinedAddress,
+    tarifa,
+    deliveryFee,
+    finalTotal,
+    handleSubmit,
+    checkoutClientId,
+    defaultBranchName,
+  } = useModalCheckoutState({
+    isOpen,
+    cartTotal,
+    companyName,
+    companyDeliveryFee,
+    freeDeliveryThreshold,
+    profileAddress,
+    selectedDeliveryAddress,
+    deliveryCoordinates,
+    onOpenAddressPicker,
+    onConfirmOrder,
   });
-
-  const updateCombinedAddress = (
-    street: string,
-    num: string,
-    unit: string,
-    city: string
-  ) => {
-    let streetTrimmed = street.trim();
-    let numTrimmed = num.trim();
-
-    if (numTrimmed && streetTrimmed.endsWith(` ${numTrimmed}`)) {
-      streetTrimmed = streetTrimmed.slice(0, -numTrimmed.length - 1).trim();
-    } else if (!numTrimmed && /\s+\d+[\w-]*$/.test(streetTrimmed)) {
-      const match = streetTrimmed.match(/^(.*?)\s+(\d+[\w-]*)$/);
-      if (match) {
-        streetTrimmed = match[1].trim();
-        numTrimmed = match[2].trim();
-      }
-    }
-
-    const streetWithNum = numTrimmed ? `${streetTrimmed} ${numTrimmed}` : streetTrimmed;
-    const combined = [streetWithNum, unit.trim(), city.trim()].filter(Boolean).join(", ");
-    setForm((p) => ({ ...p, deliveryAddress: combined }));
-  };
-
-  useEffect(() => {
-    if (!isOpen) {
-      initializedForOpen.current = false;
-      return;
-    }
-    if (initializedForOpen.current) return;
-    initializedForOpen.current = true;
-
-    checkoutClientId.current = loadClientProfile()?.id || null;
-    const saved = loadSavedCustomer();
-    const customerName = saved.customerName?.trim() || "";
-    const customerPhone = saved.customerPhone?.trim() || "";
-    setMissingName(!customerName);
-    setMissingPhone(!customerPhone);
-    setFormError("");
-
-    const initialAddr =
-      profileAddress || selectedDeliveryAddress || saved.deliveryAddress || "";
-    const parsed = parseAddressParts(initialAddr);
-    setStreetInput(initialAddr);
-    setNumberInput(parsed.number);
-    setCitySuffix(parsed.city);
-    if (parsed.unit) setAddressUnit(parsed.unit);
-
-    setForm((prev) => ({
-      ...prev,
-      customerName,
-      customerPhone,
-      deliveryAddress: initialAddr,
-      deliveryType: saved.deliveryType || "delivery",
-      selectedBranch: defaultBranchName,
-    }));
-  }, [isOpen, profileAddress, selectedDeliveryAddress, defaultBranchName]);
-
-  useEffect(() => {
-    if (selectedDeliveryAddress) {
-      const parsed = parseAddressParts(selectedDeliveryAddress);
-      if (parsed.street) setStreetInput(parsed.street);
-      if (parsed.number) setNumberInput(parsed.number);
-      if (parsed.city) setCitySuffix(parsed.city);
-      if (parsed.unit && !addressUnit) setAddressUnit(parsed.unit);
-      setForm((prev) => ({ ...prev, deliveryAddress: selectedDeliveryAddress }));
-    }
-  }, [selectedDeliveryAddress]);
-
-  const tarifa = useMemo(
-    () => calcularTarifaEnvio(deliveryCoordinates || form.deliveryAddress || ""),
-    [deliveryCoordinates, form.deliveryAddress]
-  );
-
-  const deliveryFee =
-    form.deliveryType === "delivery" && cartTotal > 0
-      ? cartTotal >= freeDeliveryThreshold
-        ? 0
-        : companyDeliveryFee ?? tarifa.totalDeliveryFee
-      : 0;
-
-  const finalTotal = cartTotal + deliveryFee;
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (checkoutClientId.current && loadClientProfile()?.id !== checkoutClientId.current) {
-      setFormError("La sesión cambió. Cerrá el formulario y volvé a abrirlo.");
-      return;
-    }
-    if (!form.customerName.trim() || !form.customerPhone.trim()) {
-      setFormError("Completá tus datos de contacto.");
-      return;
-    }
-    if (form.deliveryType === "delivery") {
-      if (!streetInput.trim()) {
-        setFormError("Por favor ingresá la calle de tu domicilio.");
-        return;
-      }
-      if (!numberInput.trim() && !deliveryCoordinates) {
-        setFormError("Por favor ingresá el número de tu casa (altura) o marcá el punto en el mapa para que el repartidor llegue a tu puerta.");
-        return;
-      }
-      if (REQUIRE_VERIFIED_GPS && !deliveryCoordinates) {
-        setFormError("Para envío a domicilio es obligatorio seleccionar tu ubicación en el mapa dentro de 1 km.");
-        onOpenAddressPicker?.();
-        return;
-      }
-    }
-    setFormError("");
-
-    let streetTrimmed = streetInput.trim();
-    let numTrimmed = numberInput.trim();
-    if (numTrimmed && streetTrimmed.endsWith(` ${numTrimmed}`)) {
-      streetTrimmed = streetTrimmed.slice(0, -numTrimmed.length).trim();
-    } else if (/\s+\d+[\w-]*$/.test(streetTrimmed)) {
-      const match = streetTrimmed.match(/^(.*?)\s+(\d+[\w-]*)$/);
-      if (match) {
-        streetTrimmed = match[1].trim();
-        numTrimmed = match[2].trim();
-      }
-    }
-    const streetWithNum = numTrimmed ? `${streetTrimmed} ${numTrimmed}` : streetTrimmed;
-    const finalAddress = [streetWithNum, addressUnit.trim(), citySuffix.trim()]
-      .filter(Boolean)
-      .join(", ");
-
-    await onConfirmOrder(
-      {
-        ...form,
-        deliveryAddress: finalAddress,
-        deliveryStreet: streetInput.trim(),
-        deliveryNumber: numberInput.trim(),
-        deliveryFloor: addressUnit.trim(),
-        deliveryCoordinates: deliveryCoordinates || null,
-      },
-      checkoutClientId.current
-    );
-  };
 
   return (
     <>
@@ -252,7 +123,7 @@ export function ModalCheckout({
             </DialogDescription>
           </DialogHeader>
 
-          {!checkoutClientId.current && (
+          {!checkoutClientId && (
             <div className="mt-2.5 flex flex-wrap items-center justify-between gap-1.5 rounded-2xl bg-blue-50/80 border border-blue-200/80 px-3.5 py-2 text-xs text-blue-900 shadow-xs min-w-0 box-border">
               <span className="font-semibold flex items-center gap-1.5 min-w-0">
                 <Zap className="w-3.5 h-3.5 text-blue-600 shrink-0" />

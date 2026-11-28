@@ -22,6 +22,28 @@ test("el catálogo publica la ficha vigente y las estrellas verificadas, no dato
         FALLBACK_PRODUCTS_SUC_1: [],
         FALLBACK_PRODUCTS_SUC_2: [],
       };
+      if (name === "../catalogService") return { fetchCobroFacilCatalog: async () => ({ products: [], total: 0 }) };
+      if (name === "../companiesService") {
+        const companiesCode = ts.transpileModule(fs.readFileSync("src/app/api/cobrofacil/companiesService.ts", "utf8"), {
+          compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020, esModuleInterop: true },
+        }).outputText;
+        const compExports = {};
+        vm.runInNewContext(companiesCode, {
+          exports: compExports, process: { env: {} }, console,
+          require(compName) {
+            if (compName === "@/data/fallbackCatalog") return { FALLBACK_COMPANIES: [] };
+            if (compName === "@/lib/db") return {
+              isDatabaseConfigured: () => true,
+              queryDb: async (sql) => sql.includes("public.empresas e")
+                ? [{ id: 3, nombre: "Empresa registrada", slug: "comercio", company_data: {},
+                    public_profile: profile, promedio: "4.5", cantidad: "2" }]
+                : []
+            };
+            throw new Error(`Dependencia inesperada en companiesService: ${compName}`);
+          }
+        });
+        return compExports;
+      }
       if (name === "@/lib/db") return {
         isDatabaseConfigured: () => true,
         queryDb: async (sql) => sql.includes("public.empresas e")

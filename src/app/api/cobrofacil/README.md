@@ -1,16 +1,17 @@
 # Módulo de Integración con Cobro Fácil (`src/app/api/cobrofacil/`)
 
 ## 1. Qué hace
-Sincroniza el catálogo de empresas, sucursales y productos del backend de Cobro Fácil con el e-commerce de Reparto Fácil, combinando lecturas locales rápidas de PostgreSQL con llamadas al servicio Flask.
+Sincroniza y expone el catálogo de comercios, sucursales y productos unificados (114 productos certificados de Maciel #1 y base TPV) de Cobro Fácil en endpoints ligeros y desacoplados.
 
 ## 2. De dónde viene
-- Invocado por el hook `src/modulos/tienda/catalogo/hooks/useCatalogoTienda.ts`.
-- Consultas de empresas en `src/modulos/tienda/ui/VistaMercadosEmpresas.tsx`.
+- Llamadas desde `useCatalogoTienda.ts`, `VistaMercadosEmpresas.tsx` y fetch directo de clientes web.
+- Peticiones HTTP a `/api/cobrofacil/products` y `/api/cobrofacil/[...path]`.
 
-## 3. Archivos y Rutas
-- `[...path]/route.ts`: Endpoint dinámico que atiende `GET /api/cobrofacil/companies`, `GET /api/cobrofacil/companies/[id]` y catálogos de sucursales consultando la tabla `public.pos_base` y `public.sucursales`.
-- `products/route.ts`: Consulta de inventario de productos por sucursal y categoría.
+## 3. Archivos y Funciones
+- `catalogService.ts`: Lógica de negocio (Cerebro) que consulta `pos_base`, une con `FALLBACK_PRODUCTS_SUC_1`, calcula stocks/precios y retorna datos puros.
+- `companiesService.ts`: Lógica de negocio para mapear empresas, sucursales activas, geoposición y reseñas.
+- `products/route.ts`: Endpoint GET puro (< 40 líneas) para inventario con soporte para `tienda`, `slug` y `sucursal_id`.
+- `[...path]/route.ts`: Router dinámico (< 120 líneas) para `companies`, `tiendas` y proxy con resiliencia.
 
 ## 4. Hacia dónde sale
-- Hacia las tablas `public.pos_base`, `public.sucursales` y `public.empresas` en PostgreSQL 16 local.
-- Fallback hacia `http://127.0.0.1:5005` (Cobro Fácil VPS).
+- Hacia la base PostgreSQL 16 (`crm_libro_local` en VPS) y fallback local de alta disponibilidad.
