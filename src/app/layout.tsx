@@ -46,7 +46,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="es" suppressHydrationWarning>
+    <html lang="es" suppressHydrationWarning className="h-full w-full overflow-hidden">
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
@@ -56,12 +56,12 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
       </head>
-      <body className="font-body antialiased bg-slate-950 text-slate-100 min-h-screen selection:bg-emerald-500 selection:text-white pb-safe">
+      <body className="font-body antialiased bg-slate-950 text-slate-100 h-full w-full overflow-hidden select-none overscroll-none selection:bg-emerald-500 selection:text-white">
         <BackendWakeup />
         <PwaRegister />
         <PwaInstallBanner />
         <FirebaseClientProvider>
-          <div className="w-full min-h-screen relative">
+          <div className="fixed inset-0 flex flex-col h-[100dvh] w-full overflow-hidden">
             {children}
           </div>
           <Toaster />

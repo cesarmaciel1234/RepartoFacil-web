@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "El repartidor no coincide con la sesión." }, { status: 403 });
     }
     if (action === "driver_disconnected" && !isCustodioAutomaticEnabled()) {
-      return NextResponse.json({ error: "La liberación automática de pedidos está pausada." }, { status: 503 });
+      return NextResponse.json({ success: true, paused: true, message: "La liberación automática de pedidos está pausada." });
     }
 
     // 1. Ping GPS de telemetría del repartidor activo

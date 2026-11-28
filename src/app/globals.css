@@ -32,19 +32,20 @@
     @apply border-border;
     -webkit-tap-highlight-color: transparent;
   }
+  html,
+  body {
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
+    overscroll-behavior: none;
+    -webkit-overflow-scrolling: touch;
+    -webkit-text-size-adjust: 100%;
+  }
   html {
     scroll-behavior: smooth;
-    height: 100%;
-    overscroll-behavior-y: none;
   }
   body {
     @apply bg-slate-950 text-slate-100;
-    min-height: 100vh;
-    min-height: 100dvh;
-    overflow-x: hidden;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-    overscroll-behavior-y: none;
     -webkit-font-smoothing: antialiased;
   }
 

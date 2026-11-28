@@ -13,16 +13,10 @@ import {
 } from "@/components/ui/sheet";
 import {
   ArrowLeft,
-  ArrowRight,
   Bike,
   Clock3,
-  Minus,
   MapPin,
-  Plus,
   ShoppingBag,
-  ShieldCheck,
-  Trash2,
-  Truck,
 } from "lucide-react";
 import { calcularTarifaEnvio, haversineKm } from "../motor/tarifaUberService";
 import {
@@ -31,12 +25,10 @@ import {
   normalizeCompanyAddress,
   readCompanyCoordinatesCache,
 } from "../motor/ubicacionComercio";
-import { ImagenProducto } from "./ImagenProducto";
-import {
-  hasValidPrice,
-  isProductPurchasable,
-  productAvailabilityMessage,
-} from "../motor/productoDisponibilidad";
+import { isProductPurchasable } from "../motor/productoDisponibilidad";
+import { DrawerCarritoItem } from "./carrito/DrawerCarritoItem";
+import { DrawerCarritoCompanyCard } from "./carrito/DrawerCarritoCompanyCard";
+import { DrawerCarritoFooter } from "./carrito/DrawerCarritoFooter";
 
 const FREE_DELIVERY_THRESHOLD = 35000;
 
@@ -78,7 +70,6 @@ export function DrawerCarrito({
   deliveryCoordinates,
   onSelectCompanyCart,
   onUpdateQuantity,
-  onRemoveItem,
   onClearCompanyCart,
   onRemoveCompanyCart,
   onProceedToPayment,
@@ -86,6 +77,7 @@ export function DrawerCarrito({
 }: DrawerCarritoProps) {
   const [companyDistances, setCompanyDistances] = useState<Record<string, number | null>>({});
   const formatMoney = (value: number) => "$" + value.toLocaleString("es-AR");
+
   const activeCart = companyCarts.find(
     (companyCart) => companyCart.companyId === activeCompanyCartId
   );
@@ -225,75 +217,14 @@ export function DrawerCarrito({
               </div>
             ) : (
               companyCarts.map((companyCart) => (
-                <article
+                <DrawerCarritoCompanyCard
                   key={companyCart.companyId}
-                  className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm"
-                >
-                  <button
-                    type="button"
-                    onClick={() => onSelectCompanyCart(companyCart.companyId)}
-                    aria-label={`Abrir carrito de ${companyCart.companyName}`}
-                    className="flex w-full items-center gap-3 text-left"
-                  >
-                    {companyCart.company?.logoUrl ? (
-                      <img
-                        src={companyCart.company.logoUrl}
-                        alt=""
-                        className="h-14 w-14 shrink-0 rounded-2xl bg-slate-100 object-cover"
-                      />
-                    ) : (
-                      <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-lg font-black text-blue-700">
-                        {companyCart.companyName.slice(0, 1).toUpperCase()}
-                      </div>
-                    )}
-                    <div className="min-w-0 flex-1">
-                      <h3 className="line-clamp-2 text-sm font-extrabold text-slate-900">
-                        {companyCart.companyName}
-                      </h3>
-                      <p className="mt-1 text-xs text-slate-500">
-                        {companyCart.itemCount}{" "}
-                        {companyCart.itemCount === 1 ? "producto" : "productos"}
-                      </p>
-                    </div>
-                    <span className="shrink-0 text-sm font-black text-slate-900">
-                      {formatMoney(companyCart.total)}
-                    </span>
-                  </button>
-
-                  <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 pl-[4.25rem] text-xs text-slate-600">
-                    {companyCart.company && (
-                      <span className="flex items-center gap-1">
-                        <Clock3 className="h-3.5 w-3.5 text-slate-400" />
-                        {companyCart.company.deliveryTimeMin}-
-                        {companyCart.company.deliveryTimeMax} min
-                      </span>
-                    )}
-                    <span className="flex items-center gap-1">
-                      <Bike className="h-3.5 w-3.5 text-slate-400" />
-                      {companyCart.company
-                        ? formatMoney(companyCart.company.deliveryFee)
-                        : "Envío calculado al pagar"}
-                    </span>
-                    <span
-                      className="flex items-center gap-1"
-                      title="Distancia aproximada desde tu ubicación"
-                    >
-                      <MapPin className="h-3.5 w-3.5 text-blue-600" />
-                      {distanceLabel(companyCart.companyId)}
-                    </span>
-                  </div>
-
-                  <div className="mt-2 flex justify-end">
-                    <button
-                      type="button"
-                      onClick={() => onRemoveCompanyCart(companyCart.companyId)}
-                      className="flex items-center gap-1 text-xs font-bold text-slate-600 hover:text-red-600"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                      Eliminar
-                    </button>
-                  </div>
-                </article>
+                  companyCart={companyCart}
+                  distanceLabel={distanceLabel(companyCart.companyId)}
+                  onSelectCompanyCart={onSelectCompanyCart}
+                  onRemoveCompanyCart={onRemoveCompanyCart}
+                  formatMoney={formatMoney}
+                />
               ))
             )
           ) : (
@@ -340,80 +271,14 @@ export function DrawerCarrito({
               </div>
 
               {activeItems.map((item) => (
-                <div
+                <DrawerCarritoItem
                   key={`${activeCart.companyId}:${item.product.id}`}
-                  className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-2.5 shadow-sm"
-                >
-                  <ImagenProducto
-                    src={item.product.image}
-                    alt={item.product.name}
-                    className="h-16 w-16 shrink-0 rounded-xl bg-slate-100 object-cover"
-                  />
-                  <div className="min-w-0 flex-1">
-                    <h4 className="text-xs font-bold text-slate-900">{item.product.name}</h4>
-                    {inventoryReady &&
-                    item.product.priceSource === "tpv" &&
-                    hasValidPrice(item.product) ? (
-                      <>
-                        <p className="mt-0.5 text-xs font-extrabold text-slate-900">
-                          {formatMoney(item.product.price * item.quantity)}
-                        </p>
-                        <p className="text-[10px] text-slate-500">
-                          {formatMoney(item.product.price)}
-                          {item.product.unit ? ` / ${item.product.unit}` : ""}
-                        </p>
-                      </>
-                    ) : (
-                      <p className="mt-0.5 text-xs font-bold text-amber-800">
-                        Precio pendiente
-                      </p>
-                    )}
-                    {(!inventoryReady ||
-                      !isProductPurchasable(item.product) ||
-                      item.quantity > item.product.stockKg) && (
-                      <p className="mt-1 text-[10px] font-semibold text-amber-800">
-                        {!inventoryReady
-                          ? "Inventario pendiente de validar."
-                          : productAvailabilityMessage(item.product) ||
-                            "La cantidad supera el stock vigente."}
-                      </p>
-                    )}
-                  </div>
-                  <div className="flex shrink-0 items-center rounded-full bg-slate-100 p-1">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        onUpdateQuantity(item.product.id, -1, activeCart.companyId)
-                      }
-                      aria-label={`Quitar una unidad de ${item.product.name}`}
-                      className="flex h-7 w-7 items-center justify-center rounded-full text-slate-700"
-                    >
-                      {item.quantity === 1 ? (
-                        <Trash2 className="h-3.5 w-3.5" />
-                      ) : (
-                        <Minus className="h-3.5 w-3.5" />
-                      )}
-                    </button>
-                    <span className="w-6 text-center text-xs font-black text-slate-900">
-                      {item.quantity}
-                    </span>
-                    <button
-                      type="button"
-                      disabled={
-                        !inventoryReady ||
-                        !isProductPurchasable(item.product) ||
-                        item.quantity >= item.product.stockKg
-                      }
-                      onClick={() =>
-                        onUpdateQuantity(item.product.id, 1, activeCart.companyId)
-                      }
-                      aria-label={`Agregar una unidad de ${item.product.name}`}
-                      className="flex h-7 w-7 items-center justify-center rounded-full text-slate-900 disabled:text-slate-300"
-                    >
-                      <Plus className="h-4 w-4" />
-                    </button>
-                  </div>
-                </div>
+                  item={item}
+                  companyId={activeCart.companyId}
+                  inventoryReady={inventoryReady}
+                  onUpdateQuantity={onUpdateQuantity}
+                  formatMoney={formatMoney}
+                />
               ))}
 
               <Button
@@ -429,74 +294,19 @@ export function DrawerCarrito({
         </div>
 
         {activeCart && activeItems.length > 0 && (
-          <div
-            style={{
-              paddingBottom: "max(1rem, calc(env(safe-area-inset-bottom, 0px) + 0.75rem))",
-            }}
-            className="space-y-3 border-t border-slate-200 bg-white p-4"
-          >
-            {deliveryType === "delivery" && activeTotal < freeDeliveryThreshold && (
-              <div className="flex items-center gap-2 rounded-xl border border-blue-100 bg-blue-50 p-2.5 text-xs">
-                <Truck className="h-4 w-4 shrink-0 text-blue-600" />
-                <span className="text-[11px] font-medium leading-tight text-blue-800">
-                  Sumá {formatMoney(freeDeliveryThreshold - activeTotal)} más para tener envío gratis.
-                </span>
-              </div>
-            )}
-
-            <div className="space-y-1.5 text-xs">
-              <div className="flex justify-between text-slate-500">
-                <span>Subtotal productos</span>
-                <span className="font-bold text-slate-800">{formatMoney(activeTotal)}</span>
-              </div>
-              <div className="flex justify-between text-slate-500">
-                <span>Envío</span>
-                <span className="font-bold text-slate-800">
-                  {deliveryFee === 0 ? "Gratis" : formatMoney(deliveryFee)}
-                </span>
-              </div>
-              <div className="flex justify-between border-t border-slate-100 pt-2 text-sm font-black text-slate-900">
-                <span>Total</span>
-                <span className="text-base font-black text-blue-700">
-                  {formatMoney(finalTotal)}
-                </span>
-              </div>
-            </div>
-
-            {hasUnavailableItems && (
-              <p
-                role="alert"
-                className="rounded-xl border border-amber-200 bg-amber-50 p-2.5 text-[11px] font-semibold text-amber-900"
-              >
-                {unavailableItem ? (
-                  <>
-                    {unavailableItem.product.name}:{" "}
-                    {!inventoryReady
-                      ? "inventario pendiente de validar"
-                      : productAvailabilityMessage(unavailableItem.product) ||
-                        "la cantidad supera el stock vigente"}
-                  </>
-                ) : (
-                  "No se puede validar el inventario de Cobro Fácil."
-                )}
-                . Revisa el producto antes de pagar.
-              </p>
-            )}
-
-            <Button
-              disabled={hasUnavailableItems}
-              onClick={() => onProceedToPayment(activeCart.companyId)}
-              className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 text-xs font-black uppercase tracking-wider text-white shadow-lg shadow-blue-600/20 transition-all hover:bg-blue-700 disabled:bg-slate-300 disabled:text-slate-600 active:scale-98"
-            >
-              <span>Ir a pagar</span>
-              <ArrowRight className="h-4 w-4" />
-            </Button>
-
-            <p className="flex items-center justify-center gap-1 text-center text-[10px] text-slate-500">
-              <ShieldCheck className="h-3 w-3 text-blue-600" />
-              Compra segura · Conectado con Cobro Fácil
-            </p>
-          </div>
+          <DrawerCarritoFooter
+            deliveryType={deliveryType}
+            activeTotal={activeTotal}
+            deliveryFee={deliveryFee}
+            finalTotal={finalTotal}
+            freeDeliveryThreshold={freeDeliveryThreshold}
+            hasUnavailableItems={hasUnavailableItems}
+            unavailableItem={unavailableItem}
+            inventoryReady={inventoryReady}
+            companyId={activeCart.companyId}
+            onProceedToPayment={onProceedToPayment}
+            formatMoney={formatMoney}
+          />
         )}
       </SheetContent>
     </Sheet>

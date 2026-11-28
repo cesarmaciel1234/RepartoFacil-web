@@ -12,7 +12,7 @@ export const FALLBACK_COMPANIES: CompanyStore[] = [
   {
     id: "frigorifico-maciel-suc-1",
     name: "maciel #1",
-    slug: "rumaul",
+    slug: "maciel",
     empresa_id: 1,
     category: "Carnicería",
     categorySlug: "carnes",
@@ -28,7 +28,7 @@ export const FALLBACK_COMPANIES: CompanyStore[] = [
     isOpen: true,
     sucursal_id: 1,
     parentCompanyId: "frigorifico-maciel",
-    parentSlug: "rumaul",
+    parentSlug: "maciel",
     isMultiBranch: false,
     isSingleBranch: true,
   },

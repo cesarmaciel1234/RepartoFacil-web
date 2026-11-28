@@ -41,7 +41,7 @@ export function HeaderTienda({
       style={{
         paddingTop: "max(0.625rem, calc(env(safe-area-inset-top, 0px) + 0.5rem))",
       }}
-      className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200 px-3 sm:px-4 pt-safe-header pb-2.5 shadow-sm"
+      className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200 px-3 sm:px-4 pt-safe-header pb-2.5 shadow-sm shrink-0"
     >
       <div className="max-w-6xl mx-auto flex items-center justify-between gap-2">
         {/* Lado Izquierdo: Botón Sidebar / Perfil + Dirección */}

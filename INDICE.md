@@ -49,6 +49,8 @@
 
 - **Capa de Frontend y Vistas (`src/app/`, `src/components/`, `src/modulos/*/ui/`):**
   - Pantallas React con Tailwind CSS y componentes Shadcn/Radix UI.
+  - Estructura PWA nativa con viewport raíz 100% fijo (`fixed inset-0 100dvh`, barras superior e inferior `flex-shrink: 0`, safe-areas y scroll interno contenido).
+  - Pull-to-Refresh exclusivo en vistas de listas (Cliente/Tienda), desactivado en el perfil de Repartidor para mantener la fluidez del mapa Leaflet GPS.
   - Vistas adaptadas a móvil y escritorio para catálogo, carrito, tracking y perfil.
 - **Lógica de Negocio y Cliente (`src/lib/`, `src/modulos/*/motor/`):**
   - `validateOrder.ts`: Validación exhaustiva de pedidos, cálculo de costos de envío y aislamiento por tenant.
@@ -83,6 +85,7 @@ Cada carpeta del proyecto cuenta con su archivo `README.md` corto explicando qu�
   - [`src/app/api/README.md`](file:///C:/Users/cesar/OneDrive/Desktop/RepartoFacil-web/src/app/api/README.md): Capa de servicios API REST.
     - [`src/app/api/auth/README.md`](file:///C:/Users/cesar/OneDrive/Desktop/RepartoFacil-web/src/app/api/auth/README.md): Login y tokens JWT.
     - [`src/app/api/orders/README.md`](file:///C:/Users/cesar/OneDrive/Desktop/RepartoFacil-web/src/app/api/orders/README.md): Gestión de pedidos y custodia.
+      - [`src/app/api/orders/core/README.md`](file:///C:/Users/cesar/OneDrive/Desktop/RepartoFacil-web/src/app/api/orders/core/README.md): Lógica de base de datos modular (GET, POST, PATCH).
     - [`src/app/api/cobrofacil/README.md`](file:///C:/Users/cesar/OneDrive/Desktop/RepartoFacil-web/src/app/api/cobrofacil/README.md): Proxy de catálogo y empresas.
     - [`src/app/api/db/README.md`](file:///C:/Users/cesar/OneDrive/Desktop/RepartoFacil-web/src/app/api/db/README.md): Persistencia directa en PostgreSQL 16.
     - [`src/app/api/chat/README.md`](file:///C:/Users/cesar/OneDrive/Desktop/RepartoFacil-web/src/app/api/chat/README.md): Mensajería en tiempo real.
@@ -94,10 +97,14 @@ Cada carpeta del proyecto cuenta con su archivo `README.md` corto explicando qu�
     - [`src/modulos/tienda/pantallas/README.md`](file:///C:/Users/cesar/OneDrive/Desktop/RepartoFacil-web/src/modulos/tienda/pantallas/README.md): Pantallas completas de tienda.
     - [`src/modulos/tienda/pedidos/README.md`](file:///C:/Users/cesar/OneDrive/Desktop/RepartoFacil-web/src/modulos/tienda/pedidos/README.md): Sincronización de pedidos.
     - [`src/modulos/tienda/ui/README.md`](file:///C:/Users/cesar/OneDrive/Desktop/RepartoFacil-web/src/modulos/tienda/ui/README.md): Elementos visuales (modales, drawers).
+      - [`src/modulos/tienda/ui/carrito/README.md`](file:///C:/Users/cesar/OneDrive/Desktop/RepartoFacil-web/src/modulos/tienda/ui/carrito/README.md): Subcomponentes modulares de carrito.
+      - [`src/modulos/tienda/ui/checkout/README.md`](file:///C:/Users/cesar/OneDrive/Desktop/RepartoFacil-web/src/modulos/tienda/ui/checkout/README.md): Subcomponentes modulares de checkout.
   - [`src/modulos/repartidor/README.md`](file:///C:/Users/cesar/OneDrive/Desktop/RepartoFacil-web/src/modulos/repartidor/README.md): PWA de choferes.
     - [`src/modulos/repartidor/motor/README.md`](file:///C:/Users/cesar/OneDrive/Desktop/RepartoFacil-web/src/modulos/repartidor/motor/README.md): Lógica de rutas y cartera.
     - [`src/modulos/repartidor/ui/README.md`](file:///C:/Users/cesar/OneDrive/Desktop/RepartoFacil-web/src/modulos/repartidor/ui/README.md): Cara visual del repartidor.
 - [`src/components/README.md`](file:///C:/Users/cesar/OneDrive/Desktop/RepartoFacil-web/src/components/README.md): Componentes UI reutilizables.
+  - [`src/components/map/README.md`](file:///C:/Users/cesar/OneDrive/Desktop/RepartoFacil-web/src/components/map/README.md): Submódulos del mapa Leaflet (rutas OSRM, pines, capas de marcadores).
+  - [`src/components/sidebar/README.md`](file:///C:/Users/cesar/OneDrive/Desktop/RepartoFacil-web/src/components/sidebar/README.md): Submódulos del menú lateral DiDi/PedidosYa (auth, vistas chofer/comprador, pie PWA).
   - [`src/components/ui/README.md`](file:///C:/Users/cesar/OneDrive/Desktop/RepartoFacil-web/src/components/ui/README.md): Primitivas base Shadcn.
 - [`src/lib/README.md`](file:///C:/Users/cesar/OneDrive/Desktop/RepartoFacil-web/src/lib/README.md): Conectividad, validación y auth.
 - [`src/data/README.md`](file:///C:/Users/cesar/OneDrive/Desktop/RepartoFacil-web/src/data/README.md): Catálogo de contingencia sin conexión.

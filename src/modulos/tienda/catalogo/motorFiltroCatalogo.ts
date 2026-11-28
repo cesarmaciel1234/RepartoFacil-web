@@ -46,13 +46,16 @@ export function productBelongsToCompany(product: Product, company: CompanyStore)
     company.id === "frigorifico-maciel" ||
     company.id.startsWith("frigorifico-maciel-") ||
     company.slug === "maciel" ||
+    company.slug === "rumaul" || // Alias obsoleto por compatibilidad
     (company as any).parentSlug === "maciel" ||
+    (company as any).parentSlug === "rumaul" || // Alias obsoleto por compatibilidad
     (company as any).empresa_id === 1;
 
   const isMacielProduct =
     productCompany === "frigorifico-maciel" ||
     productCompany.startsWith("frigorifico-maciel") ||
     productCompany.includes("maciel") ||
+    productCompany.includes("rumaul") || // Alias obsoleto por compatibilidad
     (product as any).empresa_id === 1;
 
   if (isMacielCompany && isMacielProduct) {

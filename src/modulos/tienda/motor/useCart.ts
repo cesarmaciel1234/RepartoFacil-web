@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { Product } from "@/data/mockProducts";
 import { CartItem } from "./tipos";
+export type { CartItem };
 import { useToast } from "@/hooks/use-toast";
 import {
   isProductPurchasable,
@@ -191,11 +192,30 @@ export function useCart() {
   }, []);
 
   const reconcileCatalogProducts = useCallback((products: Product[]) => {
-    const catalogById = new Map(products.map((product) => [product.id, product]));
+    const catalogById = new Map<string, Product>();
+    const cleanId = (raw: unknown) =>
+      String(raw || "").replace(/^(tpv-suc-\d+-|fallback-suc-\d+-|tpv-|emp-\d+-tpv-)/i, "").trim().toLowerCase();
+    const normName = (raw: unknown) =>
+      String(raw || "").normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+
+    for (const product of products) {
+      catalogById.set(product.id, product);
+      const cid = cleanId(product.id);
+      if (cid && !catalogById.has(cid)) catalogById.set(cid, product);
+      const nname = normName(product.name);
+      if (nname && !catalogById.has(nname)) catalogById.set(nname, product);
+    }
+
     setCart((prev) => {
       let changed = false;
       const next = prev.map((item) => {
-        const catalogProduct = catalogById.get(item.product.id);
+        const itemCleanId = cleanId(item.product.id);
+        const itemNormName = normName(item.product.name);
+        const catalogProduct =
+          catalogById.get(item.product.id) ||
+          catalogById.get(itemCleanId) ||
+          catalogById.get(itemNormName);
+
         if (!catalogProduct) {
           if (item.product.priceSource !== "tpv") return item;
           changed = true;

@@ -36,7 +36,7 @@ export function NavegacionTienda({
   return (
     <nav
       aria-label="Navegación principal"
-      className="fixed bottom-0 left-0 right-0 z-40 border-t border-slate-200 bg-white/95 backdrop-blur-md shadow-[0_-4px_16px_rgba(15,23,42,0.06)]"
+      className="relative z-40 flex-shrink-0 border-t border-slate-200 bg-white/95 backdrop-blur-md shadow-[0_-4px_16px_rgba(15,23,42,0.06)]"
       style={{ paddingBottom: "max(0.5rem, env(safe-area-inset-bottom, 0px))" }}
     >
       <div className="mx-auto grid max-w-xl grid-cols-5">

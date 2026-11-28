@@ -1,16 +1,15 @@
-# Módulo de Pedidos API (`src/app/api/orders/`)
+# API de Pedidos (`src/app/api/orders/`)
 
 ## 1. Qué hace
-Gestiona el ciclo de vida completo de los pedidos: recepción, validación de stock y tarifas, persistencia transaccional, asignación a choferes y custodia de entrega.
+Punto de entrada HTTP REST de Reparto Fácil para la consulta, registro y actualización del ciclo de vida de los pedidos.
 
 ## 2. De dónde viene
-- Invocado por `src/modulos/tienda/motor/pedidoService.ts` tras el checkout.
-- Consultas y cambios de estado desde la PWA del repartidor (`src/modulos/repartidor/motor/driverService.ts`).
+Llamadas fetch desde el frontend del comprador (`pedidoService.ts`, `CentroPedidosClienteSheet.tsx`) y del repartidor (`driverService.ts`, `TabMiRuta.tsx`).
 
-## 3. Archivos y Subrutas
-- `route.ts`: Atiende `POST /api/orders` (creación de orden con validación estricta de aislamiento multi-tenant y montos) y `GET /api/orders` (historial del cliente o lista de órdenes para repartidores).
-- `custodio/route.ts`: Protocolo de entrega segura con PIN, firma o código QR para liberar cobranzas contra entrega.
+## 3. Archivos y subcarpetas
+- **`route.ts`**: Router ultraliviano que delega cada verbo HTTP a su respectiva acción en `core/`.
+- **`core/`**: Submódulos especializados con mapeadores, queries y handlers de base de datos.
+- **`custodio/`**: Microservicio custodio que audita inmovilidad o desconexión de choferes asignados.
 
 ## 4. Hacia dónde sale
-- Hacia la tabla `public.repartofacil_pedidos` en PostgreSQL 16 local.
-- Hacia el módulo de sincronización en tiempo real (Firebase/WebSockets) para notificar a la tienda y al chofer.
+Hacia el `core/` de pedidos y la base de datos PostgreSQL en el VPS de Oracle Cloud.

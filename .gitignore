@@ -52,6 +52,9 @@ __pycache__/
 *.py[cod]
 *$py.class
 *.db
+*.db-*
+.env.production
+.modified
 .pytest_cache/
 backups/
 *.bak
