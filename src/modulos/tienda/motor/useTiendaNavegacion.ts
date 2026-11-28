@@ -68,17 +68,28 @@ export function useTiendaNavegacion({
       companies.find((company) => {
         const id = (company.id || "").toLowerCase();
         const slug = (company.slug || "").toLowerCase();
-        const parentId = ((company as any).parentCompanyId || "").toLowerCase();
-        const parentSlug = ((company as any).parentSlug || "").toLowerCase();
+        const name = (company.name || "").toLowerCase();
+        const parentId = String((company as any).parentCompanyId || "").toLowerCase();
+        const parentSlug = String((company as any).parentSlug || "").toLowerCase();
         const isMaciel =
-          normalizedKey === "maciel" || normalizedKey === "rumaul";
+          normalizedKey === "maciel" ||
+          normalizedKey === "rumaul" ||
+          normalizedKey.includes("maciel");
+
+        if (isMaciel) {
+          if (normalizedKey.includes("2") || normalizedKey.includes("suc-2")) {
+            return Number((company as any).sucursal_id) === 2 || id.includes("suc-2");
+          }
+          return Number((company as any).sucursal_id) === 1 || id.includes("suc-1") || id.includes("maciel") || slug.includes("maciel") || name.includes("maciel");
+        }
+
         return (
           slug === normalizedKey ||
           id === normalizedKey ||
           id === `empresa-${normalizedKey}` ||
           parentId === normalizedKey ||
           parentSlug === normalizedKey ||
-          (isMaciel && (id.includes("maciel") || slug.includes("maciel")))
+          name === normalizedKey
         );
       }) || null
     );

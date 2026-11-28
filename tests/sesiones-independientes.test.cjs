@@ -67,6 +67,7 @@ test("las sesiones de Comprador y Repartidor son independientes y no excluyentes
   });
 
   const clientAuth = loadModule("src/lib/clientAuth.ts", {}, {
+    window: mockWindow,
     localStorage: mockStorage,
   });
 

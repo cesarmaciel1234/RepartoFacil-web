@@ -5,6 +5,13 @@ import type { CompanyStore } from "@/data/mockCompanies";
 import { useCart } from "./motor/useCart";
 import { isProductPurchasable } from "./motor/productoDisponibilidad";
 import { useCatalogoTienda } from "./catalogo/hooks/useCatalogoTienda";
+import {
+  productBelongsToCompany,
+  deduplicateCatalogProducts,
+  departmentOf,
+  getDepartmentIcon,
+  filterCatalogProducts,
+} from "./catalogo/motorFiltroCatalogo";
 import { usePedidosCliente } from "./pedidos/hooks/usePedidosCliente";
 import { CatalogoEmpresaTienda } from "./catalogo/pantallas/CatalogoEmpresaTienda";
 import { AvisoCatalogo, formatSavedTime } from "./catalogo/AvisoCatalogo";
@@ -82,14 +89,7 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
     cacheError,
     reload: reloadCatalog,
     productCountByCompany,
-    companyCatalogSize,
-    companyDepartments,
-    filteredProducts,
-  } = useCatalogoTienda({
-    selectedCompany: null, // Sincronizado dinámicamente abajo
-    selectedCategory: "todos",
-    searchQuery: "",
-  });
+  } = useCatalogoTienda();
 
   // Gestión modular de navegación y URLs
   const {
@@ -106,6 +106,48 @@ export function TiendaPiramidal({ onSwitchToDriver }: TiendaPiramidalProps) {
     companies,
     catalogStatus,
   });
+
+  // Catálogo específico del comercio seleccionado (deduplicado y filtrado reactivamente)
+  const activeCompanyCatalog = useMemo(() => {
+    if (!selectedCompany) return [];
+    const list = products.filter((product) =>
+      productBelongsToCompany(product, selectedCompany)
+    );
+    return deduplicateCatalogProducts(list);
+  }, [products, selectedCompany]);
+
+  const companyDepartments = useMemo(() => {
+    if (!selectedCompany) return [];
+    const counts = new Map<string, number>();
+    activeCompanyCatalog.forEach((product) => {
+      const department = departmentOf(product);
+      counts.set(department, (counts.get(department) || 0) + 1);
+    });
+
+    const departmentList = Array.from(counts.entries())
+      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+      .map(([department, count]) => ({
+        id: department.toLowerCase(),
+        name: `${department} (${count})`,
+        icon: getDepartmentIcon(department),
+      }));
+
+    return [
+      { id: "todos", name: `Todos (${activeCompanyCatalog.length})`, icon: "🔥" },
+      ...departmentList,
+    ];
+  }, [selectedCompany, activeCompanyCatalog]);
+
+  const filteredProducts = useMemo(() => {
+    if (!selectedCompany) return [];
+    return filterCatalogProducts(
+      activeCompanyCatalog,
+      searchQuery,
+      selectedCategory
+    );
+  }, [activeCompanyCatalog, selectedCategory, searchQuery, selectedCompany]);
+
+  const companyCatalogSize = activeCompanyCatalog.length;
 
   useEffect(() => {
     if (!isCartLoaded) return;

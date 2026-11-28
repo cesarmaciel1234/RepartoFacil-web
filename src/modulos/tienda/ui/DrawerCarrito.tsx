@@ -304,7 +304,10 @@ export function DrawerCarrito({
             unavailableItem={unavailableItem}
             inventoryReady={inventoryReady}
             companyId={activeCart.companyId}
-            onProceedToPayment={onProceedToPayment}
+            onProceedToPayment={(cId) => {
+              onOpenChange(false);
+              onProceedToPayment(cId);
+            }}
             formatMoney={formatMoney}
           />
         )}

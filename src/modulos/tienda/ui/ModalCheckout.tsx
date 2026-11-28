@@ -236,7 +236,10 @@ export function ModalCheckout({
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onOpenChange}>
-        <DialogContent className="w-[94vw] max-w-sm max-w-full max-h-[90vh] overflow-x-hidden overflow-y-auto box-border rounded-3xl border-slate-200 bg-white p-4 pt-5 text-slate-900 shadow-xl">
+        <DialogContent
+          overlayClassName="z-[70]"
+          className="z-[70] w-[94vw] max-w-sm max-w-full max-h-[90vh] overflow-x-hidden overflow-y-auto box-border rounded-3xl border-slate-200 bg-white p-4 pt-5 text-slate-900 shadow-xl"
+        >
           <DialogHeader className="border-b border-slate-100 pb-2 pr-8 text-left min-w-0 max-w-full">
             <DialogTitle className="flex flex-wrap items-center gap-2 text-lg font-black text-slate-900 min-w-0">
               <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-50 text-blue-600 shrink-0">

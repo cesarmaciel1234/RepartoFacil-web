@@ -59,7 +59,7 @@
       "name": "Panel Repartidor",
       "short_name": "Repartidor",
       "description": "Navegación GPS y ruta de pedidos activos",
-      "url": "/repartidor",
+      "url": "/",
       "icons": [
         {
           "src": "/icon-192.png",

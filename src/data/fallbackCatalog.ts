@@ -1184,7 +1184,7 @@ export function buildBranchProducts(sucursalId: number): FallbackCatalogProduct[
     const rawStock = item.stockKg ?? item.stock ?? 999;
     const stockKg = typeof rawStock === "number" && rawStock > 0 ? rawStock : 999;
     return {
-      id: `fallback-suc-${sucursalId}-${item.id}`,
+      id: `tpv-suc-${sucursalId}-${item.id}`,
       name: item.name,
       category: item.dept.toLowerCase(),
       categoryName: item.dept,
@@ -1202,6 +1202,7 @@ export function buildBranchProducts(sucursalId: number): FallbackCatalogProduct[
       companyId: branchCompId,
       companyName: branchCompName,
       sucursal_id: sucursalId,
+      empresa_id: 1,
       catalogCached: false,
     };
   });

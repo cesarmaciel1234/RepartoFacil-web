@@ -83,10 +83,17 @@ export async function createOrder(
   const clientId = identity.clientId;
   const clientUserId = identity.userId;
 
-  const targetCompanyId = form.companyId || cart[0]?.product?.companyId || "frigorifico-maciel";
+  const targetCompanyId = form.companyId || cart[0]?.product?.companyId || "frigorifico-maciel-suc-1";
   const rawSlug = (form.companySlug || targetCompanyId.replace(/^empresa-/, "")).toLowerCase().trim();
   const isPrueba = targetCompanyId === "empresa-prueba" || rawSlug === "prueba";
-  const isMaciel = targetCompanyId === "frigorifico-maciel" || rawSlug === "maciel" || rawSlug === "rumaul";
+  const isMaciel =
+    targetCompanyId === "frigorifico-maciel" ||
+    targetCompanyId.startsWith("frigorifico-maciel") ||
+    targetCompanyId.includes("maciel") ||
+    rawSlug === "maciel" ||
+    rawSlug === "rumaul" ||
+    rawSlug.includes("maciel") ||
+    (cart[0]?.product as any)?.empresa_id === 1;
   const empresaId =
     typeof form.empresaId === "number" && form.empresaId > 0
       ? form.empresaId
@@ -94,7 +101,7 @@ export async function createOrder(
       ? 2
       : isMaciel
       ? 1
-      : Number(rawSlug) || 0;
+      : Number(rawSlug) || 1;
   const empresaSlug = isMaciel ? "maciel" : isPrueba ? "prueba" : rawSlug || "maciel";
   const companyBranchName =
     form.selectedBranch ||

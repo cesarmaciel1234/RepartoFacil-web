@@ -104,6 +104,7 @@ function mapProduct(
     source: string;
     categoryMap?: Record<string, string>;
     sucursal_id?: number;
+    empresa_id?: number;
   }
 ) {
   const name = String(item.nombre || "").trim();
@@ -152,6 +153,7 @@ function mapProduct(
     companyId: options.companyId,
     companyName: options.companyName,
     ...(options.sucursal_id != null ? { sucursal_id: options.sucursal_id } : {}),
+    ...(options.empresa_id != null ? { empresa_id: options.empresa_id } : {}),
     source: options.source,
     synchronizedFromPos: true,
   };
@@ -163,8 +165,27 @@ export async function GET(request: NextRequest) {
       const warnings: string[] = [];
       const categoryMap: Record<string, string> = {};
       const branchIdParam = request.nextUrl.searchParams.get("sucursal_id");
-      const hasBranchFilter = branchIdParam !== null && branchIdParam !== "" && !isNaN(Number(branchIdParam));
-      const targetBranchId = hasBranchFilter ? Number(branchIdParam) : null;
+      const tiendaParam = (
+        request.nextUrl.searchParams.get("tienda") ||
+        request.nextUrl.searchParams.get("slug") ||
+        request.nextUrl.searchParams.get("companyId") ||
+        request.nextUrl.searchParams.get("company_id") ||
+        ""
+      ).toLowerCase().trim();
+      const isMacielParam =
+        tiendaParam === "maciel" ||
+        tiendaParam === "rumaul" ||
+        tiendaParam.includes("maciel");
+
+      const hasBranchFilter =
+        (branchIdParam !== null && branchIdParam !== "" && !isNaN(Number(branchIdParam))) ||
+        isMacielParam;
+      const targetBranchId =
+        branchIdParam !== null && branchIdParam !== "" && !isNaN(Number(branchIdParam))
+          ? Number(branchIdParam)
+          : isMacielParam
+          ? 1
+          : null;
 
       try {
         const catRows = await queryDb<PosBaseRow>(
@@ -212,26 +233,54 @@ export async function GET(request: NextRequest) {
         rawProducts.push(...mapped);
       }
 
-      // Deduplicar productos por código/ID único para evitar artículos duplicados de distintas terminales
+      // Inicializar con el catálogo completo de 114 productos certificados de Maciel #1
       const productMap = new Map<string, NonNullable<ReturnType<typeof mapProduct>>>();
-      for (const prod of rawProducts) {
-        const rawCode = String(prod.id || "").replace(/^tpv-suc-\d+-/, "").trim();
-        const normName = normalizeProductName(prod.name);
+      for (const item of FALLBACK_PRODUCTS_SUC_1) {
+        const rawCode = String(item.id || "").replace(/^(tpv|fallback)-suc-\d+-/, "").trim();
+        const normName = normalizeProductName(item.name);
         const key = rawCode || normName;
+        productMap.set(key, {
+          ...item,
+          id: `tpv-suc-1-${rawCode || item.id}`,
+          companyId: `${macielCompanyId}-suc-1`,
+          companyName: macielCompanyName,
+          sucursal_id: 1,
+          empresa_id: 1,
+        } as any);
+      }
+
+      // Actualizar con precios y stocks en vivo desde pos_base (omitiendo IDs desbordados/corruptos)
+      for (const prod of rawProducts) {
+        const rawCode = String(prod.id || "").replace(/^(tpv|fallback)-suc-\d+-/, "").trim();
+        if (rawCode === "2147483647") continue;
+        const normName = normalizeProductName(prod.name);
+        const key = productMap.has(rawCode) ? rawCode : (productMap.has(normName) ? normName : (rawCode || normName));
         const existing = productMap.get(key);
         if (!existing) {
-          productMap.set(key, prod);
+          productMap.set(key, {
+            ...prod,
+            id: `tpv-suc-1-${rawCode}`,
+            empresa_id: 1,
+            sucursal_id: 1,
+            companyId: `${macielCompanyId}-suc-1`,
+          });
         } else {
           const existingPrice = existing.price || 0;
           const currentPrice = prod.price || 0;
           const preferNewName = prod.name.trim().length > existing.name.trim().length;
-          if (currentPrice > 0 && (existingPrice === 0 || (prod.stockKg || 0) > (existing.stockKg || 0) || preferNewName)) {
-            productMap.set(key, {
-              ...prod,
-              name: preferNewName ? prod.name : existing.name,
-              image: prod.image || existing.image,
-            });
-          }
+          productMap.set(key, {
+            ...existing,
+            ...prod,
+            id: existing.id || `tpv-suc-1-${rawCode}`,
+            price: currentPrice > 0 ? currentPrice : existingPrice,
+            stockKg: (prod.stockKg || 0) > 0 ? prod.stockKg : existing.stockKg,
+            stock: (prod.stock || 0) > 0 ? prod.stock : existing.stock,
+            name: preferNewName ? prod.name : existing.name,
+            image: prod.image || existing.image,
+            empresa_id: 1,
+            sucursal_id: 1,
+            companyId: `${macielCompanyId}-suc-1`,
+          });
         }
       }
       const products = Array.from(productMap.values());

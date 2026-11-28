@@ -42,24 +42,49 @@ export function productBelongsToCompany(product: Product, company: CompanyStore)
   const productCompany = (product.companyId || "").toLowerCase();
   if (!productCompany) return false;
 
+  const compId = (company.id || "").toLowerCase();
+  const compSlug = (company.slug || "").toLowerCase();
+  const compName = (company.name || "").toLowerCase();
+  const compParentId = String((company as any).parentCompanyId || "").toLowerCase();
+  const compParentSlug = String((company as any).parentSlug || "").toLowerCase();
+  const compEmpresaId = Number((company as any).empresa_id);
+
   const isMacielCompany =
-    company.id === "frigorifico-maciel" ||
-    company.id.startsWith("frigorifico-maciel-") ||
-    company.slug === "maciel" ||
-    company.slug === "rumaul" || // Alias obsoleto por compatibilidad
-    (company as any).parentSlug === "maciel" ||
-    (company as any).parentSlug === "rumaul" || // Alias obsoleto por compatibilidad
-    (company as any).empresa_id === 1;
+    compId === "frigorifico-maciel" ||
+    compId.startsWith("frigorifico-maciel") ||
+    compId.includes("maciel") ||
+    compSlug === "maciel" ||
+    compSlug === "rumaul" || // Alias obsoleto por compatibilidad
+    compParentId === "frigorifico-maciel" ||
+    compParentSlug === "maciel" ||
+    compParentSlug === "rumaul" ||
+    compName.includes("maciel") ||
+    compEmpresaId === 1;
+
+  const prodEmpresaId = Number((product as any).empresa_id);
+  const prodName = String((product as any).companyName || "").toLowerCase();
 
   const isMacielProduct =
     productCompany === "frigorifico-maciel" ||
     productCompany.startsWith("frigorifico-maciel") ||
     productCompany.includes("maciel") ||
     productCompany.includes("rumaul") || // Alias obsoleto por compatibilidad
-    (product as any).empresa_id === 1;
+    prodEmpresaId === 1 ||
+    prodName.includes("maciel");
 
   if (isMacielCompany && isMacielProduct) {
-    return true;
+    const productSucId = (product as any).sucursal_id ?? (product as any).branchId;
+    const companySucId = company.sucursal_id;
+    if (companySucId != null && productSucId != null) {
+      return Number(productSucId) === Number(companySucId);
+    }
+    if (company.id && productCompany === company.id.toLowerCase()) {
+      return true;
+    }
+    if (Number(companySucId) === 1 || !company.isMultiBranch) {
+      return true;
+    }
+    return productCompany.includes(`-suc-${companySucId}`);
   }
 
   const productSucId = (product as any).sucursal_id ?? (product as any).branchId;

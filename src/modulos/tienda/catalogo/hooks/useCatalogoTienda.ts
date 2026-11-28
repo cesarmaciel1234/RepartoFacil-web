@@ -30,16 +30,15 @@ export { cleanSearchText, departmentOf, getDepartmentIcon, productBelongsToCompa
 export type CatalogStatus = "loading" | "ready" | "error";
 
 interface UseCatalogoTiendaParams {
-  selectedCompany: CompanyStore | null;
-  selectedCategory: string;
-  searchQuery: string;
+  selectedCompany?: CompanyStore | null;
+  selectedCategory?: string;
+  searchQuery?: string;
 }
 
-export function useCatalogoTienda({
-  selectedCompany,
-  selectedCategory,
-  searchQuery,
-}: UseCatalogoTiendaParams) {
+export function useCatalogoTienda(params?: UseCatalogoTiendaParams) {
+  const selectedCompany = params?.selectedCompany || null;
+  const selectedCategory = params?.selectedCategory || "todos";
+  const searchQuery = params?.searchQuery || "";
   const [products, setProducts] = useState<CatalogProduct[]>(FALLBACK_PRODUCTS as CatalogProduct[]);
   const [companies, setCompanies] = useState<CompanyStore[]>(FALLBACK_COMPANIES);
   const [status, setStatus] = useState<CatalogStatus>("ready");

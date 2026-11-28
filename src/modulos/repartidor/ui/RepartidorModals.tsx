@@ -69,7 +69,10 @@ export function RepartidorModals({
         onOpenChange={setIsSidebarOpen}
         currentMode="driver"
         onSwitchMode={(mode) => {
-          if (mode === "store") onSwitchToStore();
+          // El chofer solo puede salir de modo Repartidor tocando Cerrar sesión
+          if (mode === "store" && !loadDriverProfile()) {
+            onSwitchToStore();
+          }
         }}
         driverProfile={driverProfile}
         walletBalance={wallet.balance}
